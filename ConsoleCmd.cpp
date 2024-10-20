@@ -5,12 +5,10 @@
 #include "Compiler.h"
 #include "Processor.h"
 
-static void PrintError            (ConsoleCmdErrorType* Err);
-static void ErrPlaceCtor          (ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
-static void PrintPlace            (const char* File, int Line, const char* Func);
-static ConsoleCmdErrorType Verif  (ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
-
-
+static  ConsoleCmdErrorType  Verif         (ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
+static  void                 PrintError    (ConsoleCmdErrorType* Err);
+static  void                 ErrPlaceCtor  (ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
+static  void                 PrintPlace    (const char* File, int Line, const char* Func);
 
 ConsoleCmdErrorType (*ConsoleCmd[]) (const int, const char**, int, IOfile*) = 
 {
@@ -20,7 +18,7 @@ ConsoleCmdErrorType (*ConsoleCmd[]) (const int, const char**, int, IOfile*) =
 
 const size_t CmdQuant = sizeof(ConsoleCmd)/sizeof(ConsoleCmd[0]);
 
-//---------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 void CallCmd(const int argc, const char** argv, IOfile* File)
 {
@@ -34,7 +32,7 @@ void CallCmd(const int argc, const char** argv, IOfile* File)
     return;
 }
 
-//---------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, int argv_i, IOfile* File)
 {
@@ -42,7 +40,6 @@ ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, int argv_i, IO
 
     if (strcmp(argv[argv_i], "-compile") == 0)
     {
-
         if (argc - 1 < argv_i + 2)
         {
             Err.NoInputAfterCompile = 1;
@@ -59,7 +56,7 @@ ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, int argv_i, IO
     return VERIF(Err);
 }
 
-//---------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, int argv_i, IOfile* File)
 {
@@ -84,7 +81,7 @@ ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, int argv_i, IO
     return VERIF(Err);
 }
 
-//---------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 void ConsoleCmdAssertPrint(ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func)
 {
@@ -96,7 +93,7 @@ void ConsoleCmdAssertPrint(ConsoleCmdErrorType* Err, const char* File, int Line,
     return;
 }
 
-//---------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 static void ErrPlaceCtor(ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func)
 {
@@ -106,7 +103,7 @@ static void ErrPlaceCtor(ConsoleCmdErrorType* Err, const char* File, int Line, c
     return;
 }
 
-//---------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 static void PrintPlace(const char* File, int Line, const char* Func)
 {
@@ -116,7 +113,7 @@ static void PrintPlace(const char* File, int Line, const char* Func)
     return;
 }
 
-//---------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 static void PrintError(ConsoleCmdErrorType* Err)
 {
@@ -143,9 +140,12 @@ static void PrintError(ConsoleCmdErrorType* Err)
     return;
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+
 static ConsoleCmdErrorType Verif(ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func)
 {
     ErrPlaceCtor(Err, File, Line, Func);
-
     return *Err;
 }
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 #include <assert.h>
 #include <stdint.h>
 #include "Hash.h"
-#include "Stack.h"
 
 uint64_t Hash(void* Arr, size_t ArrElemQuant, size_t ArrElemSize)
 {

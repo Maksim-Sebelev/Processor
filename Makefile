@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -c -Wall
-FILES_CPP = main.cpp Compiler.cpp Processor.cpp ConsoleCmd.cpp Stack.cpp Hash.cpp
+FILES_CPP = main.cpp Compiler.cpp Processor.cpp ConsoleCmd.cpp Stack.cpp Hash.cpp GlobalInclude.cpp
 OBJECTS = $(FILES_CPP:.cpp=.o)
 OBJECTS_H = $(FILES_CPP:.cpp=.h)
 

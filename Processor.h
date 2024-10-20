@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include "Compiler.h"
 #include "Stack.h"
+#include "GlobalInclude.h"
+
 
 struct ProcessorErrPlace
 {
