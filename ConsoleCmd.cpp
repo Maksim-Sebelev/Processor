@@ -74,7 +74,7 @@ ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, int argv_i, IO
 
         SPU Spu = {};
         PROCESSOR_ASSERT(SpuCtor(&Spu, File));
-        PROCESSOR_ASSERT(WriteFileInCode(&Spu, File));
+        PROCESSOR_ASSERT(ReadCodeFromFile(&Spu, File));
         PROCESSOR_ASSERT(RunProcessor(&Spu));
         PROCESSOR_ASSERT(SpuDtor(&Spu));
     }

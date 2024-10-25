@@ -2,7 +2,6 @@
 #define PROCESSOR_H
 
 #include <stdio.h>
-#include "Compiler.h"
 #include "Stack.h"
 #include "GlobalInclude.h"
 
@@ -38,14 +37,15 @@ struct Code
 
 struct SPU
 {
-    Code code;
-    size_t ip;
-    Stack_t stack;
-    StackElem_t registers[REGISTERS_QUANT];
+    Code         code;
+    size_t       ip;
+    Stack_t      stack;
+    StackElem_t  registers[REGISTERS_QUANT];
+    int*         RAM;
 };
 
 
-ProcessorErrorType WriteFileInCode(SPU* Spu, const IOfile* File);
+ProcessorErrorType ReadCodeFromFile(SPU* Spu, const IOfile* File);
 ProcessorErrorType RunProcessor(SPU* Spu);
 
 void ProcessorDump(const SPU* Spu, const char* File, int Line, const char* Func);

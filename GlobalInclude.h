@@ -7,7 +7,6 @@ enum Cmd
 {
     hlt = 0,
     push,
-    pushr,
     pop,
     add,
     sub,
@@ -21,8 +20,22 @@ enum Cmd
     jbe,
     je,
     jne,
-    lab,
     CMD_QUANT // count
+};
+
+struct PushType
+{
+    unsigned int stk   : 1;
+    unsigned int reg   : 1;
+    unsigned int mem   : 1;
+
+};
+
+
+struct PopType
+{
+    unsigned int reg   : 1;
+    unsigned int mem   : 1;
 };
 
 
@@ -56,6 +69,12 @@ enum ComparisonOperator
     always_true
 };
 
+
+struct IOfile
+{
+    const char* ProgrammFile;
+    const char* CodeFile;
+};
 
 bool        MakeComparisonOperation  (StackElem_t FirstOperand, StackElem_t SecondOperand, ComparisonOperator Operator);
 StackElem_t MakeArithmeticOperation  (StackElem_t FirstOperand, StackElem_t SecondOperand, ArithmeticOperator Operator);

@@ -1,8 +1,9 @@
-#ifndef COMPILER_H
-#define COMPILER_H
+#ifndef ASSEMBLER_H
+#define ASSEMBLER_H
 
 #include <stdio.h>
 #include "Stack.h"
+#include "GlobalInclude.h"
 
 
 
@@ -21,6 +22,7 @@ struct CompilerErrorType
 
     unsigned char NoHalt                                  : 1;
     unsigned char InvalidCmd                              : 1;
+    unsigned char PushNotLabel                            : 1;
     unsigned char TooManyLabels                           : 1;
     unsigned char NoIntAfterJmp                           : 1;
     unsigned char LabelCallocNull                         : 1;
@@ -34,11 +36,6 @@ struct CompilerErrorType
     unsigned char FailedAllocateMemoryBufferTempFile      : 1;
 };
 
-struct IOfile
-{
-    const char* ProgrammFile;
-    const char* CodeFile;
-};
 
 
 struct FileSignature
@@ -46,31 +43,6 @@ struct FileSignature
     int           Signature;
     unsigned char Version;
     size_t        FileSize;
-};
-
-
-struct Label
-{
-    const char* Name;
-    int         CodePlace;    
-};
-
-
-struct LabelsTable
-{
-    Label*  Labels;
-    size_t  FirstFree;
-    size_t  Capacity;
-};
-
-
-struct CmdDataForAsm
-{
-    FILE*             ProgrammFilePtr;
-    FILE*             CodeFilePtr;
-    FILE*             TempFilePtr;
-    size_t            FileCmdQuant;
-    LabelsTable*      Labels;
 };
 
 
@@ -87,6 +59,7 @@ void              CompilerAssertPrint  (CompilerErrorType* Err, const char* File
     }                                          \
 } while (0);                                    \
 
+
 #define COMPILER_ASSERT(Err) do                                  \
 {                                                                 \
     CompilerErrorType ErrCopy = Err;                               \
@@ -96,12 +69,10 @@ void              CompilerAssertPrint  (CompilerErrorType* Err, const char* File
         COLOR_PRINT(CYAN, "abort() in 3, 2, 1...");                    \
         abort();                                                        \
     }                                                                    \
-} while (0);                                                              \
+} while (0)                                                               \
 
 
 #define COMPILER_VERIF(Err) Verif(&Err, __FILE__, __LINE__, __func__)
 
+
 #endif
-
-
-
