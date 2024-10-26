@@ -1,5 +1,5 @@
-#ifndef ASSEMBLER_H
-#define ASSEMBLER_H
+#ifndef COMPILER_H
+#define COMPILER_H
 
 #include <stdio.h>
 #include "Stack.h"
@@ -71,7 +71,7 @@ void              CompilerAssertPrint  (CompilerErrorType* Err, const char* File
     }                                                                    \
 } while (0)                                                               \
 
-
+    
 #define COMPILER_VERIF(Err) Verif(&Err, __FILE__, __LINE__, __func__)
 
 

@@ -11,8 +11,8 @@ static  void                ErrPlaceCtor (ProcessorErrorType* Err, const char* F
 static  ProcessorErrorType  ArithmeticCmdPattern   (SPU* Spu, ArithmeticOperator Operator, ProcessorErrorType* Err);
 static  ProcessorErrorType  JumpsCmdPatter         (SPU* Spu, ComparisonOperator Operator, ProcessorErrorType* Err);
 
-static  void  CodeCtor  (SPU* Spu, ProcessorErrorType* Err, const IOfile* File);
-static  void  CodeDtor  (SPU* Spu, ProcessorErrorType* Err);
+static  ProcessorErrorType  CodeCtor  (SPU* Spu, const IOfile* File);
+static  ProcessorErrorType  CodeDtor  (SPU* Spu);
 
 static  PushType  GetPushType  (int PushArg);
 static  PopType   GetPopType   (int PopArg);
@@ -22,15 +22,14 @@ static  int   GetPushPopRegister        (SPU* Spu);
 static  int   GetPushPopMemory          (SPU* Spu);
 static  int   GetPushPopMemoryWithReg   (SPU* Spu);
 
-static  void  SetPopRegister            (SPU* Spu, StackElem_t PopElem);
 static  void  SetPopMemory              (SPU* Spu, StackElem_t PopElem);
 static  void  SetPopMemoryWithRegister  (SPU* Spu, StackElem_t PopElem);
 static  void  SetPopRegister            (SPU* Spu, StackElem_t PopElem);
 
 static  int   GetCodeElem               (SPU* Spu);
 static  int   GetNextCodeElem           (SPU* Spu);
-static  int   GetCodeSize               (SPU* Spu);
-static  int   GetIp                     (SPU* Spu);
+static  size_t   GetCodeSize               (SPU* Spu);
+static  size_t   GetIp                     (SPU* Spu);
 static  void  SetCodeElem               (SPU* Spu, size_t Code_i, int NewCodeElem);
 
 
@@ -67,7 +66,7 @@ ProcessorErrorType ReadCodeFromFile(SPU* Spu, const IOfile* File)
         return PROCESSOR_VERIF(Spu, Err);
     }
 
-    fscanf(CodeFilePtr, "%u", &CmdQuant);
+    fscanf(CodeFilePtr, "%lu", &CmdQuant);
 
     for (size_t cmd_i = 0; cmd_i < CmdQuant; cmd_i++)
     {
@@ -204,7 +203,6 @@ ProcessorErrorType RunProcessor(SPU* Spu)
 static ProcessorErrorType HandleHalt(SPU* Spu, ProcessorErrorType* Err)
 {
     Spu->ip++;
-    // PROCESSSOR_DUMP(Spu);
     STACK_ASSERT(StackDtor(&Spu->stack));
     return PROCESSOR_VERIF(Spu, *Err);
 }
@@ -431,7 +429,7 @@ static ProcessorErrorType JumpsCmdPatter(SPU* Spu, ComparisonOperator Operator, 
 
     if (MakeComparisonOperation(FirstOperand, SecondOperand, Operator))
     {
-        Spu->ip = GetNextCodeElem(Spu);
+        Spu->ip = (size_t) GetNextCodeElem(Spu);
         return PROCESSOR_VERIF(Spu, *Err);
     }
 
@@ -522,14 +520,14 @@ static int GetNextCodeElem(SPU* Spu)
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 
-static int GetCodeSize(SPU* Spu)
+static size_t GetCodeSize(SPU* Spu)
 {
     return Spu->code.size;
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 
-static int GetIp(SPU* Spu)
+static size_t GetIp(SPU* Spu)
 {
     return Spu->ip;
 }
@@ -547,7 +545,7 @@ static void SetCodeElem(SPU* Spu, size_t Code_i, int NewCodeElem)
 ProcessorErrorType SpuCtor(SPU* Spu, const IOfile* File)
 {
     ProcessorErrorType Err = {};
-    CodeCtor(Spu, &Err, File);
+    CodeCtor(Spu, File);
     PROCESSOR_RETURN_IF_ERR(Err);
     Spu->ip = 0;
     STACK_ASSERT(StackCtor(&Spu->stack ON_STACK_DEBUG(,__FILE__, __LINE__, __func__, "stack")));
@@ -568,7 +566,7 @@ ProcessorErrorType SpuCtor(SPU* Spu, const IOfile* File)
 ProcessorErrorType SpuDtor(SPU* Spu)
 {
     ProcessorErrorType Err = {};
-    CodeDtor(Spu, &Err);
+    CodeDtor(Spu);
 
     PROCESSOR_RETURN_IF_ERR(Err);
     Spu->ip = 0;
@@ -581,46 +579,50 @@ ProcessorErrorType SpuDtor(SPU* Spu)
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void CodeCtor(SPU* Spu, ProcessorErrorType* Err, const IOfile* File)
+static ProcessorErrorType CodeCtor(SPU* Spu, const IOfile* File)
 {
+    ProcessorErrorType Err = {};
+
     FILE* CodeFilePtr = fopen(File->CodeFile, "r");
 
     if (CodeFilePtr == NULL)
     {
-        Err->FailedOpenCodeFile = 1;
-        Err->IsFatalError = 1;
-        return;
+        Err.FailedOpenCodeFile = 1;
+        Err.IsFatalError = 1;
+        return Err;
     }
 
     size_t Second = 0;
-    if (fscanf(CodeFilePtr, "%u", &Second) != 1)
+    if (fscanf(CodeFilePtr, "%lu", &Second) != 1)
     {
-        Err->FailedReadFileLen = 1;
-        Err->IsFatalError = 1;
-        return;
+        Err.FailedReadFileLen = 1;
+        Err.IsFatalError = 1;
+        return Err;
     }
 
     Spu->code.size = Second;
 
     Spu->code.code = (StackElem_t*) calloc(Second, sizeof(StackElem_t));
+
     if (Spu->code.code == NULL)
     {
-        Err->CtorCallocNull = 1;
-        Err->IsFatalError = 1;
-        return;
+        Err.CtorCallocNull = 1;
+        Err.IsFatalError = 1;
+        return Err;
     }
 
-    return;
+    return Err;
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void CodeDtor(SPU* Spu, ProcessorErrorType* Err)
+static ProcessorErrorType CodeDtor(SPU* Spu)
 {
+    ProcessorErrorType Err = {};
     Spu->code.size = 0;
     free(Spu->code.code);
     Spu->code.code = NULL;
-    return;
+    return Err;
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -702,17 +704,17 @@ void ProcessorDump(const SPU* Spu, const char* File, int Line, const char* Func)
 
     for (size_t RAM_i = 0; RAM_i < 128; RAM_i++)
     {
-        COLOR_PRINT(CYAN, "[%3u] %d\n", RAM_i, Spu->RAM[RAM_i]);
+        COLOR_PRINT(CYAN, "[%3lu] %d\n", RAM_i, Spu->RAM[RAM_i]);
     }
 
     printf("\n");
 
-    COLOR_PRINT(YELLOW, "Code size = %u\n\n", Spu->code.size);
+    COLOR_PRINT(YELLOW, "Code size = %lu\n\n", Spu->code.size);
 
     COLOR_PRINT(WHITE, "CODE:\n");
     for (size_t code_i = 0; code_i < Spu->code.size; code_i++)
     {
-        COLOR_PRINT(BLUE, "[%2u] %d", code_i, Spu->code.code[code_i]);
+        COLOR_PRINT(BLUE, "[%2lu] %d", code_i, Spu->code.code[code_i]);
         if (code_i == Spu->ip)
         {
             COLOR_PRINT(WHITE, " < ip");

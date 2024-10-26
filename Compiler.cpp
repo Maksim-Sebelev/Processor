@@ -29,7 +29,7 @@ struct CmdDataForAsm
     FILE*         ProgrammFilePtr;
     FILE*         CodeFilePtr;
     FILE*         TempFilePtr;
-    size_t        FileCmdQuant;
+    int           FileCmdQuant;
     char          Cmd[17];
 };
 
@@ -159,6 +159,8 @@ CompilerErrorType RunCompiler(const IOfile* File)
 
     COMPILER_RETURN_IF_ERR(RunAssembler(&CmdInfo));
 
+    COMPILER_RETURN_IF_ERR(RunAssembler(&CmdInfo));
+
     fclose(CmdInfo.TempFilePtr);
     TempFilePtr = fopen(TempFile, "rb");
 
@@ -217,11 +219,6 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
         }
     }
 
-    // for (int i = 0; i < 16; i++)
-    // {
-    //     printf("label[%2d].name = %s, .codeplace = %d\n", i, CmdInfo->Labels.Labels[i].Name, CmdInfo->Labels.Labels[i].CodePlace);
-    // }
-
     return COMPILER_VERIF(Err);
 }
 
@@ -241,16 +238,17 @@ static CompilerErrorType HandleLabelOrError(CmdDataForAsm* CmdInfo, CompilerErro
     Label Temp = {};
     LabelCtor(&Temp, CmdInfo->Cmd, CmdInfo->FileCmdQuant);
 
-    CmdInfo->FileCmdQuant++;
-
     int LabelIndex = IsLabelInLabels(&CmdInfo->Labels, CmdInfo->Cmd);
 
+
+    
     if (LabelIndex == -1)
     {
         COMPILER_RETURN_IF_ERR(PushLabel(&CmdInfo->Labels, &Temp));
         return COMPILER_VERIF(*Err);
     }
     
+
     Err->MoreOneEqualLables = 1;
     Err->IsFatalError = 1;
 
@@ -272,7 +270,7 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
     PushElem = (StackElem_t) strtol(Buffer, &EndBuffer, 10);
 
     PushType Push = {};
-
+    
     if (IsInt(Buffer, EndBuffer, BufferLen))
     {
         PushTypeCtor(&Push, 1, 0, 0);
@@ -548,7 +546,7 @@ static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, Com
     char*  JumpArgEndPtr = NULL;
     int    IntJumpArg    = (int) strtol(JumpArg, &JumpArgEndPtr, 10);
     size_t JumpArgLen    = strlen(JumpArg);
-    int    JumpArgNumLen = JumpArgEndPtr - JumpArg;
+    int    JumpArgNumLen = (int) (JumpArgEndPtr - JumpArg);
 
     if (JumpArgNumLen == (int) JumpArgLen)
     {
@@ -562,7 +560,7 @@ static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, Com
     {
         Label Temp = {};
         LabelCtor(&Temp, JumpArg, -1);
-        COMPILER_RETURN_IF_ERR(PushLabel(&CmdInfo->Labels, &Temp));
+        // COMPILER_RETURN_IF_ERR(PushLabel(&CmdInfo->Labels, &Temp));
         fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, -1);
         return COMPILER_VERIF(*Err);
     }
@@ -577,9 +575,9 @@ static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, Com
 static CompilerErrorType PushTypeCtor(PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem)
 {
     CompilerErrorType Err = {};
-    Push->stk = Stk;
-    Push->reg = Reg;
-    Push->mem = Mem;
+    Push->stk = Stk ? 1 : 0;
+    Push->reg = Reg ? 1 : 0;
+    Push->mem = Mem ? 1 : 0;
     return Err;
 }
 
@@ -595,8 +593,8 @@ static int GetPushArg(PushType* Push)
 static CompilerErrorType PopTypeCtor(PopType* Pop, uint8_t Reg, uint8_t Mem)
 {
     CompilerErrorType Err = {};
-    Pop->reg = Reg;
-    Pop->mem = Mem;
+    Pop->reg = Reg ? 1 : 0;
+    Pop->mem = Mem ? 1 : 0;
     return Err;
 }
 
@@ -613,7 +611,7 @@ static size_t CalcFileLen(const char* FileName)
 {
     struct stat Buf = {};
     stat(FileName, &Buf);
-    return Buf.st_size;
+    return (size_t) Buf.st_size;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -653,7 +651,7 @@ static void CloseFiles(FILE* ProgrammFilePtr, FILE* CodeFilePtr, FILE* TempFileP
 static void LabelCtor(Label* Lab, const char* Name, int CodePlace)
 {
     Lab->CodePlace = CodePlace;
-    Lab->Name = Name;
+    Lab->Name = strdup(Name);
     return;
 }
 
@@ -703,9 +701,6 @@ static CompilerErrorType PushLabel(LabelsTable* Labels, const Label* Lab)
         return COMPILER_VERIF(Err);
     }
 
-    COLOR_PRINT(VIOLET, "in push: name = %s, codeplace = %d\n", Lab->Name, Lab->CodePlace);
-
-    printf("first free  = %u\n", Labels->FirstFree);
     LabelCtor(&Labels->Labels[Labels->FirstFree], Lab->Name, Lab->CodePlace);
 
     Labels->FirstFree++;
@@ -718,7 +713,7 @@ static CompilerErrorType PushLabel(LabelsTable* Labels, const Label* Lab)
 //возвращает индекс первой встречи, иначе ммнус -1 
 static int IsLabelInLabels(const LabelsTable* Labels, const char* LabelName)
 {
-    for (size_t Label_i = 0; Label_i < Labels->FirstFree; Label_i++)
+    for (int Label_i = 0; Label_i < (int) Labels->FirstFree; Label_i++)
     {
         if (strcmp(Labels->Labels[Label_i].Name, LabelName) == 0)
         {

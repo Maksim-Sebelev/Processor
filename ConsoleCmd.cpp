@@ -10,7 +10,7 @@ static  void                 PrintError    (ConsoleCmdErrorType* Err);
 static  void                 ErrPlaceCtor  (ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
 static  void                 PrintPlace    (const char* File, int Line, const char* Func);
 
-ConsoleCmdErrorType (*ConsoleCmd[]) (const int, const char**, int, IOfile*) = 
+ConsoleCmdErrorType (*ConsoleCmd[]) (const int, const char**, size_t, IOfile*) = 
 {
     CompileCmd,
     RunCodeCmd
@@ -34,13 +34,13 @@ void CallCmd(const int argc, const char** argv, IOfile* File)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 
-ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, int argv_i, IOfile* File)
+ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, size_t argv_i, IOfile* File)
 {
     ConsoleCmdErrorType Err = {};
 
     if (strcmp(argv[argv_i], "-compile") == 0)
     {
-        if (argc - 1 < argv_i + 2)
+        if (argc - 1 < (int) argv_i + 2)
         {
             Err.NoInputAfterCompile = 1;
             Err.IsFatalError = 1;
@@ -58,12 +58,12 @@ ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, int argv_i, IO
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 
-ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, int argv_i, IOfile* File)
+ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, size_t argv_i, IOfile* File)
 {
     ConsoleCmdErrorType Err = {};
     if (strcmp(argv[argv_i], "-run") == 0)
     {
-        if  (argc - 1 < argv_i + 1)
+        if  (argc - 1 < (int) argv_i + 1)
         {
             Err.NoInputAfterRun = 1;
             Err.IsFatalError = 1;

@@ -24,8 +24,8 @@ struct ConsoleCmdErrorType
 
 
 void CallCmd(const int argc, const char** argv, IOfile* File);
-ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, int argv_i, IOfile* File);
-ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, int argv_i, IOfile* File);
+ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, size_t argv_i, IOfile* File);
+ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, size_t argv_i, IOfile* File);
 
 void ConsoleCmdAssertPrint(ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
 

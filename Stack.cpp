@@ -33,7 +33,7 @@ static const uint64_t DefaultStackHash = 538176576;
 )
 ON_STACK_DATA_POISON
 (
-static const StackElem_t Poison = 0xDEEEEEAD;
+static const StackElem_t Poison = 0xDEEEAD;
 )
 
 static size_t GetNewCapacity      (size_t Capacity); 
