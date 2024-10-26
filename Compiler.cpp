@@ -54,6 +54,7 @@ static  CompilerErrorType  WriteTempFileInCodeFile  (const char* TempFile, FILE*
 static  void               LabelCtor        (Label* Lab, const char* Name, int CodePlace);
 static  int                IsLabelInLabels  (const LabelsTable* Labels, const char* LabelName);
 static  CompilerErrorType  LabelsTableCtor  (LabelsTable* Labels);
+static  CompilerErrorType  LabelsTableDtor  (LabelsTable* Labels);
 static  CompilerErrorType  PushLabel        (LabelsTable* Labels, const Label* Lab);
 
 static  CompilerErrorType  JmpCmdPattern  (CmdDataForAsm* CmdInfo, Cmd JumpType, CompilerErrorType* Err);
@@ -160,6 +161,8 @@ CompilerErrorType RunCompiler(const IOfile* File)
     COMPILER_RETURN_IF_ERR(RunAssembler(&CmdInfo));
 
     COMPILER_RETURN_IF_ERR(RunAssembler(&CmdInfo));
+
+    LabelsTableDtor(&Labels);
 
     fclose(CmdInfo.TempFilePtr);
     TempFilePtr = fopen(TempFile, "rb");
@@ -307,10 +310,13 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
     {
         Err->InvalidInputAfterPush = 1;
         Err->IsFatalError = 1;
+        free(Buffer);
         return COMPILER_VERIF(*Err);
     }
 
     CmdInfo->FileCmdQuant += 3;
+
+    free(Buffer);
 
     return COMPILER_VERIF(*Err);
 }
@@ -411,10 +417,13 @@ static CompilerErrorType HandlePop(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
     {
         Err->InvalidInputAfterPop = 1;
         Err->IsFatalError = 1;
+        free(Buffer);
         return COMPILER_VERIF(*Err);
     }
 
     CmdInfo->FileCmdQuant += 3;
+
+    free(Buffer);
     return COMPILER_VERIF(*Err);
 }
 
@@ -633,6 +642,7 @@ static CompilerErrorType WriteTempFileInCodeFile(const char* TempFile, FILE* Tem
     fread(Buffer, TempFileLen, sizeof(char), TempFilePtr);
     fprintf(CodeFilePtr, "%s", Buffer);
 
+    free(Buffer);
     return COMPILER_VERIF(*Err);
 }
 
@@ -676,6 +686,19 @@ static CompilerErrorType LabelsTableCtor(LabelsTable* Labels)
     {
         LabelCtor(&Labels->Labels[Labels_i], "", -1);
     }
+
+    return COMPILER_VERIF(Err);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static CompilerErrorType LabelsTableDtor(LabelsTable* Labels)
+{
+    CompilerErrorType Err = {};
+    Labels->FirstFree = 0;
+    Labels->Capacity  = 0;
+    free(Labels->Labels);
+    Labels->Labels = NULL;
 
     return COMPILER_VERIF(Err);
 }

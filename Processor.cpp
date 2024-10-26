@@ -567,7 +567,8 @@ ProcessorErrorType SpuDtor(SPU* Spu)
 {
     ProcessorErrorType Err = {};
     CodeDtor(Spu);
-
+    free(Spu->RAM);
+    Spu->RAM = NULL;
     PROCESSOR_RETURN_IF_ERR(Err);
     Spu->ip = 0;
     for (size_t register_i = 0; register_i < REGISTERS_QUANT; register_i++)

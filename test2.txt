@@ -1,0 +1,11 @@
+push 3
+push -2
+add
+pop ax
+jmp arman:
+push ax
+out
+arman:
+push 3
+out
+hlt 

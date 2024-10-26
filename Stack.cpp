@@ -41,7 +41,7 @@ static size_t GetNewCtorCapacity  (size_t StackDataSize);
 static size_t GetNewPushCapacity  (const Stack_t* Stack);
 static size_t GetNewPopCapacity   (const Stack_t* Stack);
 
-static StackErrorType CtorCalloc   (Stack_t* Stack, StackErrorType* Err, size_t StackDataSize);
+static StackErrorType CtorCalloc   (Stack_t* Stack, StackErrorType* Err);
 static StackErrorType DtorFreeData (Stack_t* Stack, StackErrorType* Err);
 static StackErrorType PushRealloc  (Stack_t* Stack, StackErrorType* Err);
 static StackErrorType PopRealloc   (Stack_t* Stack, StackErrorType* Err);
@@ -81,7 +81,7 @@ StackErrorType StackCtor(Stack_t* Stack ON_STACK_DEBUG(, const char* File, int L
     Stack->Size = 0;
 
     Stack->Capacity = GetNewCtorCapacity(DefaultStackCapacity);
-    CtorCalloc(Stack, &Err, DefaultStackCapacity);
+    CtorCalloc(Stack, &Err);
     ON_STACK_CANARY
     (
     Stack->LeftStackCanary  = LeftStackCanary;
@@ -423,7 +423,7 @@ static StackErrorType PopRealloc(Stack_t* Stack, StackErrorType* Err)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static StackErrorType CtorCalloc(Stack_t* Stack, StackErrorType* Err, size_t StackDataSize)
+static StackErrorType CtorCalloc(Stack_t* Stack, StackErrorType* Err)
 {
     Stack->Data = (StackElem_t*) calloc (Stack->Capacity * sizeof(StackElem_t) ON_STACK_DATA_CANARY(+ 2 * sizeof(DataCanary_t)), sizeof(char));
     if (Stack->Data == NULL)

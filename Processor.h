@@ -48,10 +48,10 @@ struct SPU
 ProcessorErrorType ReadCodeFromFile(SPU* Spu, const IOfile* File);
 ProcessorErrorType RunProcessor(SPU* Spu);
 
-void ProcessorDump(const SPU* Spu, const char* File, int Line, const char* Func);
-ProcessorErrorType SpuCtor(SPU* Spu, const IOfile* File);
-ProcessorErrorType SpuDtor(SPU* Spu);
-void ProcessorAssertPrint(ProcessorErrorType* Err, const char* File, int Line, const char* Func);
+void  ProcessorDump(const SPU* Spu, const char* File, int Line, const char* Func);
+ProcessorErrorType  SpuCtor  (SPU* Spu, const IOfile* File);
+ProcessorErrorType  SpuDtor  (SPU* Spu);
+void  ProcessorAssertPrint    (ProcessorErrorType* Err, const char* File, int Line, const char* Func);
 
 
 
