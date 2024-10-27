@@ -52,6 +52,8 @@ static  void               CloseFiles               (FILE* ProgrammFilePtr, FILE
 static  CompilerErrorType  WriteTempFileInCodeFile  (const char* TempFile, FILE* TempFilePtr, FILE* CodeFilePtr, CompilerErrorType* Err);
 
 static  void               LabelCtor        (Label* Lab, const char* Name, int CodePlace);
+static  void               LabelDtor        (Label* Lab);
+ 
 static  int                IsLabelInLabels  (const LabelsTable* Labels, const char* LabelName);
 static  CompilerErrorType  LabelsTableCtor  (LabelsTable* Labels);
 static  CompilerErrorType  LabelsTableDtor  (LabelsTable* Labels);
@@ -242,18 +244,19 @@ static CompilerErrorType HandleLabelOrError(CmdDataForAsm* CmdInfo, CompilerErro
     LabelCtor(&Temp, CmdInfo->Cmd, CmdInfo->FileCmdQuant);
 
     int LabelIndex = IsLabelInLabels(&CmdInfo->Labels, CmdInfo->Cmd);
-
-
     
     if (LabelIndex == -1)
     {
         COMPILER_RETURN_IF_ERR(PushLabel(&CmdInfo->Labels, &Temp));
+        LabelDtor(&Temp);
         return COMPILER_VERIF(*Err);
     }
     
+    LabelDtor(&Temp);
 
     Err->MoreOneEqualLables = 1;
     Err->IsFatalError = 1;
+
 
     return COMPILER_VERIF(*Err);
 }
@@ -571,6 +574,7 @@ static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, Com
         LabelCtor(&Temp, JumpArg, -1);
         // COMPILER_RETURN_IF_ERR(PushLabel(&CmdInfo->Labels, &Temp));
         fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, -1);
+        LabelDtor(&Temp);   
         return COMPILER_VERIF(*Err);
     }
 
@@ -667,6 +671,17 @@ static void LabelCtor(Label* Lab, const char* Name, int CodePlace)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
+static void LabelDtor(Label* Lab)
+{
+    Lab->CodePlace = -1;
+    Lab->Name = NULL;
+
+    return;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 static CompilerErrorType LabelsTableCtor(LabelsTable* Labels)
 {
     CompilerErrorType Err = {};
@@ -697,6 +712,12 @@ static CompilerErrorType LabelsTableDtor(LabelsTable* Labels)
     CompilerErrorType Err = {};
     Labels->FirstFree = 0;
     Labels->Capacity  = 0;
+
+    for (size_t Labels_i = 0; Labels_i < Labels->Capacity; Labels_i++)
+    {
+        LabelDtor(&Labels->Labels[Labels_i]);
+    }
+
     free(Labels->Labels);
     Labels->Labels = NULL;
 
