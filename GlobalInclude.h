@@ -79,4 +79,6 @@ struct IOfile
 bool        MakeComparisonOperation  (StackElem_t FirstOperand, StackElem_t SecondOperand, ComparisonOperator Operator);
 StackElem_t MakeArithmeticOperation  (StackElem_t FirstOperand, StackElem_t SecondOperand, ArithmeticOperator Operator);
 
+#define FREE(Arr) free(Arr); Arr = NULL;
+
 #endif

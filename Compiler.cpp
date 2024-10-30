@@ -10,8 +10,8 @@
 
 struct Label
 {
-    const char* Name;
-    int         CodePlace;    
+    char* Name;
+    int   CodePlace;    
 };
 
 
@@ -35,6 +35,8 @@ struct CmdDataForAsm
     char**        CmdArr;
     size_t        ProgrammCmdQuant;
     size_t        Cmd_i;
+    int*          CmdCodeArr;
+    size_t        CmdCodeArr_i;
 };
 
 
@@ -57,17 +59,20 @@ static  char               GetBufferElem            (char* Buffer, size_t buffer
 static  char*              GetBufferElemPtr         (char* Buffer, size_t buffer_i);
 static  char*              GetNextCmd               (CmdDataForAsm* Cmd);
 static  void               SetCmdArr                (CmdDataForAsm* Cmd, size_t* CmdArr_i, char* SetElem);
-static  void               SetProgrammCmdQuanr      (CmdDataForAsm* Cmd, size_t SetElem);
+static  void               SetProgrammCmdQuant      (CmdDataForAsm* Cmd, size_t SetElem);
+static  void               SetCmdArrCodeElem        (CmdDataForAsm* Cmd, int SetElem);
 
 static  void               LabelCtor        (Label* Lab, const char* Name, int CodePlace);
 static  void               LabelDtor        (Label* Lab);
  
-static  int                IsLabelInLabels  (const LabelsTable* Labels, const char* LabelName);
-static  CompilerErrorType  LabelsTableCtor  (LabelsTable* Labels);
-static  CompilerErrorType  LabelsTableDtor  (LabelsTable* Labels);
-static  CompilerErrorType  PushLabel        (LabelsTable* Labels, const Label* Lab);
+static  int                IsLabelInLabels    (const LabelsTable* Labels, const char* LabelName);
+static  CompilerErrorType  LabelsTableCtor    (LabelsTable* Labels);
+static  CompilerErrorType  LabelsTableDtor    (LabelsTable* Labels);
+static  CompilerErrorType  PushLabel          (LabelsTable* Labels, const Label* Lab);
+static  int                GetLabelCodePlace  (CmdDataForAsm* CmdInfo, int Labels_i);
 
-static  CompilerErrorType  JmpCmdPattern  (CmdDataForAsm* CmdInfo, Cmd JumpType, CompilerErrorType* Err);
+static  CompilerErrorType  NullArgCmdPattern  (CmdDataForAsm* CmdInfo, Cmd Cmd);
+static  CompilerErrorType  JmpCmdPattern      (CmdDataForAsm* CmdInfo, Cmd JumpType, CompilerErrorType* Err);
 
 static  int                GetPushArg    (PushType* Push);
 static  int                GetPopArg     (PopType*  Pop );
@@ -188,7 +193,9 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
 
         for (size_t CmdFuncArr_i = 0; CmdFuncArr_i < CmdFuncQuant; CmdFuncArr_i++)
         {
-            if (strcmp(GetCmdName(CmdFuncArr_i), CmdInfo->Cmd) == 0)
+            const char* CmdName = GetCmdName(CmdFuncArr_i);
+            printf("cmd = %s\n", CmdName);
+            if (strcmp(CmdName, CmdInfo->Cmd) == 0)
             {
                 WasCorrectCmd = true;
                 COMPILER_RETURN_IF_ERR(GetCmd(CmdFuncArr_i)(CmdInfo, &Err));
@@ -211,6 +218,10 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
         }
     }
 
+    // for (int i = 0; i < CmdInfo->FileCmdQuant; i++)
+    // {
+    //     printf("%d ", CmdInfo->CmdCodeArr[i]);
+    // }
     return COMPILER_VERIF(Err);
 }
 
@@ -252,12 +263,9 @@ static CompilerErrorType HandleLabel(CmdDataForAsm* CmdInfo, CompilerErrorType* 
 
 static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    const size_t MaxBufferSize = 16;
-    char* Buffer = (char*) calloc(MaxBufferSize + 1, sizeof(char));
-    Buffer[MaxBufferSize] = '\0';
-    char* EndBuffer = nullptr;
-    fscanf(CmdInfo->ProgrammFilePtr, "%s", Buffer);
+    char* Buffer = GetNextCmd(CmdInfo);
     size_t BufferLen = strlen(Buffer);
+    char* EndBuffer = nullptr;
 
     StackElem_t PushElem = 0;
     PushElem = (StackElem_t) strtol(Buffer, &EndBuffer, 10);
@@ -267,13 +275,18 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
     if (IsInt(Buffer, EndBuffer, BufferLen))
     {
         PushTypeCtor(&Push, 1, 0, 0);
-        // // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), PushElem);
+        SetCmdArrCodeElem(CmdInfo, push);
+        SetCmdArrCodeElem(CmdInfo, GetPushArg(&Push));
+        SetCmdArrCodeElem(CmdInfo, PushElem);
     }
     
     else if (IsRegister(Buffer, BufferLen))
     {
         PushTypeCtor(&Push, 0, 1, 0);
-        // // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), Buffer[0] - 'a');
+        SetCmdArrCodeElem(CmdInfo, push);
+        SetCmdArrCodeElem(CmdInfo, GetPushArg(&Push));
+        SetCmdArrCodeElem(CmdInfo, Buffer[0] - 'a');
+
     }
 
     else if (IsMemory(Buffer, BufferLen))
@@ -286,13 +299,17 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
         if (IsInt(Buffer, EndBuffer, BufferLen))
         {
             PushTypeCtor(&Push, 0, 0, 1);
-            // // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), PushElemMemIndex);
+            SetCmdArrCodeElem(CmdInfo, push);
+            SetCmdArrCodeElem(CmdInfo, GetPushArg(&Push));
+            SetCmdArrCodeElem(CmdInfo, PushElemMemIndex);
         }
 
         else if (IsRegister(Buffer, BufferLen))
         {
             PushTypeCtor(&Push, 0, 1, 1);
-            // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), Buffer[0] - 'a');
+            SetCmdArrCodeElem(CmdInfo, push);
+            SetCmdArrCodeElem(CmdInfo, GetPushArg(&Push));
+            SetCmdArrCodeElem(CmdInfo, Buffer[0] - 'a');
         }
     }
 
@@ -300,13 +317,13 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
     {
         Err->InvalidInputAfterPush = 1;
         Err->IsFatalError = 1;
-        free(Buffer);
+        FREE(Buffer);
         return COMPILER_VERIF(*Err);
     }
 
     CmdInfo->FileCmdQuant += 3;
 
-    free(Buffer);
+    FREE(Buffer);
 
     return COMPILER_VERIF(*Err);
 }
@@ -369,11 +386,7 @@ static CompilerErrorType UpdateBufferForMemory(char** Buffer, size_t* BufferSize
 
 static CompilerErrorType HandlePop(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    static const size_t MaxBufferSize = 16;
-    char* Buffer = (char*) calloc(MaxBufferSize + 1, sizeof(char));
-    Buffer[MaxBufferSize] = '\0';
-    fscanf(CmdInfo->ProgrammFilePtr, "%s", Buffer);
-
+    char* Buffer = GetNextCmd(CmdInfo);
     size_t BufferLen = strlen(Buffer);
 
     PopType Pop = {};
@@ -381,7 +394,9 @@ static CompilerErrorType HandlePop(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
     if (IsRegister(Buffer, BufferLen))
     {
         PopTypeCtor(&Pop, 1, 0);
-        // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), Buffer[0] - 'a');
+        SetCmdArrCodeElem(CmdInfo, pop);
+        SetCmdArrCodeElem(CmdInfo, GetPopArg(&Pop));
+        SetCmdArrCodeElem(CmdInfo, Buffer[0] - 'a');
     }
 
     else if (IsMemory(Buffer, BufferLen))
@@ -393,13 +408,17 @@ static CompilerErrorType HandlePop(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
         if (IsInt(Buffer, EndBuffer, BufferLen))
         {
             PopTypeCtor(&Pop, 0, 1);
-            // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), PopElemMemIndex);
+            SetCmdArrCodeElem(CmdInfo, pop);
+            SetCmdArrCodeElem(CmdInfo, GetPopArg(&Pop));
+            SetCmdArrCodeElem(CmdInfo, PopElemMemIndex);
         }
 
         else if (IsRegister(Buffer, BufferLen))
         {
             PopTypeCtor(&Pop, 1, 1);
-            // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), Buffer[0] - 'a');
+            SetCmdArrCodeElem(CmdInfo, pop);
+            SetCmdArrCodeElem(CmdInfo, GetPopArg(&Pop));
+            SetCmdArrCodeElem(CmdInfo, Buffer[0] - 'a');
         }
     }
 
@@ -407,13 +426,13 @@ static CompilerErrorType HandlePop(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
     {
         Err->InvalidInputAfterPop = 1;
         Err->IsFatalError = 1;
-        free(Buffer);
+        FREE(Buffer);
         return COMPILER_VERIF(*Err);
     }
 
     CmdInfo->FileCmdQuant += 3;
 
-    free(Buffer);
+    FREE(Buffer);
     return COMPILER_VERIF(*Err);
 }
 
@@ -477,8 +496,7 @@ static CompilerErrorType HandleJne(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleAdd(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    // fprintf(CmdInfo->TempFilePtr, "%d\n", add);
-    CmdInfo->FileCmdQuant++;
+    NullArgCmdPattern(CmdInfo, add);
     return COMPILER_VERIF(*Err);
 }
 
@@ -486,8 +504,7 @@ static CompilerErrorType HandleAdd(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleSub(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    // fprintf(CmdInfo->TempFilePtr, "%d\n", sub);
-    CmdInfo->FileCmdQuant++;
+    NullArgCmdPattern(CmdInfo, sub);
     return COMPILER_VERIF(*Err);
 }
 
@@ -495,8 +512,7 @@ static CompilerErrorType HandleSub(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleMul(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    // fprintf(CmdInfo->TempFilePtr, "%d\n", mul);
-    CmdInfo->FileCmdQuant++;
+    NullArgCmdPattern(CmdInfo, mul);
     return COMPILER_VERIF(*Err);
 }
 
@@ -504,8 +520,7 @@ static CompilerErrorType HandleMul(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleDiv(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    // fprintf(CmdInfo->TempFilePtr, "%d\n", dive);
-    CmdInfo->FileCmdQuant++;
+    NullArgCmdPattern(CmdInfo, dive);
     return COMPILER_VERIF(*Err);
 }
 
@@ -513,8 +528,7 @@ static CompilerErrorType HandleDiv(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleOut(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    // fprintf(CmdInfo->TempFilePtr, "%d\n", out);
-    CmdInfo->FileCmdQuant++;
+    NullArgCmdPattern(CmdInfo, out);
     return COMPILER_VERIF(*Err);
 }
 
@@ -522,25 +536,26 @@ static CompilerErrorType HandleOut(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleHlt(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    // fprintf(CmdInfo->TempFilePtr, "%d\n", hlt);
-    CmdInfo->FileCmdQuant++;
+    NullArgCmdPattern(CmdInfo, hlt);
     return COMPILER_VERIF(*Err);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static CompilerErrorType NullArgCmdPattern(CmdDataForAsm* CmdInfo, Cmd Cmd)
+{
+    CompilerErrorType Err = {};
+    SetCmdArrCodeElem(CmdInfo, Cmd);
+    CmdInfo->FileCmdQuant++;
+    return COMPILER_VERIF(Err);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
 static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, CompilerErrorType* Err)
 {
-    static const size_t MaxLabelNameSize = 16;
-    char JumpArg[MaxLabelNameSize] = "";
+    char* JumpArg = GetNextCmd(CmdInfo);
     CmdInfo->FileCmdQuant += 2;
-
-    if (fscanf(CmdInfo->ProgrammFilePtr, "%s", JumpArg) == 0)
-    {
-        Err->NoIntAfterJmp = 1;
-        Err->IsFatalError = 1;
-        return COMPILER_VERIF(*Err);
-    }
 
     char*  JumpArgEndPtr = NULL;
     int    IntJumpArg    = (int) strtol(JumpArg, &JumpArgEndPtr, 10);
@@ -549,7 +564,9 @@ static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, Com
 
     if (JumpArgNumLen == (int) JumpArgLen)
     {
-        // fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, IntJumpArg);
+        SetCmdArrCodeElem(CmdInfo, JumpType);
+        SetCmdArrCodeElem(CmdInfo, IntJumpArg);
+
         return COMPILER_VERIF(*Err);
     }
 
@@ -560,14 +577,23 @@ static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, Com
         Label Temp = {};
         LabelCtor(&Temp, JumpArg, -1);
         COMPILER_RETURN_IF_ERR(PushLabel(&CmdInfo->Labels, &Temp));
-        // fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, -1);
+        SetCmdArrCodeElem(CmdInfo, JumpType);
+        SetCmdArrCodeElem(CmdInfo, -1);
+
         LabelDtor(&Temp);   
         return COMPILER_VERIF(*Err);
     }
 
-    // fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, CmdInfo->Labels.Labels[JumpArgInLabeles].CodePlace);
+    int LabelCodePlace = GetLabelCodePlace(CmdInfo, JumpArgInLabeles);
+    SetCmdArrCodeElem(CmdInfo, JumpType);
+    SetCmdArrCodeElem(CmdInfo, LabelCodePlace);
 
     return COMPILER_VERIF(*Err);
+}
+
+static int GetLabelCodePlace(CmdDataForAsm* CmdInfo, int Labels_i)
+{
+    return CmdInfo->Labels.Labels[Labels_i].CodePlace;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -616,29 +642,6 @@ static size_t CalcFileLen(const char* FileName)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
-static CompilerErrorType WriteTempFileInCodeFile(const char* TempFile, FILE* TempFilePtr, FILE* CodeFilePtr, CompilerErrorType* Err)
-{
-    size_t TempFileLen = CalcFileLen(TempFile);
-
-    char* Buffer = (char*) calloc(TempFileLen + 1, sizeof(char));
-
-    if (Buffer == NULL)
-    {
-        Err->FailedAllocateMemoryBufferTempFile = 1;
-        Err->IsFatalError = 1;
-        return COMPILER_VERIF(*Err);
-    }
-
-    Buffer[TempFileLen] = '\0';
-    fread(Buffer, TempFileLen, sizeof(char), TempFilePtr);
-    // fprintf(CodeFilePtr, "%s", Buffer);
-
-    free(Buffer);
-    return COMPILER_VERIF(*Err);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------------------------
-
 static void CloseFiles(FILE* ProgrammFilePtr, FILE* CodeFilePtr)
 {
     fclose(ProgrammFilePtr);
@@ -651,8 +654,7 @@ static void CloseFiles(FILE* ProgrammFilePtr, FILE* CodeFilePtr)
 static void LabelCtor(Label* Lab, const char* Name, int CodePlace)
 {
     Lab->CodePlace = CodePlace;
-    // Lab->Name = strdup(Name);
-    Lab->Name = Name;
+    Lab->Name = strdup(Name);
     return;
 }
 
@@ -661,9 +663,8 @@ static void LabelCtor(Label* Lab, const char* Name, int CodePlace)
 static void LabelDtor(Label* Lab)
 {
     Lab->CodePlace = -1;
-    // free((char*)Lab->Name);
+    FREE(Lab->Name);
     Lab->Name = NULL;
-
     return;
 }
 
@@ -706,8 +707,7 @@ static CompilerErrorType LabelsTableDtor(LabelsTable* Labels)
         LabelDtor(&Labels->Labels[Labels_i]);
     }
 
-    free(Labels->Labels);
-    Labels->Labels = NULL;
+    FREE(Labels->Labels);
 
     return COMPILER_VERIF(Err);
 }
@@ -761,10 +761,18 @@ static CompilerErrorType CmdInfoCtor(CmdDataForAsm* CmdInfo, LabelsTable* Labels
 {
     CompilerErrorType Err = {};
 
-    *CmdInfo = 
-    {
-        *Labels, ProgrammFilePtr, ProgrammFileName, CodeFilePtr, 0, NULL, 0, NULL, 0, 0
-    };
+    CmdInfo->Labels             = *Labels;
+    CmdInfo->ProgrammFilePtr    = ProgrammFilePtr;
+    CmdInfo->ProgrammFileName   = ProgrammFileName;
+    CmdInfo->CodeFilePtr        = CodeFilePtr;
+    CmdInfo->Cmd                = NULL;
+    CmdInfo->CmdArr             = NULL;
+    CmdInfo->CmdCodeArr         = NULL;
+    CmdInfo->FileCmdQuant       = 0;
+    CmdInfo->ProgrammFileLen    = 0;
+    CmdInfo->ProgrammCmdQuant   = 0;
+    CmdInfo->Cmd_i              = 0;
+    CmdInfo->CmdCodeArr_i       = 0;
 
     return COMPILER_VERIF(Err);
 }
@@ -774,7 +782,7 @@ static CompilerErrorType CmdInfoCtor(CmdDataForAsm* CmdInfo, LabelsTable* Labels
 static CompilerErrorType CmdInfoDtor(CmdDataForAsm* CmdInfo)
 {
     CompilerErrorType Err = {};
-    free(CmdInfo->CmdArr);
+    FREE(CmdInfo->CmdArr);
 
     return COMPILER_VERIF(Err);
 }
@@ -837,7 +845,7 @@ static CompilerErrorType ReadCmdFromFile(CmdDataForAsm* Cmd)
         }
     }
 
-    SetProgrammCmdQuanr(Cmd, CmdArr_i - 1);
+    SetProgrammCmdQuant(Cmd, CmdArr_i - 1);
     Cmd->CmdArr = (char**) realloc(Cmd->CmdArr, Cmd->ProgrammCmdQuant * sizeof(char*));
 
     for (size_t i = 0; i < Cmd->ProgrammCmdQuant; i++)
@@ -845,7 +853,7 @@ static CompilerErrorType ReadCmdFromFile(CmdDataForAsm* Cmd)
         printf("%s\n", Cmd->CmdArr[i]);
     }
 
-    free(Buffer);
+    // FREE(Buffer);
     return COMPILER_VERIF(Err);
 }
 
@@ -882,9 +890,18 @@ static char* GetNextCmd(CmdDataForAsm* Cmd)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void SetProgrammCmdQuanr(CmdDataForAsm* Cmd, size_t SetElem)
+static void SetProgrammCmdQuant(CmdDataForAsm* Cmd, size_t SetElem)
 {
     Cmd->ProgrammCmdQuant = SetElem;
+    return;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetCmdArrCodeElem(CmdDataForAsm* Cmd, int SetElem)
+{
+    Cmd->CmdCodeArr[Cmd->CmdCodeArr_i] = SetElem;
+    Cmd->CmdCodeArr_i++;
     return;
 }
 

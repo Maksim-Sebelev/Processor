@@ -5,10 +5,10 @@ SOURCES = main.cpp Compiler.cpp Processor.cpp ConsoleCmd.cpp Stack.cpp Hash.cpp 
 OBJECTS = $(SOURCES:.cpp=.o)
 HEADERS = $(SOURCES:.cpp=.h) ColorPrint.h
 
-all: $(SOURCES) main
+all: $(SOURCES) main.exe
 
 
-main: $(OBJECTS) 
+main.exe: $(OBJECTS) 
 	$(CC) $(CFLAGS) $(OBJECTS) -o $@
 
 .cpp.o: $(HEADERS)
