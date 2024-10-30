@@ -30,7 +30,7 @@ struct CmdDataForAsm
     const char*   ProgrammFileName;
     FILE*         CodeFilePtr;
     int           FileCmdQuant;
-    char*         Cmd;
+    const char*         Cmd;
     size_t        ProgrammFileLen;
     char**        CmdArr;
     size_t        ProgrammCmdQuant;
@@ -52,24 +52,25 @@ static  void               PrintPlace   (const char* File, int Line, const char*
 static  void               ErrPlaceCtor (CompilerErrorType* Err, const char* File, int Line, const char* Func);
 static  CompilerErrorType  Verif        (CompilerErrorType* Err, const char* File, int Line, const char* Func);
 
-static  size_t             CalcFileLen              (const char* FileName);
-static  void               CloseFiles               (FILE* ProgrammFilePtr, FILE* CodeFilePtr);
 static  CompilerErrorType  ReadCmdFromFile          (CmdDataForAsm* Cmd);
+static  CompilerErrorType  WriteCmdCodeArrInFile    (CmdDataForAsm* Cmd);
 static  char               GetBufferElem            (char* Buffer, size_t buffer_i);
 static  char*              GetBufferElemPtr         (char* Buffer, size_t buffer_i);
 static  char*              GetNextCmd               (CmdDataForAsm* Cmd);
 static  void               SetCmdArr                (CmdDataForAsm* Cmd, size_t* CmdArr_i, char* SetElem);
 static  void               SetProgrammCmdQuant      (CmdDataForAsm* Cmd, size_t SetElem);
 static  void               SetCmdArrCodeElem        (CmdDataForAsm* Cmd, int SetElem);
+static  size_t             CalcFileLen              (const char* FileName);
+static  void               CloseFiles               (FILE* ProgrammFilePtr, FILE* CodeFilePtr);
 
-static  void               LabelCtor        (Label* Lab, const char* Name, int CodePlace);
-static  void               LabelDtor        (Label* Lab);
- 
+static  void               LabelCtor          (Label* Lab, const char* Name, int CodePlace);
+static  void               LabelDtor          (Label* Lab);
 static  int                IsLabelInLabels    (const LabelsTable* Labels, const char* LabelName);
 static  CompilerErrorType  LabelsTableCtor    (LabelsTable* Labels);
 static  CompilerErrorType  LabelsTableDtor    (LabelsTable* Labels);
 static  CompilerErrorType  PushLabel          (LabelsTable* Labels, const Label* Lab);
 static  int                GetLabelCodePlace  (CmdDataForAsm* CmdInfo, int Labels_i);
+static  CompilerErrorType  FindLabels         (CmdDataForAsm* Cmd);
 
 static  CompilerErrorType  NullArgCmdPattern  (CmdDataForAsm* CmdInfo, Cmd Cmd);
 static  CompilerErrorType  JmpCmdPattern      (CmdDataForAsm* CmdInfo, Cmd JumpType, CompilerErrorType* Err);
@@ -167,14 +168,14 @@ CompilerErrorType RunCompiler(const IOfile* File)
 
     COMPILER_RETURN_IF_ERR(ReadCmdFromFile(&CmdInfo));
 
+    COMPILER_RETURN_IF_ERR(FindLabels(&CmdInfo));
 
     COMPILER_RETURN_IF_ERR(RunAssembler(&CmdInfo));
 
+    COMPILER_RETURN_IF_ERR(WriteCmdCodeArrInFile(&CmdInfo));
+
     COMPILER_RETURN_IF_ERR(CmdInfoDtor(&CmdInfo));
-    LabelsTableDtor(&Labels);
-
-    // fprintf(CodeFilePtr, "%d\n", CmdInfo.FileCmdQuant);
-
+    // LabelsTableDtor(&Labels); 
     CloseFiles(ProgrammFilePtr, CodeFilePtr);
 
     return COMPILER_VERIF(Err);
@@ -186,6 +187,8 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
 {
     CompilerErrorType Err = {};
 
+    CmdInfo->CmdCodeArr = (int*) calloc(100, sizeof(int));
+
     while (CmdInfo->Cmd_i < CmdInfo->ProgrammCmdQuant)
     {
         CmdInfo->Cmd = GetNextCmd(CmdInfo);
@@ -194,7 +197,7 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
         for (size_t CmdFuncArr_i = 0; CmdFuncArr_i < CmdFuncQuant; CmdFuncArr_i++)
         {
             const char* CmdName = GetCmdName(CmdFuncArr_i);
-            printf("cmd = %s\n", CmdName);
+
             if (strcmp(CmdName, CmdInfo->Cmd) == 0)
             {
                 WasCorrectCmd = true;
@@ -205,7 +208,6 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
             if (IsLabel(CmdInfo->Cmd))
             {
                 WasCorrectCmd = true;
-                COMPILER_RETURN_IF_ERR(HandleLabel(CmdInfo, &Err));
                 break;
             }
         }
@@ -286,7 +288,6 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
         SetCmdArrCodeElem(CmdInfo, push);
         SetCmdArrCodeElem(CmdInfo, GetPushArg(&Push));
         SetCmdArrCodeElem(CmdInfo, Buffer[0] - 'a');
-
     }
 
     else if (IsMemory(Buffer, BufferLen))
@@ -322,8 +323,6 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
     }
 
     CmdInfo->FileCmdQuant += 3;
-
-    FREE(Buffer);
 
     return COMPILER_VERIF(*Err);
 }
@@ -432,7 +431,6 @@ static CompilerErrorType HandlePop(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
     CmdInfo->FileCmdQuant += 3;
 
-    FREE(Buffer);
     return COMPILER_VERIF(*Err);
 }
 
@@ -654,7 +652,7 @@ static void CloseFiles(FILE* ProgrammFilePtr, FILE* CodeFilePtr)
 static void LabelCtor(Label* Lab, const char* Name, int CodePlace)
 {
     Lab->CodePlace = CodePlace;
-    Lab->Name = strdup(Name);
+    Lab->Name      = strdup(Name);
     return;
 }
 
@@ -664,12 +662,10 @@ static void LabelDtor(Label* Lab)
 {
     Lab->CodePlace = -1;
     FREE(Lab->Name);
-    Lab->Name = NULL;
     return;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
-
 
 static CompilerErrorType LabelsTableCtor(LabelsTable* Labels)
 {
@@ -757,6 +753,23 @@ static int IsLabelInLabels(const LabelsTable* Labels, const char* LabelName)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
+static CompilerErrorType FindLabels(CmdDataForAsm* CmdInfo)
+{
+    CompilerErrorType Err = {};
+    for (size_t CmdFuncArr_i = 0; CmdFuncArr_i < CmdFuncQuant; CmdFuncArr_i++)
+    {
+        CmdInfo->Cmd = GetCmdName(CmdFuncArr_i);
+        if (IsLabel(CmdInfo->Cmd))
+        {
+            COMPILER_RETURN_IF_ERR(HandleLabel(CmdInfo, &Err));
+            break;
+        }
+    }
+    return COMPILER_VERIF(Err);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
 static CompilerErrorType CmdInfoCtor(CmdDataForAsm* CmdInfo, LabelsTable* Labels, FILE* ProgrammFilePtr, const char* ProgrammFileName, FILE* CodeFilePtr)
 {
     CompilerErrorType Err = {};
@@ -783,7 +796,8 @@ static CompilerErrorType CmdInfoDtor(CmdDataForAsm* CmdInfo)
 {
     CompilerErrorType Err = {};
     FREE(CmdInfo->CmdArr);
-
+    FREE(CmdInfo->CmdCodeArr);
+    LabelsTableDtor(&CmdInfo->Labels);
     return COMPILER_VERIF(Err);
 }
 
@@ -848,12 +862,35 @@ static CompilerErrorType ReadCmdFromFile(CmdDataForAsm* Cmd)
     SetProgrammCmdQuant(Cmd, CmdArr_i - 1);
     Cmd->CmdArr = (char**) realloc(Cmd->CmdArr, Cmd->ProgrammCmdQuant * sizeof(char*));
 
+    if (Cmd->CmdArr == NULL)
+    {
+        Err.FailedReallocateMemoryToCmdCodeArr = 1;
+        Err.IsFatalError = 1;
+        return COMPILER_VERIF(Err);
+    }
+
     for (size_t i = 0; i < Cmd->ProgrammCmdQuant; i++)
     {
         printf("%s\n", Cmd->CmdArr[i]);
     }
 
     // FREE(Buffer);
+
+    return COMPILER_VERIF(Err);
+}
+
+
+static CompilerErrorType WriteCmdCodeArrInFile(CmdDataForAsm* Cmd)
+{
+    CompilerErrorType Err = {};
+
+    fprintf(Cmd->CodeFilePtr, "%d\n", Cmd->FileCmdQuant);
+
+    if (fwrite(Cmd->CmdCodeArr, sizeof(int), (size_t) Cmd->FileCmdQuant, Cmd->CodeFilePtr) != (size_t) Cmd->FileCmdQuant)
+    {
+        Err.IsFatalError = 1;
+        return COMPILER_VERIF(Err);
+    }
     return COMPILER_VERIF(Err);
 }
 
@@ -999,6 +1036,10 @@ static void PrintError(CompilerErrorType* Err)
         COLOR_PRINT(RED, "Error: In labels array was pushed not label.\n");
     }
 
+    if (Err->FailedReallocateMemoryToCmdCodeArr == 1)
+    {
+        COLOR_PRINT(RED, "Error: Failed to realloc memory for cmd.\n");  
+    }
     return;
 }
 

@@ -27,6 +27,7 @@ struct CompilerErrorType
     unsigned char TooManyLabels                           : 1;
     unsigned char NoIntAfterJmp                           : 1;
     unsigned char LabelCallocNull                         : 1;
+    unsigned char CmdCodeArrNull                          : 1;     
     unsigned char FailedOpenCodeFile                      : 1;
     unsigned char MoreOneEqualLables                      : 1;
     unsigned char InvalidInputAfterPop                    : 1;
@@ -35,7 +36,9 @@ struct CompilerErrorType
     unsigned char FailedOpenTempFileRead                  : 1;
     unsigned char FailedOpenTempFileWrite                 : 1;
     unsigned char FailedAllocateMemoryBufferTempFile      : 1;
+    unsigned char FailedReallocateMemoryToCmdCodeArr      : 1;
     unsigned char FailedAllocateMemoryForProgrammBuffer   : 1;
+
 };
 
 
