@@ -1,11 +1,11 @@
-push 3
-push -2
+arman:
+push 1
+push ax
 add
 pop ax
-jmp arman:
+push ax
+push 5
 push ax
 out
-arman:
-push 3
-out
-hlt 
+ja arman:
+hlt

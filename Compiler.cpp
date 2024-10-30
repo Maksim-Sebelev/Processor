@@ -27,12 +27,15 @@ struct CmdDataForAsm
 {
     LabelsTable   Labels;
     FILE*         ProgrammFilePtr;
+    const char*   ProgrammFileName;
     FILE*         CodeFilePtr;
-    FILE*         TempFilePtr;
     int           FileCmdQuant;
-    char          Cmd[17];
+    char*         Cmd;
+    size_t        ProgrammFileLen;
+    char**        CmdArr;
+    size_t        ProgrammCmdQuant;
+    size_t        Cmd_i;
 };
-
 
 
 struct CmdFunc
@@ -48,8 +51,13 @@ static  void               ErrPlaceCtor (CompilerErrorType* Err, const char* Fil
 static  CompilerErrorType  Verif        (CompilerErrorType* Err, const char* File, int Line, const char* Func);
 
 static  size_t             CalcFileLen              (const char* FileName);
-static  void               CloseFiles               (FILE* ProgrammFilePtr, FILE* CodeFilePtr, FILE* TempFilePtr);
-static  CompilerErrorType  WriteTempFileInCodeFile  (const char* TempFile, FILE* TempFilePtr, FILE* CodeFilePtr, CompilerErrorType* Err);
+static  void               CloseFiles               (FILE* ProgrammFilePtr, FILE* CodeFilePtr);
+static  CompilerErrorType  ReadCmdFromFile          (CmdDataForAsm* Cmd);
+static  char               GetBufferElem            (char* Buffer, size_t buffer_i);
+static  char*              GetBufferElemPtr         (char* Buffer, size_t buffer_i);
+static  char*              GetNextCmd               (CmdDataForAsm* Cmd);
+static  void               SetCmdArr                (CmdDataForAsm* Cmd, size_t* CmdArr_i, char* SetElem);
+static  void               SetProgrammCmdQuanr      (CmdDataForAsm* Cmd, size_t SetElem);
 
 static  void               LabelCtor        (Label* Lab, const char* Name, int CodePlace);
 static  void               LabelDtor        (Label* Lab);
@@ -66,19 +74,18 @@ static  int                GetPopArg     (PopType*  Pop );
 static  CompilerErrorType  PushTypeCtor  (PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem);
 static  CompilerErrorType  PopTypeCtor   (PopType*  Pop , uint8_t Reg, uint8_t Mem);
 
-static  CompilerErrorType  CmdInfoCtor  (CmdDataForAsm* CmdInfo, LabelsTable* Labels, FILE* ProgrammFilePtr, FILE* CodeFilePtr, FILE* TempFilePtr);
+static  CompilerErrorType  CmdInfoCtor  (CmdDataForAsm* CmdInfo, LabelsTable* Labels, FILE* ProgrammFilePtr, const char* ProgrammFileName, FILE* CodeFilePtr);
+static  CompilerErrorType  CmdInfoDtor  (CmdDataForAsm* CmdInfo);
 
-static  bool IsInt       (const char* Str, const char* StrEnd, const size_t StrSize);
-static  bool IsRegister  (const char* Str, const size_t StrSize);
-static  bool IsMemory    (const char* Str, const size_t StrSize);
-static  bool IsLabel     (const char* Str);
+static  bool  IsInt       (const char* Str, const char* StrEnd, const size_t StrSize);
+static  bool  IsRegister  (const char* Str, const size_t StrSize);
+static  bool  IsMemory    (const char* Str, const size_t StrSize);
+static  bool  IsLabel     (const char* Str);
 
-static  const char*  GetCmdName  (size_t Cmd_i);
-static  CompilerErrorType (*GetCmd(size_t Cmd_i)) (CmdDataForAsm* CmdInfo, CompilerErrorType* Err); 
+static  const char*        GetCmdName              (size_t Cmd_i);
+static  CompilerErrorType  (*GetCmd(size_t Cmd_i)) (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
+static  CompilerErrorType  UpdateBufferForMemory   (char** Buffer, size_t* BufferSize);
 
-
-static  CompilerErrorType  UpdateBufferForMemory  (char** Buffer, size_t* BufferSize);
- 
 static  CompilerErrorType  HandlePush          (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
 static  CompilerErrorType  HandlePop           (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
 static  CompilerErrorType  HandleJmp           (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
@@ -94,12 +101,13 @@ static  CompilerErrorType  HandleMul           (CmdDataForAsm* CmdInfo, Compiler
 static  CompilerErrorType  HandleDiv           (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
 static  CompilerErrorType  HandleOut           (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
 static  CompilerErrorType  HandleHlt           (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
-static  CompilerErrorType  HandleLabelOrError  (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
+static  CompilerErrorType  HandleLabel         (CmdDataForAsm* CmdInfo, CompilerErrorType* Err);
+
 
 static  CompilerErrorType  RunAssembler  (CmdDataForAsm* CmdInfo);
 
 
-static const CmdFunc CmdFuncArr[] = 
+static const CmdFunc CmdFuncArr[] =
 {
     {"push",  HandlePush},
     {"pop" ,  HandlePop },
@@ -144,47 +152,25 @@ CompilerErrorType RunCompiler(const IOfile* File)
         return COMPILER_VERIF(Err);
     }
 
-    static const char* TempFile = "TempFile.txt";
-    FILE* TempFilePtr           = fopen(TempFile, "wb");
-
-    if (TempFilePtr == NULL)
-    {
-        Err.FailedOpenTempFileWrite = 1;
-        Err.IsFatalError = 1;
-        return COMPILER_VERIF(Err);
-    }
 
     LabelsTable Labels = {};
     LabelsTableCtor(&Labels);
 
     CmdDataForAsm CmdInfo = {};
-    COMPILER_RETURN_IF_ERR(CmdInfoCtor(&CmdInfo, &Labels, ProgrammFilePtr, CodeFilePtr, TempFilePtr));
+
+    COMPILER_RETURN_IF_ERR(CmdInfoCtor(&CmdInfo, &Labels, ProgrammFilePtr, File->ProgrammFile, CodeFilePtr));
+
+    COMPILER_RETURN_IF_ERR(ReadCmdFromFile(&CmdInfo));
+
 
     COMPILER_RETURN_IF_ERR(RunAssembler(&CmdInfo));
 
-    COMPILER_RETURN_IF_ERR(RunAssembler(&CmdInfo));
-
+    COMPILER_RETURN_IF_ERR(CmdInfoDtor(&CmdInfo));
     LabelsTableDtor(&Labels);
 
-    fclose(CmdInfo.TempFilePtr);
-    TempFilePtr = fopen(TempFile, "rb");
+    // fprintf(CodeFilePtr, "%d\n", CmdInfo.FileCmdQuant);
 
-    if (TempFilePtr == NULL)
-    {
-        Err.FailedOpenTempFileRead = 1;
-        Err.IsFatalError = 1;
-        return COMPILER_VERIF(Err);
-    }
-
-    fprintf(CodeFilePtr, "%d\n", CmdInfo.FileCmdQuant);
-
-    COMPILER_RETURN_IF_ERR
-    (
-    WriteTempFileInCodeFile(TempFile, TempFilePtr, CodeFilePtr, &Err);
-    )
-
-    CloseFiles(ProgrammFilePtr, CodeFilePtr, TempFilePtr);
-    remove(TempFile);
+    CloseFiles(ProgrammFilePtr, CodeFilePtr);
 
     return COMPILER_VERIF(Err);
 }
@@ -195,8 +181,9 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
 {
     CompilerErrorType Err = {};
 
-    while (fscanf(CmdInfo->ProgrammFilePtr, "%s", CmdInfo->Cmd) != EOF)
+    while (CmdInfo->Cmd_i < CmdInfo->ProgrammCmdQuant)
     {
+        CmdInfo->Cmd = GetNextCmd(CmdInfo);
         bool WasCorrectCmd = false;
 
         for (size_t CmdFuncArr_i = 0; CmdFuncArr_i < CmdFuncQuant; CmdFuncArr_i++)
@@ -211,7 +198,7 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
             if (IsLabel(CmdInfo->Cmd))
             {
                 WasCorrectCmd = true;
-                COMPILER_RETURN_IF_ERR(HandleLabelOrError(CmdInfo, &Err));
+                COMPILER_RETURN_IF_ERR(HandleLabel(CmdInfo, &Err));
                 break;
             }
         }
@@ -229,7 +216,7 @@ static CompilerErrorType RunAssembler(CmdDataForAsm* CmdInfo)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
-static CompilerErrorType HandleLabelOrError(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
+static CompilerErrorType HandleLabel(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
     size_t LabelSize = strlen(CmdInfo->Cmd);
 
@@ -241,7 +228,7 @@ static CompilerErrorType HandleLabelOrError(CmdDataForAsm* CmdInfo, CompilerErro
     }
 
     Label Temp = {};
-    LabelCtor(&Temp, CmdInfo->Cmd, CmdInfo->FileCmdQuant);
+    LabelCtor(&Temp, CmdInfo->Cmd, CmdInfo->FileCmdQuant); 
 
     int LabelIndex = IsLabelInLabels(&CmdInfo->Labels, CmdInfo->Cmd);
     
@@ -280,13 +267,13 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
     if (IsInt(Buffer, EndBuffer, BufferLen))
     {
         PushTypeCtor(&Push, 1, 0, 0);
-        fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), PushElem);
+        // // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), PushElem);
     }
     
     else if (IsRegister(Buffer, BufferLen))
     {
         PushTypeCtor(&Push, 0, 1, 0);
-        fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), Buffer[0] - 'a');
+        // // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), Buffer[0] - 'a');
     }
 
     else if (IsMemory(Buffer, BufferLen))
@@ -299,13 +286,13 @@ static CompilerErrorType HandlePush(CmdDataForAsm* CmdInfo, CompilerErrorType* E
         if (IsInt(Buffer, EndBuffer, BufferLen))
         {
             PushTypeCtor(&Push, 0, 0, 1);
-            fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), PushElemMemIndex);
+            // // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), PushElemMemIndex);
         }
 
         else if (IsRegister(Buffer, BufferLen))
         {
             PushTypeCtor(&Push, 0, 1, 1);
-            fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), Buffer[0] - 'a');
+            // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", push, GetPushArg(&Push), Buffer[0] - 'a');
         }
     }
 
@@ -394,7 +381,7 @@ static CompilerErrorType HandlePop(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
     if (IsRegister(Buffer, BufferLen))
     {
         PopTypeCtor(&Pop, 1, 0);
-        fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), Buffer[0] - 'a');
+        // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), Buffer[0] - 'a');
     }
 
     else if (IsMemory(Buffer, BufferLen))
@@ -406,13 +393,13 @@ static CompilerErrorType HandlePop(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
         if (IsInt(Buffer, EndBuffer, BufferLen))
         {
             PopTypeCtor(&Pop, 0, 1);
-            fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), PopElemMemIndex);
+            // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), PopElemMemIndex);
         }
 
         else if (IsRegister(Buffer, BufferLen))
         {
             PopTypeCtor(&Pop, 1, 1);
-            fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), Buffer[0] - 'a');
+            // fprintf(CmdInfo->TempFilePtr, "%d %d %d\n", pop, GetPopArg(&Pop), Buffer[0] - 'a');
         }
     }
 
@@ -490,7 +477,7 @@ static CompilerErrorType HandleJne(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleAdd(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    fprintf(CmdInfo->TempFilePtr, "%d\n", add);
+    // fprintf(CmdInfo->TempFilePtr, "%d\n", add);
     CmdInfo->FileCmdQuant++;
     return COMPILER_VERIF(*Err);
 }
@@ -499,7 +486,7 @@ static CompilerErrorType HandleAdd(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleSub(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    fprintf(CmdInfo->TempFilePtr, "%d\n", sub);
+    // fprintf(CmdInfo->TempFilePtr, "%d\n", sub);
     CmdInfo->FileCmdQuant++;
     return COMPILER_VERIF(*Err);
 }
@@ -508,7 +495,7 @@ static CompilerErrorType HandleSub(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleMul(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    fprintf(CmdInfo->TempFilePtr, "%d\n", mul);
+    // fprintf(CmdInfo->TempFilePtr, "%d\n", mul);
     CmdInfo->FileCmdQuant++;
     return COMPILER_VERIF(*Err);
 }
@@ -517,7 +504,7 @@ static CompilerErrorType HandleMul(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleDiv(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    fprintf(CmdInfo->TempFilePtr, "%d\n", dive);
+    // fprintf(CmdInfo->TempFilePtr, "%d\n", dive);
     CmdInfo->FileCmdQuant++;
     return COMPILER_VERIF(*Err);
 }
@@ -526,7 +513,7 @@ static CompilerErrorType HandleDiv(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleOut(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    fprintf(CmdInfo->TempFilePtr, "%d\n", out);
+    // fprintf(CmdInfo->TempFilePtr, "%d\n", out);
     CmdInfo->FileCmdQuant++;
     return COMPILER_VERIF(*Err);
 }
@@ -535,7 +522,7 @@ static CompilerErrorType HandleOut(CmdDataForAsm* CmdInfo, CompilerErrorType* Er
 
 static CompilerErrorType HandleHlt(CmdDataForAsm* CmdInfo, CompilerErrorType* Err)
 {
-    fprintf(CmdInfo->TempFilePtr, "%d\n", hlt);
+    // fprintf(CmdInfo->TempFilePtr, "%d\n", hlt);
     CmdInfo->FileCmdQuant++;
     return COMPILER_VERIF(*Err);
 }
@@ -562,7 +549,7 @@ static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, Com
 
     if (JumpArgNumLen == (int) JumpArgLen)
     {
-        fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, IntJumpArg);
+        // fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, IntJumpArg);
         return COMPILER_VERIF(*Err);
     }
 
@@ -572,13 +559,13 @@ static CompilerErrorType JmpCmdPattern(CmdDataForAsm* CmdInfo, Cmd JumpType, Com
     {
         Label Temp = {};
         LabelCtor(&Temp, JumpArg, -1);
-        // COMPILER_RETURN_IF_ERR(PushLabel(&CmdInfo->Labels, &Temp));
-        fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, -1);
+        COMPILER_RETURN_IF_ERR(PushLabel(&CmdInfo->Labels, &Temp));
+        // fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, -1);
         LabelDtor(&Temp);   
         return COMPILER_VERIF(*Err);
     }
 
-    fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, CmdInfo->Labels.Labels[JumpArgInLabeles].CodePlace);
+    // fprintf(CmdInfo->TempFilePtr, "%d %d\n", JumpType, CmdInfo->Labels.Labels[JumpArgInLabeles].CodePlace);
 
     return COMPILER_VERIF(*Err);
 }
@@ -644,7 +631,7 @@ static CompilerErrorType WriteTempFileInCodeFile(const char* TempFile, FILE* Tem
 
     Buffer[TempFileLen] = '\0';
     fread(Buffer, TempFileLen, sizeof(char), TempFilePtr);
-    fprintf(CodeFilePtr, "%s", Buffer);
+    // fprintf(CodeFilePtr, "%s", Buffer);
 
     free(Buffer);
     return COMPILER_VERIF(*Err);
@@ -652,11 +639,10 @@ static CompilerErrorType WriteTempFileInCodeFile(const char* TempFile, FILE* Tem
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void CloseFiles(FILE* ProgrammFilePtr, FILE* CodeFilePtr, FILE* TempFilePtr)
+static void CloseFiles(FILE* ProgrammFilePtr, FILE* CodeFilePtr)
 {
     fclose(ProgrammFilePtr);
     fclose(CodeFilePtr);
-    fclose(TempFilePtr);
     return;
 }
 
@@ -665,7 +651,8 @@ static void CloseFiles(FILE* ProgrammFilePtr, FILE* CodeFilePtr, FILE* TempFileP
 static void LabelCtor(Label* Lab, const char* Name, int CodePlace)
 {
     Lab->CodePlace = CodePlace;
-    Lab->Name = strdup(Name);
+    // Lab->Name = strdup(Name);
+    Lab->Name = Name;
     return;
 }
 
@@ -674,6 +661,7 @@ static void LabelCtor(Label* Lab, const char* Name, int CodePlace)
 static void LabelDtor(Label* Lab)
 {
     Lab->CodePlace = -1;
+    // free((char*)Lab->Name);
     Lab->Name = NULL;
 
     return;
@@ -769,17 +757,135 @@ static int IsLabelInLabels(const LabelsTable* Labels, const char* LabelName)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-static CompilerErrorType CmdInfoCtor(CmdDataForAsm* CmdInfo, LabelsTable* Labels, FILE* ProgrammFilePtr, FILE* CodeFilePtr, FILE* TempFilePtr)
+static CompilerErrorType CmdInfoCtor(CmdDataForAsm* CmdInfo, LabelsTable* Labels, FILE* ProgrammFilePtr, const char* ProgrammFileName, FILE* CodeFilePtr)
 {
     CompilerErrorType Err = {};
 
     *CmdInfo = 
     {
-        *Labels, ProgrammFilePtr, CodeFilePtr, TempFilePtr, 0
+        *Labels, ProgrammFilePtr, ProgrammFileName, CodeFilePtr, 0, NULL, 0, NULL, 0, 0
     };
 
     return COMPILER_VERIF(Err);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static CompilerErrorType CmdInfoDtor(CmdDataForAsm* CmdInfo)
+{
+    CompilerErrorType Err = {};
+    free(CmdInfo->CmdArr);
+
+    return COMPILER_VERIF(Err);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static CompilerErrorType ReadCmdFromFile(CmdDataForAsm* Cmd)
+{
+    CompilerErrorType Err = {};
+
+    size_t BufferLen = CalcFileLen(Cmd->ProgrammFileName);
+
+    char* Buffer     = (char*)  calloc(BufferLen + 1, sizeof(char));
+    Cmd->CmdArr      = (char**) calloc(BufferLen + 1, sizeof(char*));
+
+    if (Buffer == NULL)
+    {
+        Err.FailedAllocateMemoryBufferTempFile = 1;
+        Err.IsFatalError = 1;
+        return COMPILER_VERIF(Err);
+    }
+
+    Cmd->ProgrammFileLen = BufferLen;
+
+    fread(Buffer, sizeof(char), BufferLen, Cmd->ProgrammFilePtr);
+    Buffer[BufferLen] = '\0';
+
+    char Temp = GetBufferElem(Buffer, 0);
+    if (Temp == ' ' || Temp == '\n')
+    {
+        Err.SyntaxisError = 1;
+        Err.IsFatalError = 1;
+        return COMPILER_VERIF(Err);
+    }
+
+    Temp = GetBufferElem(Buffer, BufferLen - 1);
+    if (Temp != '\n')
+    {
+        Err.SyntaxisError = 1;
+        Err.IsFatalError = 1;
+        return COMPILER_VERIF(Err);
+    }
+
+
+    size_t CmdArr_i = 0;
+    SetCmdArr(Cmd, &CmdArr_i, GetBufferElemPtr(Buffer, 0));
+
+    for (size_t buffer_i = 0; buffer_i <= BufferLen; buffer_i++)
+    {
+        Temp = GetBufferElem(Buffer, buffer_i);
+        if (Temp == '\n' || Temp == ' ')
+        {
+            while ((Temp == '\n' || Temp == ' ') && buffer_i <= BufferLen)
+            {
+                Buffer[buffer_i] = '\0';
+                buffer_i++;
+                Temp = GetBufferElem(Buffer, buffer_i);
+            }
+            SetCmdArr(Cmd, &CmdArr_i, GetBufferElemPtr(Buffer, buffer_i));
+        }
+    }
+
+    SetProgrammCmdQuanr(Cmd, CmdArr_i - 1);
+    Cmd->CmdArr = (char**) realloc(Cmd->CmdArr, Cmd->ProgrammCmdQuant * sizeof(char*));
+
+    for (size_t i = 0; i < Cmd->ProgrammCmdQuant; i++)
+    {
+        printf("%s\n", Cmd->CmdArr[i]);
+    }
+
+    free(Buffer);
+    return COMPILER_VERIF(Err);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static char GetBufferElem(char* Buffer, size_t buffer_i)
+{
+    return Buffer[buffer_i];
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static char* GetBufferElemPtr(char* Buffer, size_t buffer_i)
+{
+    return &Buffer[buffer_i];
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetCmdArr(CmdDataForAsm* Cmd, size_t* CmdArr_i, char* SetElem)
+{
+    Cmd->CmdArr[*CmdArr_i] = SetElem;
+    (*CmdArr_i)++;
+    return;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static char* GetNextCmd(CmdDataForAsm* Cmd)
+{
+    Cmd->Cmd_i++;
+    return Cmd->CmdArr[Cmd->Cmd_i - 1];
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetProgrammCmdQuanr(CmdDataForAsm* Cmd, size_t SetElem)
+{
+    Cmd->ProgrammCmdQuant = SetElem;
+    return;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -814,6 +920,11 @@ static void PrintError(CompilerErrorType* Err)
     if (Err->InvalidCmd == 1)
     {
         COLOR_PRINT(RED, "Error: Invalid commamd.\n");
+    }
+
+    if (Err->SyntaxisError == 1)
+    {
+        COLOR_PRINT(RED, "Error: Invalid syntaxis.\n");
     }
 
     if (Err->InvalidInputAfterPop == 1)

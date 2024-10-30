@@ -23,6 +23,7 @@ struct CompilerErrorType
     unsigned char NoHalt                                  : 1;
     unsigned char InvalidCmd                              : 1;
     unsigned char PushNotLabel                            : 1;
+    unsigned char SyntaxisError                           : 1;
     unsigned char TooManyLabels                           : 1;
     unsigned char NoIntAfterJmp                           : 1;
     unsigned char LabelCallocNull                         : 1;
@@ -34,6 +35,7 @@ struct CompilerErrorType
     unsigned char FailedOpenTempFileRead                  : 1;
     unsigned char FailedOpenTempFileWrite                 : 1;
     unsigned char FailedAllocateMemoryBufferTempFile      : 1;
+    unsigned char FailedAllocateMemoryForProgrammBuffer   : 1;
 };
 
 
