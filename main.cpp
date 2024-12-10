@@ -1,6 +1,6 @@
-#include "Compiler.h"
-#include "Processor.h"
-#include "ConsoleCmd.h"
+#include "Assembler/Compiler.h"
+#include "Processor/Processor.h"
+#include "ConsoleCmd/ConsoleCmd.h"
 
 // #include "Logger/Log.h"
 

@@ -1,11 +1,3 @@
-arman:
 push 1
-push ax
-add
-pop ax
-push ax
-push 5
-push ax
 out
-ja arman:
 hlt

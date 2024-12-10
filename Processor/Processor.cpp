@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "Processor.h"
-#include "Stack.h"
-#include "GlobalInclude.h"
+#include "../Stack/Stack.h"
+#include "../Common/GlobalInclude.h"
 
 static  ProcessorErrorType  Verif        (SPU* Spu, ProcessorErrorType* Err, const char* File, int Line, const char* Func);
 static  void                PrintError   (ProcessorErrorType* Err);
@@ -49,6 +49,8 @@ static  ProcessorErrorType  HandleJe     (SPU* Spu, ProcessorErrorType* Err);
 static  ProcessorErrorType  HandleJne    (SPU* Spu, ProcessorErrorType* Err);
 static  ProcessorErrorType  HandleOut    (SPU* Spu, ProcessorErrorType* Err);
 
+static StackElem_t MakeArithmeticOperation(StackElem_t FirstOperand, StackElem_t SecondOperand, ArithmeticOperator Operator);
+static bool MakeComparisonOperation(StackElem_t FirstOperand, StackElem_t SecondOperand, ComparisonOperator Operator);
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -639,6 +641,102 @@ static ProcessorErrorType Verif(SPU* Spu, ProcessorErrorType* Err, const char* F
     }
 
     return *Err;
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool MakeComparisonOperation(StackElem_t FirstOperand, StackElem_t SecondOperand, ComparisonOperator Operator)
+{
+    switch (Operator)
+    {
+        case always_true:
+        {
+            return true;
+            break;
+        }
+
+        case above:
+        {
+            return FirstOperand > SecondOperand;
+            break;
+        }
+
+        case above_or_equal:
+        {
+            return FirstOperand >= SecondOperand;
+            break;
+        }
+
+        case bellow:
+        {
+            return FirstOperand < SecondOperand;
+            break;
+        }
+
+        case bellow_or_equal:
+        {
+            return FirstOperand <= SecondOperand;
+            break;
+        }
+
+        case equal:
+        {
+            return FirstOperand == SecondOperand;
+            break;
+        }
+
+        case not_equal:
+        {
+            return FirstOperand != SecondOperand;
+            break;
+        }
+
+        default:
+        {
+            break;
+        }
+    }
+
+    return false;
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------
+
+static StackElem_t MakeArithmeticOperation(StackElem_t FirstOperand, StackElem_t SecondOperand, ArithmeticOperator Operator)
+{
+    switch (Operator)
+    {
+        case plus:
+        {
+            return FirstOperand + SecondOperand;
+            break;
+        }
+
+        case minus:
+        {
+            return FirstOperand - SecondOperand;
+            break;
+        }
+
+        case multiplication:
+        {
+            return FirstOperand * SecondOperand;
+            break;
+        }
+
+        case division:
+        {
+            return FirstOperand / SecondOperand;
+            break;
+        }
+        
+        default:
+        {
+            break;
+        }
+    }
+
+    return 0;
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------

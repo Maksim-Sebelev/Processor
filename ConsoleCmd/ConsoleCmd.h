@@ -1,7 +1,7 @@
 #ifndef CONSOLE_CMD_H
 #define CONSOLE_CMD_H
 
-#include "Compiler.h"
+#include "../Assembler/Compiler.h"
 
 struct ConsolePlace
 {

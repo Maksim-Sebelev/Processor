@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
-#include "ConsoleCmd.h"
-#include "Compiler.h"
-#include "Processor.h"
+#include "../ConsoleCmd/ConsoleCmd.h"
+#include "../Assembler/Compiler.h"
+#include "../Processor/Processor.h"
 
 static  ConsoleCmdErrorType  Verif         (ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
 static  void                 PrintError    (ConsoleCmdErrorType* Err);

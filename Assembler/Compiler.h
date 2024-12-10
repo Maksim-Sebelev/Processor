@@ -2,16 +2,16 @@
 #define COMPILER_H
 
 #include <stdio.h>
-#include "Stack.h"
-#include "GlobalInclude.h"
+#include "../Stack/Stack.h"
+#include "../Common/GlobalInclude.h"
 
 
 
 struct CompilerPlace
 {   
-    const char* File;
-    int         Line;
-    const char* Func;
+    const char* file;
+    int         line;
+    const char* func;
 };
 
 struct CompilerErrorType
@@ -51,8 +51,8 @@ struct FileSignature
 };
 
 
-CompilerErrorType RunCompiler          (const IOfile* File);
-void              CompilerAssertPrint  (CompilerErrorType* Err, const char* File, int Line, const char* Func);
+CompilerErrorType RunCompiler          (const IOfile* file);
+void              CompilerAssertPrint  (CompilerErrorType* Err, const char* file, int line, const char* func);
 
 
 #define COMPILER_RETURN_IF_ERR(Err) do   \

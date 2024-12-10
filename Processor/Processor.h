@@ -2,8 +2,8 @@
 #define PROCESSOR_H
 
 #include <stdio.h>
-#include "Stack.h"
-#include "GlobalInclude.h"
+#include "../Stack/Stack.h"
+#include "../Common/GlobalInclude.h"
 
 
 struct ProcessorErrPlace
