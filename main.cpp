@@ -1,8 +1,8 @@
-#include "Assembler2/Assembler.h"
-#include "Processor/Processor.h"
-#include "ConsoleCmd/ConsoleCmd.h"
+#include "Assembler/Assembler.hpp"
+#include "Processor/Processor.hpp"
+#include "ConsoleCmd/ConsoleCmd.hpp"
 
-// #include "Logger/Log.h"
+// #include "Logger/Log.hpp"
 
 int main()
 {

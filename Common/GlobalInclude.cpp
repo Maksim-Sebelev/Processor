@@ -1,7 +1,7 @@
 #include <string.h>
 #include <assert.h>
-#include "GlobalInclude.h"
-#include "ColorPrint.h"
+#include "GlobalInclude.hpp"
+#include "ColorPrint.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------------
 

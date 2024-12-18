@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <assert.h>
-#include "Processor.h"
-#include "../Stack/Stack.h"
-#include "../Common/GlobalInclude.h"
-#include "../Onegin/Onegin.h"
+#include "Processor.hpp"
+#include "../Stack/Stack.hpp"
+#include "../Common/GlobalInclude.hpp"
+#include "../Onegin/Onegin.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

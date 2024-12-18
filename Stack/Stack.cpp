@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <assert.h>
-#include "Stack.h"
-#include "Hash.h"
-#include "../Common/ColorPrint.h"
+#include "Stack.hpp"
+#include "Hash.hpp"
+#include "../Common/ColorPrint.hpp"
 
 static const size_t MinCapacity = 1<<3;
 static const size_t MaxCapacity = 1<<21;

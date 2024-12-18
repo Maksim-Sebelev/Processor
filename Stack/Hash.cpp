@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
-#include "Hash.h"
+#include "Hash.hpp"
 
 uint64_t Hash(void* Arr, size_t ArrElemQuant, size_t ArrElemSize)
 {
