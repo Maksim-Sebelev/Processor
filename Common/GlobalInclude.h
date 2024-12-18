@@ -13,6 +13,7 @@ enum Cmd
     mul,
     dive,
     out,
+    outr,
     jmp,
     ja,
     jae,

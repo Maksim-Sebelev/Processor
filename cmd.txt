@@ -1,0 +1,14 @@
+push 0
+pop ax
+
+to:
+push ax
+push 1
+add
+pop ax
+push ax
+push 5
+push ax
+outr
+ja to:
+hlt
