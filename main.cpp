@@ -6,8 +6,6 @@
 
 int main()
 {
-    COLOR_PRINT(RED, "here we go\n");
-
     IOfile File = {};
 
     File.ProgrammFile = "cmd.txt";

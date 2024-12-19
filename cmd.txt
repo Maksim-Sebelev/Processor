@@ -1,7 +1,12 @@
-push 1
+push 0
 pop ax
-push 777
-pop [ax+99]
-push [ax+99]
-outr
+to:
+push 1
+push ax
+add
+pop ax
+push ax
+out
+push 5
+ja to:
 hlt

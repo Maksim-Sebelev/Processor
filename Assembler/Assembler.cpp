@@ -141,22 +141,22 @@ struct CmdFunc
 
 static const CmdFunc DefaultCmd[] =
 {
-    {"push",  HandlePush, 1, 4},
-    {"pop" ,  HandlePop , 1, 4},
-    {"jmp" ,  HandleJmp , 1, 2},
-    {"ja"  ,  HandleJa  , 1, 2},
-    {"jae" ,  HandleJae , 1, 2},
-    {"jb"  ,  HandleJb  , 1, 2},
-    {"jbe" ,  HandleJbe , 1, 2},
-    {"je"  ,  HandleJe  , 1, 2},
-    {"jne" ,  HandleJne , 1, 2},
-    {"add" ,  HandleAdd , 0, 1},
-    {"sub" ,  HandleSub , 0, 1},
-    {"mul" ,  HandleMul , 0, 1},
-    {"div" ,  HandleDiv , 0, 1},
-    {"out" ,  HandleOut , 0, 1},
-    {"outr",  HandleOutr, 0, 1},
-    {"hlt" ,  HandleHlt , 0, 1},
+    {"push",  HandlePush, CmdInfoArr[push].argQuant, CmdInfoArr[push].codeRecordSize},
+    {"pop" ,  HandlePop , CmdInfoArr[pop] .argQuant, CmdInfoArr[pop] .codeRecordSize},
+    {"jmp" ,  HandleJmp , CmdInfoArr[jmp] .argQuant, CmdInfoArr[jmp] .codeRecordSize},
+    {"ja"  ,  HandleJa  , CmdInfoArr[ja]  .argQuant, CmdInfoArr[ja]  .codeRecordSize},
+    {"jae" ,  HandleJae , CmdInfoArr[jae] .argQuant, CmdInfoArr[jae] .codeRecordSize},
+    {"jb"  ,  HandleJb  , CmdInfoArr[jb]  .argQuant, CmdInfoArr[jb]  .codeRecordSize},
+    {"jbe" ,  HandleJbe , CmdInfoArr[jbe] .argQuant, CmdInfoArr[jbe] .codeRecordSize},
+    {"je"  ,  HandleJe  , CmdInfoArr[je]  .argQuant, CmdInfoArr[je]  .codeRecordSize},
+    {"jne" ,  HandleJne , CmdInfoArr[jne] .argQuant, CmdInfoArr[jne] .codeRecordSize},
+    {"add" ,  HandleAdd , CmdInfoArr[add] .argQuant, CmdInfoArr[add] .codeRecordSize},
+    {"sub" ,  HandleSub , CmdInfoArr[sub] .argQuant, CmdInfoArr[sub] .codeRecordSize},
+    {"mul" ,  HandleMul , CmdInfoArr[mul] .argQuant, CmdInfoArr[mul] .codeRecordSize},
+    {"div" ,  HandleDiv , CmdInfoArr[dive].argQuant, CmdInfoArr[dive].codeRecordSize},
+    {"out" ,  HandleOut , CmdInfoArr[out] .argQuant, CmdInfoArr[out] .codeRecordSize},
+    {"outr",  HandleOutr, CmdInfoArr[outr].argQuant, CmdInfoArr[outr].codeRecordSize},
+    {"hlt" ,  HandleHlt , CmdInfoArr[hlt] .argQuant, CmdInfoArr[hlt] .codeRecordSize},
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -367,7 +367,7 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
             PushTypeCtor(&Push, 0, 0, 1, 1);
             SetElem = GetRegisterPointer(buffer);
             buffer += Registers::REGISTERS_NAME_LEN + 1;
-            Sum = strtol(buffer, &EndBuffer, 10);
+            Sum     = (int) strtol(buffer, &EndBuffer, 10);
         }
     }
 
@@ -442,7 +442,7 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
         UpdateBufferForMemory(&buffer, &BufferLen);
 
         char*       EndBuffer       = nullptr;
-        StackElem_t PopElemMemIndex = (int) strtol(buffer, &EndBuffer,  10);
+        StackElem_t PopElemMemIndex = (StackElem_t) strtol(buffer, &EndBuffer,  10);
 
         if (IsInt(buffer, EndBuffer, BufferLen))
         {
@@ -462,8 +462,8 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
         {
             PopTypeCtor(&Pop, 0, 1, 1);
             SetElem = GetRegisterPointer(buffer);
-            buffer  += Registers::REGISTERS_NAME_LEN + 1;
-            Sum      = strtol(buffer, &EndBuffer, 10);
+            buffer += Registers::REGISTERS_NAME_LEN + 1;
+            Sum     = (int) strtol(buffer, &EndBuffer, 10);
         }
     }
 

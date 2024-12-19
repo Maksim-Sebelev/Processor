@@ -181,7 +181,7 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::jne:  PROCESSOR_ASSERT(HandleJne (spu)); break;
             case Cmd::out:  PROCESSOR_ASSERT(HandleOut (spu)); break;
             case Cmd::outr: PROCESSOR_ASSERT(HandleOutr(spu)); break;
-            case Cmd::hlt:  PROCESSSOR_DUMP(spu); return HandleHalt(spu);
+            case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return HandleHalt(spu);
             default:
             {
                 err.err = ProcessorErrorType::INVALID_CMD;
@@ -221,7 +221,7 @@ static ProcessorErr HandlePush(SPU* spu)
 
     STACK_ASSERT(StackPush(&spu->stack, PushElem));
 
-    spu->ip += 4;
+    spu->ip += CmdInfoArr[push].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);
 }
 
@@ -250,7 +250,7 @@ static ProcessorErr HandlePop(SPU* spu)
         return PROCESSOR_VERIF(spu, err);
     }
 
-    spu->ip += 4;
+    spu->ip += CmdInfoArr[pop].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);
 }
 
@@ -355,7 +355,7 @@ static ProcessorErr HandleOut(SPU* spu)
 
     COLOR_PRINT(VIOLET, "Programm out: %d\n", elem);
 
-    spu->ip++;
+    spu->ip += CmdInfoArr[out].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);
 }
 
@@ -373,7 +373,7 @@ static ProcessorErr HandleOutr(SPU* spu)
 
     COLOR_PRINT(VIOLET, "Programm out: %d\n", elem);
 
-    spu->ip++;
+    spu->ip += CmdInfoArr[outr].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);
 }
 
@@ -385,7 +385,7 @@ static ProcessorErr HandleHalt(SPU* spu)
 
     ProcessorErr err = {};
 
-    spu->ip++;
+    spu->ip += CmdInfoArr[hlt].codeRecordSize;
     STACK_ASSERT(StackDtor(&spu->stack));
     return PROCESSOR_VERIF(spu, err);
 }
@@ -403,7 +403,7 @@ static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator Operator)
 
     StackElem_t PushElem = MakeArithmeticOperation(SecondOperand, FirstOperand, Operator);
     STACK_ASSERT(StackPush(&spu->stack, PushElem));
-    spu->ip++;
+    spu->ip += CmdInfoArr[Operator].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);
 }
 
@@ -429,7 +429,7 @@ static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator Operator)
         return PROCESSOR_VERIF(spu, err);
     }
 
-    spu->ip += 2;
+    spu->ip += CmdInfoArr[Operator].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);
 }
 
