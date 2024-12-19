@@ -20,6 +20,8 @@ enum class AssemblerErrorType
     LABEL_REDEFINE              ,
     BAD_LABELS_CALLOC           ,
     BAD_LABELS_REALLOC          ,
+    INCORRECT_SUM_FIRST_OPERAND ,
+    INCORRECT_SUM_SECOND_OPERAND,
 };
 
 

@@ -65,12 +65,16 @@ static PushType       GetPushType                (int PushArg);
 static PopType        GetPopType                 (int PopArg);
 
 static int            GetPushPopArg              (SPU* spu);
+static int            GetPushPopSum              (SPU* spu);
 static int            GetPushPopRegister         (SPU* spu);
 static int            GetPushPopMemory           (SPU* spu);
 static int            GetPushPopMemoryWithReg    (SPU* spu);
+static int            GetPushPopMemorySum        (SPU* spu);
+
 
 static void           SetPopMemory               (SPU* spu, StackElem_t PopElem);
 static void           SetPopMemoryWithRegister   (SPU* spu, StackElem_t PopElem);
+static void           SetPopSum                  (SPU* spu, StackElem_t PopElem);
 static void           SetPopRegister             (SPU* spu, StackElem_t PopElem);
 
 static size_t         GetCodeSize                (SPU* spu);
@@ -177,7 +181,7 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::jne:  PROCESSOR_ASSERT(HandleJne (spu)); break;
             case Cmd::out:  PROCESSOR_ASSERT(HandleOut (spu)); break;
             case Cmd::outr: PROCESSOR_ASSERT(HandleOutr(spu)); break;
-            case Cmd::hlt: PROCESSSOR_DUMP(spu);   return HandleHalt(spu);
+            case Cmd::hlt:  PROCESSSOR_DUMP(spu); return HandleHalt(spu);
             default:
             {
                 err.err = ProcessorErrorType::INVALID_CMD;
@@ -203,10 +207,12 @@ static ProcessorErr HandlePush(SPU* spu)
 
     StackElem_t PushElem = 0;
 
-    if      (Push.stk == 1 && Push.reg == 0 && Push.mem == 0) PushElem = GetPushPopArg           (spu);
-    else if (Push.stk == 0 && Push.reg == 1 && Push.mem == 0) PushElem = GetPushPopRegister      (spu);
-    else if (Push.stk == 0 && Push.reg == 0 && Push.mem == 1) PushElem = GetPushPopMemory        (spu);
-    else if (Push.stk == 0 && Push.reg == 1 && Push.mem == 1) PushElem = GetPushPopMemoryWithReg (spu);
+    if      (Push.stk == 1 && Push.reg == 0 && Push.mem == 0 && Push.sum == 0) PushElem = GetPushPopArg           (spu);
+    else if (Push.stk == 0 && Push.reg == 1 && Push.mem == 0 && Push.sum == 0) PushElem = GetPushPopRegister      (spu);
+    else if (Push.stk == 0 && Push.reg == 0 && Push.mem == 1 && Push.sum == 0) PushElem = GetPushPopMemory        (spu);
+    else if (Push.stk == 0 && Push.reg == 1 && Push.mem == 1 && Push.sum == 0) PushElem = GetPushPopMemoryWithReg (spu);
+    else if (Push.stk == 0 && Push.reg == 0 && Push.mem == 1 && Push.sum == 1) PushElem = GetPushPopMemorySum     (spu);
+
     else
     {
         err.err = ProcessorErrorType::INVALID_CMD;
@@ -215,7 +221,7 @@ static ProcessorErr HandlePush(SPU* spu)
 
     STACK_ASSERT(StackPush(&spu->stack, PushElem));
 
-    spu->ip += 3;
+    spu->ip += 4;
     return PROCESSOR_VERIF(spu, err);
 }
 
@@ -234,16 +240,17 @@ static ProcessorErr HandlePop(SPU* spu)
     StackElem_t PopElem = 0;
     STACK_ASSERT(StackPop(&spu->stack, &PopElem));
 
-    if      (Pop.reg == 1 && Pop.mem == 0) SetPopRegister            (spu, PopElem);
-    else if (Pop.reg == 0 && Pop.mem == 1) SetPopMemory              (spu, PopElem);
-    else if (Pop.reg == 1 && Pop.mem == 1) SetPopMemoryWithRegister  (spu, PopElem);
+    if      (Pop.reg == 1 && Pop.mem == 0 && Pop.sum == 0) SetPopRegister            (spu, PopElem);
+    else if (Pop.reg == 0 && Pop.mem == 1 && Pop.sum == 0) SetPopMemory              (spu, PopElem);
+    else if (Pop.reg == 1 && Pop.mem == 1 && Pop.sum == 0) SetPopMemoryWithRegister  (spu, PopElem);
+    else if (Pop.reg == 0 && Pop.mem == 1 && Pop.sum == 1) SetPopSum                 (spu, PopElem);
     else
     {
         err.err = ProcessorErrorType::INVALID_CMD;
         return PROCESSOR_VERIF(spu, err);
     }
 
-    spu->ip += 3;
+    spu->ip += 4;
     return PROCESSOR_VERIF(spu, err);
 }
 
@@ -451,6 +458,15 @@ static int GetPushPopArg(SPU* spu)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static int GetPushPopSum(SPU* spu)
+{
+    assert(spu);
+
+    return spu->code.code[spu->ip + 3];
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static int GetPushPopRegister(SPU* spu)
 {
     assert(spu);
@@ -474,6 +490,15 @@ static int GetPushPopMemoryWithReg(SPU* spu)
     assert(spu);
 
     return spu->RAM[GetPushPopRegister(spu)];
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static int GetPushPopMemorySum(SPU* spu)
+{
+    assert(spu);
+
+    return spu->RAM[GetPushPopRegister(spu) + GetPushPopSum(spu)];
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -504,6 +529,16 @@ static void SetPopMemoryWithRegister(SPU* spu, StackElem_t PopElem)
     assert(spu);
 
     spu->RAM[GetPushPopRegister(spu)] = PopElem;
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetPopSum(SPU* spu, StackElem_t PopElem)
+{
+    assert(spu);
+
+    spu->RAM[GetPushPopRegister(spu) + GetPushPopSum(spu)] = PopElem;
     return;
 }
 
