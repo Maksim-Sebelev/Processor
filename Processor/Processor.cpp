@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <limits.h>
 #include <assert.h>
 #include "Processor.hpp"
 #include "../Stack/Stack.hpp"
@@ -15,13 +16,22 @@ struct Code
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+struct RAM
+{
+    int*   ram;
+    size_t size;
+};
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 struct SPU
 {
     Code         code;
     size_t       ip;
     Stack_t      stack;
     StackElem_t  registers[REGISTERS_QUANT];
-    int*         RAM;
+    RAM          ram;
 };
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -52,7 +62,9 @@ static ProcessorErr   HandleJbe                  (SPU* spu);
 static ProcessorErr   HandleJe                   (SPU* spu);
 static ProcessorErr   HandleJne                  (SPU* spu);
 static ProcessorErr   HandleOut                  (SPU* spu);
+static ProcessorErr   HandleOutc                 (SPU* spu);
 static ProcessorErr   HandleOutr                 (SPU* spu);
+static ProcessorErr   HandleOutrc                (SPU* spu);
 
 
 static ProcessorErr   ArithmeticCmdPattern       (SPU* spu, ArithmeticOperator Operator);
@@ -72,10 +84,10 @@ static int            GetPushPopMemoryWithReg    (SPU* spu);
 static int            GetPushPopMemorySum        (SPU* spu);
 
 
-static void           SetPopMemory               (SPU* spu, StackElem_t PopElem);
-static void           SetPopMemoryWithRegister   (SPU* spu, StackElem_t PopElem);
-static void           SetPopSum                  (SPU* spu, StackElem_t PopElem);
-static void           SetPopRegister             (SPU* spu, StackElem_t PopElem);
+static ProcessorErr   SetPopMemory               (SPU* spu, StackElem_t PopElem);
+static ProcessorErr   SetPopMemoryWithRegister   (SPU* spu, StackElem_t PopElem);
+static ProcessorErr   SetPopSum                  (SPU* spu, StackElem_t PopElem);
+static ProcessorErr   SetPopRegister             (SPU* spu, StackElem_t PopElem);
 
 static size_t         GetCodeSize                (SPU* spu);
 static size_t         GetIp                      (SPU* spu);
@@ -106,6 +118,9 @@ void RunProcessor(const IOfile* file)
     SPU spu = {};
     PROCESSOR_ASSERT(SpuCtor(&spu, file));
     PROCESSOR_ASSERT(ExecuteCommands(&spu));
+
+    // PROCESSSOR_DUMP(&spu);
+
     PROCESSOR_ASSERT(SpuDtor(&spu));
 
     return;
@@ -124,16 +139,25 @@ static ProcessorErr SpuCtor(SPU* spu, const IOfile* file)
 
     spu->ip = 0;
 
-    static const size_t DeafaultStackSize = 128;
-    STACK_ASSERT(StackCtor(&spu->stack, DeafaultStackSize));
+    static const size_t DefaultStackSize = 128;
+    STACK_ASSERT(StackCtor(&spu->stack, DefaultStackSize));
     
     for (size_t registers_i = 0; registers_i < Registers::REGISTERS_QUANT; registers_i++)
     {
         spu->registers[registers_i] = 0;
     }
 
-    static const size_t DeafaultRamSize = 128;
-    spu->RAM = (int*) calloc(DeafaultRamSize, sizeof(int));
+    static const size_t DefaultRamSize = 1<<20;
+
+    spu->ram.ram = (int*) calloc(DefaultRamSize, sizeof(int));
+
+    if (!spu->ram.ram)
+    {
+        err.err = ProcessorErrorType::RAM_BAD_CALLOC;
+        return PROCESSOR_VERIF(spu, err);
+    }
+
+    spu->ram.size = DefaultRamSize;
 
     return PROCESSOR_VERIF(spu, err);
 }
@@ -146,7 +170,7 @@ static ProcessorErr SpuDtor(SPU* spu)
 
     ProcessorErr  err = {};
 
-    FREE(spu->RAM);
+    FREE(spu->ram.ram);
     FREE(spu->code.code);
 
     *spu = {};
@@ -166,21 +190,24 @@ static ProcessorErr ExecuteCommands(SPU* spu)
     {
         switch (GetCodeElem(spu))
         {
-            case Cmd::push: PROCESSOR_ASSERT(HandlePush(spu)); break;
-            case Cmd::pop:  PROCESSOR_ASSERT(HandlePop (spu)); break;
-            case Cmd::add:  PROCESSOR_ASSERT(HandleAdd (spu)); break;
-            case Cmd::sub:  PROCESSOR_ASSERT(HandleSub (spu)); break;
-            case Cmd::mul:  PROCESSOR_ASSERT(HandleMul (spu)); break;
-            case Cmd::dive: PROCESSOR_ASSERT(HandleDiv (spu)); break;
-            case Cmd::jmp:  PROCESSOR_ASSERT(HandleJmp (spu)); break;
-            case Cmd::ja:   PROCESSOR_ASSERT(HandleJa  (spu)); break;
-            case Cmd::jae:  PROCESSOR_ASSERT(HandleJae (spu)); break;
-            case Cmd::jb:   PROCESSOR_ASSERT(HandleJb  (spu)); break;
-            case Cmd::jbe:  PROCESSOR_ASSERT(HandleJbe (spu)); break;
-            case Cmd::je:   PROCESSOR_ASSERT(HandleJe  (spu)); break;
-            case Cmd::jne:  PROCESSOR_ASSERT(HandleJne (spu)); break;
-            case Cmd::out:  PROCESSOR_ASSERT(HandleOut (spu)); break;
-            case Cmd::outr: PROCESSOR_ASSERT(HandleOutr(spu)); break;
+            case Cmd::push:  PROCESSOR_ASSERT(HandlePush (spu)); break;
+            case Cmd::pop:   PROCESSOR_ASSERT(HandlePop  (spu)); break;
+            case Cmd::add:   PROCESSOR_ASSERT(HandleAdd  (spu)); break;
+            case Cmd::sub:   PROCESSOR_ASSERT(HandleSub  (spu)); break;
+            case Cmd::mul:   PROCESSOR_ASSERT(HandleMul  (spu)); break;
+            case Cmd::dive:  PROCESSOR_ASSERT(HandleDiv  (spu)); break;
+            case Cmd::jmp:   PROCESSOR_ASSERT(HandleJmp  (spu)); break;
+            case Cmd::ja:    PROCESSOR_ASSERT(HandleJa   (spu)); break;
+            case Cmd::jae:   PROCESSOR_ASSERT(HandleJae  (spu)); break;
+            case Cmd::jb:    PROCESSOR_ASSERT(HandleJb   (spu)); break;
+            case Cmd::jbe:   PROCESSOR_ASSERT(HandleJbe  (spu)); break;
+            case Cmd::je:    PROCESSOR_ASSERT(HandleJe   (spu)); break;
+            case Cmd::jne:   PROCESSOR_ASSERT(HandleJne  (spu)); break;
+            case Cmd::out:   PROCESSOR_ASSERT(HandleOut  (spu)); break;
+            case Cmd::outc:  PROCESSOR_ASSERT(HandleOutc (spu)); break;
+            case Cmd::outr:  PROCESSOR_ASSERT(HandleOutr (spu)); break;
+            case Cmd::outrc: PROCESSOR_ASSERT(HandleOutrc(spu)); break;
+
             case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return HandleHalt(spu);
             default:
             {
@@ -240,10 +267,10 @@ static ProcessorErr HandlePop(SPU* spu)
     StackElem_t PopElem = 0;
     STACK_ASSERT(StackPop(&spu->stack, &PopElem));
 
-    if      (Pop.reg == 1 && Pop.mem == 0 && Pop.sum == 0) SetPopRegister            (spu, PopElem);
-    else if (Pop.reg == 0 && Pop.mem == 1 && Pop.sum == 0) SetPopMemory              (spu, PopElem);
-    else if (Pop.reg == 1 && Pop.mem == 1 && Pop.sum == 0) SetPopMemoryWithRegister  (spu, PopElem);
-    else if (Pop.reg == 0 && Pop.mem == 1 && Pop.sum == 1) SetPopSum                 (spu, PopElem);
+    if      (Pop.reg == 1 && Pop.mem == 0 && Pop.sum == 0) PROCESSOR_ASSERT(SetPopRegister            (spu, PopElem));
+    else if (Pop.reg == 0 && Pop.mem == 1 && Pop.sum == 0) PROCESSOR_ASSERT(SetPopMemory              (spu, PopElem));
+    else if (Pop.reg == 1 && Pop.mem == 1 && Pop.sum == 0) PROCESSOR_ASSERT(SetPopMemoryWithRegister  (spu, PopElem));
+    else if (Pop.reg == 0 && Pop.mem == 1 && Pop.sum == 1) PROCESSOR_ASSERT(SetPopSum                 (spu, PopElem));
     else
     {
         err.err = ProcessorErrorType::INVALID_CMD;
@@ -361,6 +388,51 @@ static ProcessorErr HandleOut(SPU* spu)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static ProcessorErr HandleOutc(SPU* spu)
+{
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t elem = GetLastStackElem(&spu->stack);
+
+    if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
+    {
+        err.err = ProcessorErrorType::OUT_CHAR_NOT_CHAR;
+        return PROCESSOR_VERIF(spu, err);
+    }
+
+    COLOR_PRINT(VIOLET, "%c", elem);
+
+    spu->ip += CmdInfoArr[out].codeRecordSize;
+    return PROCESSOR_VERIF(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleOutrc(SPU* spu)
+{
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t elem = 0;
+    STACK_ASSERT(StackPop(&spu->stack, &elem));
+
+    if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
+    {
+        err.err = ProcessorErrorType::OUT_CHAR_NOT_CHAR;
+        return PROCESSOR_VERIF(spu, err);
+    }
+
+    COLOR_PRINT(VIOLET, "%c", elem);
+
+    spu->ip += CmdInfoArr[out].codeRecordSize;
+    return PROCESSOR_VERIF(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static ProcessorErr HandleOutr(SPU* spu)
 {
     assert(spu);
@@ -397,7 +469,9 @@ static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator Operator)
     assert(spu);
     ProcessorErr err = {};
 
-    StackElem_t SecondOperand  = 0, FirstOperand = 0;
+    StackElem_t FirstOperand  = 0;
+    StackElem_t SecondOperand = 0;
+
     STACK_ASSERT(StackPop(&spu->stack, &FirstOperand));
     STACK_ASSERT(StackPop(&spu->stack, &SecondOperand));
 
@@ -452,6 +526,7 @@ static PopType GetPopType(int PopArg)
 static int GetPushPopArg(SPU* spu)
 {
     assert(spu);
+    assert(spu->code.code);
 
     return spu->code.code[spu->ip + 2];
 }
@@ -461,6 +536,7 @@ static int GetPushPopArg(SPU* spu)
 static int GetPushPopSum(SPU* spu)
 {
     assert(spu);
+    assert(spu->code.code);
 
     return spu->code.code[spu->ip + 3];
 }
@@ -470,6 +546,7 @@ static int GetPushPopSum(SPU* spu)
 static int GetPushPopRegister(SPU* spu)
 {
     assert(spu);
+    assert(spu->registers);
 
     return spu->registers[GetPushPopArg(spu)];
 }
@@ -479,8 +556,9 @@ static int GetPushPopRegister(SPU* spu)
 static int GetPushPopMemory(SPU* spu)
 {
     assert(spu);
+    assert(spu->ram.ram);
 
-    return spu->RAM[GetPushPopArg(spu)];
+    return spu->ram.ram[GetPushPopArg(spu)];
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -488,8 +566,9 @@ static int GetPushPopMemory(SPU* spu)
 static int GetPushPopMemoryWithReg(SPU* spu)
 {
     assert(spu);
+    assert(spu->ram.ram);
 
-    return spu->RAM[GetPushPopRegister(spu)];
+    return spu->ram.ram[GetPushPopRegister(spu)];
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -497,49 +576,86 @@ static int GetPushPopMemoryWithReg(SPU* spu)
 static int GetPushPopMemorySum(SPU* spu)
 {
     assert(spu);
+    assert(spu->ram.ram);
 
-    return spu->RAM[GetPushPopRegister(spu) + GetPushPopSum(spu)];
+    return spu->ram.ram[GetPushPopRegister(spu) + GetPushPopSum(spu)];
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-static void SetPopRegister(SPU* spu, StackElem_t PopElem)
+static ProcessorErr SetPopRegister(SPU* spu, StackElem_t PopElem)
 {
     assert(spu);
+    assert(spu->registers);
+
+    ProcessorErr err = {};
 
     spu->registers[GetPushPopArg(spu)] = PopElem;
-    return;
+    return PROCESSOR_VERIF(spu, err);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void SetPopMemory(SPU* spu, StackElem_t PopElem)
+static ProcessorErr SetPopMemory(SPU* spu, StackElem_t PopElem)
 {
     assert(spu);
+    assert(spu->ram.ram);
 
-    spu->RAM[GetPushPopArg(spu)] = PopElem;
-    return;
+    ProcessorErr err = {};
+
+    size_t pointer = (size_t) GetPushPopArg(spu);
+
+    if (pointer >= spu->ram.size)
+    {
+        err.err = ProcessorErrorType::RAM_OVERFLOW;
+        return PROCESSOR_VERIF(spu, err);
+    }
+
+    spu->ram.ram[pointer] = PopElem;
+    return PROCESSOR_VERIF(spu, err);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void SetPopMemoryWithRegister(SPU* spu, StackElem_t PopElem)
+static ProcessorErr SetPopMemoryWithRegister(SPU* spu, StackElem_t PopElem)
 {
     assert(spu);
+    assert(spu->ram.ram);
 
-    spu->RAM[GetPushPopRegister(spu)] = PopElem;
-    return;
+    ProcessorErr err = {};
+
+    size_t pointer = GetPushPopRegister(spu);
+
+    if (pointer >= spu->ram.size)
+    {
+        err.err = ProcessorErrorType::RAM_OVERFLOW;
+        return PROCESSOR_VERIF(spu, err);
+    }
+
+    spu->ram.ram[pointer] = PopElem;
+    return PROCESSOR_VERIF(spu, err);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void SetPopSum(SPU* spu, StackElem_t PopElem)
+static ProcessorErr SetPopSum(SPU* spu, StackElem_t PopElem)
 {
     assert(spu);
+    assert(spu->ram.ram);
 
-    spu->RAM[GetPushPopRegister(spu) + GetPushPopSum(spu)] = PopElem;
-    return;
+    ProcessorErr err = {};
+
+    size_t pointer = GetPushPopRegister(spu) + GetPushPopSum(spu);
+
+    if (pointer >= spu->ram.size)
+    {
+        err.err = ProcessorErrorType::RAM_OVERFLOW;
+        return PROCESSOR_VERIF(spu, err);
+    }
+
+    spu->ram.ram[pointer] = PopElem;
+    return PROCESSOR_VERIF(spu, err);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -547,6 +663,7 @@ static void SetPopSum(SPU* spu, StackElem_t PopElem)
 static int GetCodeElem(SPU* spu)
 {
     assert(spu);
+    assert(spu->code.code);
 
     return spu->code.code[spu->ip];
 }
@@ -556,6 +673,7 @@ static int GetCodeElem(SPU* spu)
 static int GetNextCodeElem(SPU* spu)
 {
     assert(spu);
+    assert(spu->code.code);
 
     return spu->code.code[spu->ip + 1];
 }
@@ -583,6 +701,7 @@ static size_t GetIp(SPU* spu)
 static void SetCodeElem(SPU* spu, size_t Code_i, int NewCodeElem)
 {
     assert(spu);
+    assert(spu->code.code);
 
     spu->code.code[Code_i] = NewCodeElem;
     return;
@@ -619,6 +738,7 @@ static ProcessorErr CodeCtor(SPU* spu, const IOfile* file)
 {
     assert(spu);
     assert(file);
+    assert(file->CodeFile);
 
     ProcessorErr err = {};
 
@@ -763,6 +883,22 @@ static void PrintError(ProcessorErr* err)
         case ProcessorErrorType::FREAD_BAD_RETURN:
             COLOR_PRINT(RED, "Error: fread has not all file read.\n");
             break;
+        
+        case ProcessorErrorType::RAM_BAD_CALLOC:
+            COLOR_PRINT(RED, "Error: failed to allocate memory for ram.\n");
+            break;
+        
+        case ProcessorErrorType::RAM_BAD_REALLOC:
+            COLOR_PRINT(RED, "Error: failed to reallocate memory for ram.\n");
+            break;
+
+        case ProcessorErrorType::RAM_OVERFLOW:
+            COLOR_PRINT(RED, "Error: attempt to access a non-existent address in ram.\n");
+            break;
+
+        case ProcessorErrorType::OUT_CHAR_NOT_CHAR:
+            COLOR_PRINT(RED, "Error: attemp to print not-a-char element like a char.\n");
+            break;
 
         default:
             assert(0 && "undefined error type");
@@ -785,7 +921,6 @@ static void ProcessorDump(const SPU* spu, const char* file, int line, const char
     COLOR_PRINT(VIOLET, "Dump made in:\n");
     PrintPlace(file, line, func);
 
-
     COLOR_PRINT(VIOLET, "Registers:\n");
 
     COLOR_PRINT(VIOLET, "ax = %d\n",   spu->registers[ax]);
@@ -793,11 +928,11 @@ static void ProcessorDump(const SPU* spu, const char* file, int line, const char
     COLOR_PRINT(VIOLET, "cx = %d\n",   spu->registers[cx]);
     COLOR_PRINT(VIOLET, "dx = %d\n\n", spu->registers[dx]);
 
-    COLOR_PRINT(BLUE, "RAM:\n");
+    COLOR_PRINT(BLUE, "ram.ram:\n");
 
     for (size_t RAM_i = 0; RAM_i < 128; RAM_i++)
     {
-        COLOR_PRINT(CYAN, "[%3lu] %d\n", RAM_i, spu->RAM[RAM_i]);
+        COLOR_PRINT(CYAN, "[%3lu] %d\n", RAM_i, spu->ram.ram[RAM_i]);
     }
 
     printf("\n");
@@ -814,6 +949,7 @@ static void ProcessorDump(const SPU* spu, const char* file, int line, const char
         }
         printf("\n");
     }
+
     COLOR_PRINT(RED, "CODE END\n");
 
     COLOR_PRINT(GREEN, "\nPROCESSOR DUMP END\n");

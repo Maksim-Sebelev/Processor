@@ -31,7 +31,7 @@ struct Label
 {
     const char* name;
     size_t      codePlace;
-    bool        alradyDefined;
+    bool       alradyDefined;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -77,47 +77,52 @@ static void          PopTypeCtor   (PopType*  Pop , uint8_t Reg, uint8_t Mem, ui
 
 static int GetRegisterPointer(const char* buffer);
 
-static bool  IsCharNum(char c);
-static bool  IsStrInt(const char* str);
-static bool  IsInt       (const char* str, const char* StrEnd, size_t strSize);
-static bool  IsRegister  (const char* str, size_t strSize);
-static bool  IsMemory    (const char* str, size_t strSize);
-static bool  IsSum       (const char* str, size_t strSize);
-static bool  IsLabel     (const char* str);
+static bool IsCharNum        (char c);
+static bool IsStrInt         (const char* str);
+static bool IsInt            (const char* str, const char* StrEnd, size_t strSize);
+static bool IsRegister       (const char* str, size_t strSize);
+static bool IsMemory         (const char* str, size_t strSize);
+static bool IsSum            (const char* str, size_t strSize);
+static bool IsLabel          (const char* str);
+static bool IsCommentBegin   (const char* str);
+static bool IsCommentEnd     (const char* str);
 
 
-static AssemblerErr InitAllLabels(AsmData* AsmDataInfo);
-static AssemblerErr LabelsCtor(AsmData* AsmDataInfo);
-static AssemblerErr LabelsDtor(AsmData* AsmDataInfo);
+static AssemblerErr InitAllLabels   (AsmData* AsmDataInfo);
+static AssemblerErr LabelsCtor      (AsmData* AsmDataInfo);
+static AssemblerErr LabelsDtor      (AsmData* AsmDataInfo);
 
-static Label LabelCtor(const char* name, size_t pointer, bool alreadyDefined);
-static AssemblerErr PushLabel(AsmData* AsmDataInfo, const Label* label);
-static bool IsLabelAlready(const AsmData* AsmDataInfo, const char* label, size_t* labelPlace);
+static Label        LabelCtor       (const char* name, size_t pointer, bool alreadyDefined);
+static AssemblerErr PushLabel       (AsmData* AsmDataInfo, const Label* label);
+static bool         IsLabelAlready  (const AsmData* AsmDataInfo, const char* label, size_t* labelPlace);
 
 
-static bool FincDefaultCmd(const char* cmd, size_t* defaultCmdPointer);
+static bool FindDefaultCmd(const char* cmd, size_t* defaultCmdPointer);
 static size_t CalcCodeSize(const CmdArr* cmd);
 
 static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType);
 
 
-static AssemblerErr  HandlePush          (AsmData* AsmDataInfo);
-static AssemblerErr  HandlePop           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleJmp           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleJa            (AsmData* AsmDataInfo);
-static AssemblerErr  HandleJae           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleJb            (AsmData* AsmDataInfo);
-static AssemblerErr  HandleJbe           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleJe            (AsmData* AsmDataInfo);
-static AssemblerErr  HandleJne           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleAdd           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleSub           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleMul           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleDiv           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleOut           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleOutr          (AsmData* AsmDataInfo);
-static AssemblerErr  HandleHlt           (AsmData* AsmDataInfo);
-static AssemblerErr  HandleLabel         (AsmData* AsmDataInfo);
+static AssemblerErr HandlePush          (AsmData* AsmDataInfo);
+static AssemblerErr HandlePop           (AsmData* AsmDataInfo);
+static AssemblerErr HandleJmp           (AsmData* AsmDataInfo);
+static AssemblerErr HandleJa            (AsmData* AsmDataInfo);
+static AssemblerErr HandleJae           (AsmData* AsmDataInfo);
+static AssemblerErr HandleJb            (AsmData* AsmDataInfo);
+static AssemblerErr HandleJbe           (AsmData* AsmDataInfo);
+static AssemblerErr HandleJe            (AsmData* AsmDataInfo);
+static AssemblerErr HandleJne           (AsmData* AsmDataInfo);
+static AssemblerErr HandleAdd           (AsmData* AsmDataInfo);
+static AssemblerErr HandleSub           (AsmData* AsmDataInfo);
+static AssemblerErr HandleMul           (AsmData* AsmDataInfo);
+static AssemblerErr HandleDiv           (AsmData* AsmDataInfo);
+static AssemblerErr HandleOut           (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutc          (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutr          (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutrc         (AsmData* AsmDataInfo);
+static AssemblerErr HandleHlt           (AsmData* AsmDataInfo);
+static AssemblerErr HandleLabel         (AsmData* AsmDataInfo);
+static AssemblerErr HandleComment       (AsmData* AsmDataInfo);
 
 
 static AssemblerErr Verif(AsmData* AsmDataInfo, AssemblerErr* err, const char* file, int line, const char* func);
@@ -141,22 +146,24 @@ struct CmdFunc
 
 static const CmdFunc DefaultCmd[] =
 {
-    {"push",  HandlePush, CmdInfoArr[push].argQuant, CmdInfoArr[push].codeRecordSize},
-    {"pop" ,  HandlePop , CmdInfoArr[pop] .argQuant, CmdInfoArr[pop] .codeRecordSize},
-    {"jmp" ,  HandleJmp , CmdInfoArr[jmp] .argQuant, CmdInfoArr[jmp] .codeRecordSize},
-    {"ja"  ,  HandleJa  , CmdInfoArr[ja]  .argQuant, CmdInfoArr[ja]  .codeRecordSize},
-    {"jae" ,  HandleJae , CmdInfoArr[jae] .argQuant, CmdInfoArr[jae] .codeRecordSize},
-    {"jb"  ,  HandleJb  , CmdInfoArr[jb]  .argQuant, CmdInfoArr[jb]  .codeRecordSize},
-    {"jbe" ,  HandleJbe , CmdInfoArr[jbe] .argQuant, CmdInfoArr[jbe] .codeRecordSize},
-    {"je"  ,  HandleJe  , CmdInfoArr[je]  .argQuant, CmdInfoArr[je]  .codeRecordSize},
-    {"jne" ,  HandleJne , CmdInfoArr[jne] .argQuant, CmdInfoArr[jne] .codeRecordSize},
-    {"add" ,  HandleAdd , CmdInfoArr[add] .argQuant, CmdInfoArr[add] .codeRecordSize},
-    {"sub" ,  HandleSub , CmdInfoArr[sub] .argQuant, CmdInfoArr[sub] .codeRecordSize},
-    {"mul" ,  HandleMul , CmdInfoArr[mul] .argQuant, CmdInfoArr[mul] .codeRecordSize},
-    {"div" ,  HandleDiv , CmdInfoArr[dive].argQuant, CmdInfoArr[dive].codeRecordSize},
-    {"out" ,  HandleOut , CmdInfoArr[out] .argQuant, CmdInfoArr[out] .codeRecordSize},
-    {"outr",  HandleOutr, CmdInfoArr[outr].argQuant, CmdInfoArr[outr].codeRecordSize},
-    {"hlt" ,  HandleHlt , CmdInfoArr[hlt] .argQuant, CmdInfoArr[hlt] .codeRecordSize},
+    {"push" ,  HandlePush , CmdInfoArr[push ].argQuant, CmdInfoArr[push ].codeRecordSize},
+    {"pop"  ,  HandlePop  , CmdInfoArr[pop  ].argQuant, CmdInfoArr[pop  ].codeRecordSize},
+    {"jmp"  ,  HandleJmp  , CmdInfoArr[jmp  ].argQuant, CmdInfoArr[jmp  ].codeRecordSize},
+    {"ja"   ,  HandleJa   , CmdInfoArr[ja   ].argQuant, CmdInfoArr[ja   ].codeRecordSize},
+    {"jae"  ,  HandleJae  , CmdInfoArr[jae  ].argQuant, CmdInfoArr[jae  ].codeRecordSize},
+    {"jb"   ,  HandleJb   , CmdInfoArr[jb   ].argQuant, CmdInfoArr[jb   ].codeRecordSize},
+    {"jbe"  ,  HandleJbe  , CmdInfoArr[jbe  ].argQuant, CmdInfoArr[jbe  ].codeRecordSize},
+    {"je"   ,  HandleJe   , CmdInfoArr[je   ].argQuant, CmdInfoArr[je   ].codeRecordSize},
+    {"jne"  ,  HandleJne  , CmdInfoArr[jne  ].argQuant, CmdInfoArr[jne  ].codeRecordSize},
+    {"add"  ,  HandleAdd  , CmdInfoArr[add  ].argQuant, CmdInfoArr[add  ].codeRecordSize},
+    {"sub"  ,  HandleSub  , CmdInfoArr[sub  ].argQuant, CmdInfoArr[sub  ].codeRecordSize},
+    {"mul"  ,  HandleMul  , CmdInfoArr[mul  ].argQuant, CmdInfoArr[mul  ].codeRecordSize},
+    {"div"  ,  HandleDiv  , CmdInfoArr[dive ].argQuant, CmdInfoArr[dive ].codeRecordSize},
+    {"out"  ,  HandleOut  , CmdInfoArr[out  ].argQuant, CmdInfoArr[out  ].codeRecordSize},
+    {"outc" ,  HandleOutc , CmdInfoArr[outc ].argQuant, CmdInfoArr[outc ].codeRecordSize},
+    {"outr" ,  HandleOutr , CmdInfoArr[outr ].argQuant, CmdInfoArr[outr ].codeRecordSize},
+    {"outrc",  HandleOutrc, CmdInfoArr[outrc].argQuant, CmdInfoArr[outrc].codeRecordSize},
+    {"hlt"  ,  HandleHlt  , CmdInfoArr[hlt  ].argQuant, CmdInfoArr[hlt  ].codeRecordSize},
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -249,7 +256,8 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
         const char* cmd = GetNextCmd(AsmDataInfo);
 
         size_t defaultCmdPointer = 0;
-        if (FincDefaultCmd(cmd, &defaultCmdPointer))
+
+        if (FindDefaultCmd(cmd, &defaultCmdPointer))
         {
             ASSEMBLER_ASSERT(GetCmd(defaultCmdPointer)(AsmDataInfo));
             continue;
@@ -258,6 +266,12 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
         if (IsLabel(cmd))
         {
             ASSEMBLER_ASSERT(HandleLabel(AsmDataInfo));
+            continue;
+        }
+
+        if (IsCommentBegin(cmd))
+        {
+            ASSEMBLER_ASSERT(HandleComment(AsmDataInfo));
             continue;
         }
 
@@ -592,11 +606,29 @@ static AssemblerErr HandleOut(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static AssemblerErr HandleOutc(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+
+    return NullArgCmdPattern(AsmDataInfo, outc);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static AssemblerErr HandleOutr(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
 
     return NullArgCmdPattern(AsmDataInfo, outr);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static AssemblerErr HandleOutrc(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+
+    return NullArgCmdPattern(AsmDataInfo, outrc);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -618,6 +650,35 @@ static AssemblerErr HandleLabel(AsmData* AsmDataInfo)
     AssemblerErr err = {};
 
     AsmDataInfo->labels.pointer++;
+
+    return ASSEMBLER_VERIF(AsmDataInfo, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static AssemblerErr HandleComment(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+    assert(AsmDataInfo->cmd.cmd);
+    assert(AsmDataInfo->cmd.pointer >= 1);
+
+    AssemblerErr err = {};
+
+    size_t       cmdQuant = AsmDataInfo->cmd.size;
+
+    const char** cmdArr   = AsmDataInfo->cmd.cmd;
+    size_t       pointer  = AsmDataInfo->cmd.pointer - 1;
+    const char*  cmd      = cmdArr[pointer];
+
+    while (!IsCommentEnd(cmd) && pointer < cmdQuant)
+    {
+        pointer++;
+        cmd = cmdArr[pointer];
+    }
+
+    pointer++;
+
+    AsmDataInfo->cmd.pointer = pointer;
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -690,9 +751,12 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
+    const char** cmdArr    = AsmDataInfo->cmd.cmd;
+    size_t       cmdQuant  = AsmDataInfo->cmd.size;
+
     ASSEMBLER_ASSERT(LabelsCtor(AsmDataInfo));
 
-    size_t cmdPointer = 0;
+    size_t cmdPointer  = 0;
     size_t codePointer = 0;
 
     while(cmdPointer < AsmDataInfo->cmd.size)
@@ -701,7 +765,7 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
         bool        defined  = true;
         size_t      cmdIndex = cmdPointer;
 
-        if (FincDefaultCmd(cmd, &cmdIndex))
+        if (FindDefaultCmd(cmd, &cmdIndex))
         {
             cmdPointer  += DefaultCmd[cmdIndex].argQuant + 1;
             codePointer += DefaultCmd[cmdIndex].codeRecordSize;
@@ -720,6 +784,19 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
 
             err.err = AssemblerErrorType::LABEL_REDEFINE;
             return ASSEMBLER_VERIF(AsmDataInfo, err);
+        }
+
+        if (IsCommentBegin(cmd))
+        {
+            while (!IsCommentEnd(cmd) && cmdPointer < cmdQuant)
+            {
+                cmdPointer++;
+                cmd = cmdArr[cmdPointer];
+            }
+
+            cmdPointer++;
+
+            continue;
         }
 
         err.err = AssemblerErrorType::UNDEFINED_COMMAND;
@@ -857,7 +934,7 @@ static size_t CalcCodeSize(const CmdArr* cmd)
         const char* temp    = cmd->cmd[cmdPointer];
         size_t defCmdPoiner = 0;
 
-        if (FincDefaultCmd(temp, &defCmdPoiner))
+        if (FindDefaultCmd(temp, &defCmdPoiner))
         {
             CmdFunc cmdf           = DefaultCmd[defCmdPoiner];
             size_t  argQuant       = cmdf.argQuant;
@@ -872,7 +949,7 @@ static size_t CalcCodeSize(const CmdArr* cmd)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool FincDefaultCmd(const char* cmd, size_t* defaultCmdPointer)
+static bool FindDefaultCmd(const char* cmd, size_t* defaultCmdPointer)
 {
     assert(cmd);
     assert(defaultCmdPointer);
@@ -1031,6 +1108,26 @@ static bool IsLabel(const char* str)
 {
     assert(str);
     return str[strlen(str) - 1] == ':';
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsCommentBegin(const char* str)
+{
+    assert(str);
+
+    return str[0] == '#';
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsCommentEnd(const char* str)
+{
+    assert(str);
+
+    size_t strLen = strlen(str);
+
+    return str[strLen - 1] == '/';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

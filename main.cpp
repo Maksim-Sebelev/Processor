@@ -1,20 +1,16 @@
-#include "Assembler/Assembler.hpp"
+#include <stdio.h>
 #include "Processor/Processor.hpp"
-#include "ConsoleCmd/ConsoleCmd.hpp"
-
-// #include "Logger/Log.hpp"
+#include "Assembler/Assembler.hpp"
 
 int main()
 {
-    IOfile File = {};
 
-    File.ProgrammFile = "cmd.txt";
-    File.CodeFile     = "code.txt";
+    IOfile file = {};
+    file.CodeFile = "code.txt";
+    file.ProgrammFile = "programm.txt";
 
-    RunAssembler(&File);
-    RunProcessor(&File);
+    RunAssembler(&file);
+    RunProcessor(&file);
 
-    // CallCmd(argc, argv, &File);
-
-    return 0;
+    return EXIT_SUCCESS;
 }

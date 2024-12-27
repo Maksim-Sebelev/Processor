@@ -17,7 +17,10 @@ enum class ProcessorErrorType
     NO_HALT,
     DIVISION_BY_ZERO,
     FREAD_BAD_RETURN,
-
+    RAM_BAD_CALLOC,
+    RAM_BAD_REALLOC,
+    RAM_OVERFLOW,
+    OUT_CHAR_NOT_CHAR,
 };
 
 

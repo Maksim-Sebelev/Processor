@@ -1,0 +1,36 @@
+#=========init register===========/
+
+push 0
+pop ax
+
+#=========init register end======/
+
+
+#========for============/
+
+arman:
+
+push 1
+push ax
+add
+pop ax
+push ax
+push ax
+pop [ax+100]
+push 7263
+
+ja arman:
+
+jmp jmp:
+
+#========for end==========/
+
+
+#========just print=======/
+
+push 777
+outr
+
+jmp:
+
+hlt

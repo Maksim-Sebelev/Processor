@@ -12,8 +12,10 @@ enum Cmd
     sub,
     mul,
     dive,
-    out,
-    outr,
+    out,    // just out int
+    outc,   // out char
+    outr,   // out int and remove it
+    outrc,  // out char and remove it
     jmp,
     ja,
     jae,
@@ -45,7 +47,9 @@ static const CmdInfo CmdInfoArr[] =
     {Cmd::mul,  0, 1},
     {Cmd::dive, 0, 1},
     {Cmd::out,  0, 1},
+    {Cmd::outc, 0, 1},
     {Cmd::outr, 0, 1},
+    {Cmd::outrc,0, 1},
     {Cmd::jmp,  1, 2},
     {Cmd::ja,   1, 2},
     {Cmd::jae,  1, 2},
