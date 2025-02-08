@@ -63,7 +63,7 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
 
 static void         SetCmdArrCodeElem           (AsmData* AsmDataInfo, int SetElem);
 static const char*  GetNextCmd                  (AsmData* AsmDataInfo);
-static void UpdateBufferForMemory(const char** buffer, size_t* bufferSize);
+static void         UpdateBufferForMemory       (const char** buffer, size_t* bufferSize);
 
 static const char* GetCmdName(size_t cmdPointer);
 
@@ -395,7 +395,6 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
     SetCmdArrCodeElem(AsmDataInfo, GetPushArg(&Push));
     SetCmdArrCodeElem(AsmDataInfo, SetElem);
     SetCmdArrCodeElem(AsmDataInfo, Sum);
-
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }

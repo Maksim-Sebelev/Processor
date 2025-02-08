@@ -36,12 +36,12 @@ void RunAssembler        (const IOfile* file);
 
 void AssemblerAssertPrint(AssemblerErr* err, const char* file, int line, const char* func);
 
-#define ASSEMBLER_ASSERT(Err) do                                  \
+#define ASSEMBLER_ASSERT(Err) do                                 \
 {                                                                 \
     AssemblerErr ErrCopy = Err;                                    \
     if (ErrCopy.err != AssemblerErrorType::NO_ERR)                  \
     {                                                                \
-        AssemblerAssertPrint(&ErrCopy, __FILE__, __LINE__, __func__);  \
+        AssemblerAssertPrint(&ErrCopy, __FILE__, __LINE__, __func__); \
         abort();                                                       \
     }                                                                   \
 } while (0)                                                              \

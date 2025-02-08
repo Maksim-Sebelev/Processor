@@ -13,9 +13,9 @@ SOURCES = main.cpp				  \
 
 
 OBJECTS = $(SOURCES:.cpp=.o)
-HEADERS = $(SOURCES:.cpp=.h)
+HEADERS = $(SOURCES:.cpp=.h)* 
 
-TARGET = main.exe
+TARGET = main
 
 all: $(SOURCES) $(TARGET)
 
@@ -28,7 +28,7 @@ $(TARGET): $(OBJECTS)
 
 clean:
 	rm -rf *.o
-	rm -rf *.exe 
+	rm -rf $(TARGET)
 	rm -rf Assembler/*.o
 	rm -rf Assembler/*.o
 	rm -rf Common/*.o

@@ -19,7 +19,7 @@ push ax
 pop [ax+100]
 push 7263
 
-ja arman:
+ja arman:   #хуй пизда говно/
 
 jmp jmp:
 
