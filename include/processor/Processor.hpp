@@ -2,8 +2,8 @@
 #define PROCESSOR_H
 
 #include <stdio.h>
-#include "../Stack/Stack.hpp"
-#include "../Common/GlobalInclude.hpp"
+#include "stack/Stack.hpp"
+#include "common/GlobalInclude.hpp"
 
 
 enum class ProcessorErrorType

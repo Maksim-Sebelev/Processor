@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-#include "../Common/GlobalInclude.hpp"
+#include "common/GlobalInclude.hpp"
 
 
 enum class AssemblerErrorType

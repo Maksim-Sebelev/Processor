@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <limits.h>
 #include <assert.h>
-#include "Processor.hpp"
-#include "../Stack/Stack.hpp"
-#include "../Common/GlobalInclude.hpp"
-#include "../Onegin/Onegin.hpp"
+#include "processor/Processor.hpp"
+#include "processor/stack/Stack.hpp"
+#include "common/GlobalInclude.hpp"
+#include "onegin/Onegin.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

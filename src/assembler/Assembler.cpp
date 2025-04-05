@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <malloc.h>
-#include "Assembler.hpp"
-#include "../Onegin/Onegin.hpp"
-#include "../Stack/Stack.hpp"
+#include "assembler/Assembler.hpp"
+#include "onegin/Onegin.hpp"
+#include "processor/stack/Stack.hpp"
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -63,7 +63,7 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
 
 static void         SetCmdArrCodeElem           (AsmData* AsmDataInfo, int SetElem);
 static const char*  GetNextCmd                  (AsmData* AsmDataInfo);
-static void         UpdateBufferForMemory       (const char** buffer, size_t* bufferSize);
+static void UpdateBufferForMemory(const char** buffer, size_t* bufferSize);
 
 static const char* GetCmdName(size_t cmdPointer);
 
@@ -146,24 +146,24 @@ struct CmdFunc
 
 static const CmdFunc DefaultCmd[] =
 {
-    {"push" ,  HandlePush , CmdInfoArr[push ].argQuant, CmdInfoArr[push ].codeRecordSize},
-    {"pop"  ,  HandlePop  , CmdInfoArr[pop  ].argQuant, CmdInfoArr[pop  ].codeRecordSize},
-    {"jmp"  ,  HandleJmp  , CmdInfoArr[jmp  ].argQuant, CmdInfoArr[jmp  ].codeRecordSize},
-    {"ja"   ,  HandleJa   , CmdInfoArr[ja   ].argQuant, CmdInfoArr[ja   ].codeRecordSize},
-    {"jae"  ,  HandleJae  , CmdInfoArr[jae  ].argQuant, CmdInfoArr[jae  ].codeRecordSize},
-    {"jb"   ,  HandleJb   , CmdInfoArr[jb   ].argQuant, CmdInfoArr[jb   ].codeRecordSize},
-    {"jbe"  ,  HandleJbe  , CmdInfoArr[jbe  ].argQuant, CmdInfoArr[jbe  ].codeRecordSize},
-    {"je"   ,  HandleJe   , CmdInfoArr[je   ].argQuant, CmdInfoArr[je   ].codeRecordSize},
-    {"jne"  ,  HandleJne  , CmdInfoArr[jne  ].argQuant, CmdInfoArr[jne  ].codeRecordSize},
-    {"add"  ,  HandleAdd  , CmdInfoArr[add  ].argQuant, CmdInfoArr[add  ].codeRecordSize},
-    {"sub"  ,  HandleSub  , CmdInfoArr[sub  ].argQuant, CmdInfoArr[sub  ].codeRecordSize},
-    {"mul"  ,  HandleMul  , CmdInfoArr[mul  ].argQuant, CmdInfoArr[mul  ].codeRecordSize},
-    {"div"  ,  HandleDiv  , CmdInfoArr[dive ].argQuant, CmdInfoArr[dive ].codeRecordSize},
-    {"out"  ,  HandleOut  , CmdInfoArr[out  ].argQuant, CmdInfoArr[out  ].codeRecordSize},
-    {"outc" ,  HandleOutc , CmdInfoArr[outc ].argQuant, CmdInfoArr[outc ].codeRecordSize},
-    {"outr" ,  HandleOutr , CmdInfoArr[outr ].argQuant, CmdInfoArr[outr ].codeRecordSize},
-    {"outrc",  HandleOutrc, CmdInfoArr[outrc].argQuant, CmdInfoArr[outrc].codeRecordSize},
-    {"hlt"  ,  HandleHlt  , CmdInfoArr[hlt  ].argQuant, CmdInfoArr[hlt  ].codeRecordSize},
+    {"push" ,  HandlePush , CmdInfoArr[ push  ].argQuant, CmdInfoArr[ push  ].codeRecordSize},
+    {"pop"  ,  HandlePop  , CmdInfoArr[ pop   ].argQuant, CmdInfoArr[ pop   ].codeRecordSize},
+    {"jmp"  ,  HandleJmp  , CmdInfoArr[ jmp   ].argQuant, CmdInfoArr[ jmp   ].codeRecordSize},
+    {"ja"   ,  HandleJa   , CmdInfoArr[ ja    ].argQuant, CmdInfoArr[ ja    ].codeRecordSize},
+    {"jae"  ,  HandleJae  , CmdInfoArr[ jae   ].argQuant, CmdInfoArr[ jae   ].codeRecordSize},
+    {"jb"   ,  HandleJb   , CmdInfoArr[ jb    ].argQuant, CmdInfoArr[ jb    ].codeRecordSize},
+    {"jbe"  ,  HandleJbe  , CmdInfoArr[ jbe   ].argQuant, CmdInfoArr[ jbe   ].codeRecordSize},
+    {"je"   ,  HandleJe   , CmdInfoArr[ je    ].argQuant, CmdInfoArr[ je    ].codeRecordSize},
+    {"jne"  ,  HandleJne  , CmdInfoArr[ jne   ].argQuant, CmdInfoArr[ jne   ].codeRecordSize},
+    {"add"  ,  HandleAdd  , CmdInfoArr[ add   ].argQuant, CmdInfoArr[ add   ].codeRecordSize},
+    {"sub"  ,  HandleSub  , CmdInfoArr[ sub   ].argQuant, CmdInfoArr[ sub   ].codeRecordSize},
+    {"mul"  ,  HandleMul  , CmdInfoArr[ mul   ].argQuant, CmdInfoArr[ mul   ].codeRecordSize},
+    {"div"  ,  HandleDiv  , CmdInfoArr[ dive  ].argQuant, CmdInfoArr[ dive  ].codeRecordSize},
+    {"out"  ,  HandleOut  , CmdInfoArr[ out   ].argQuant, CmdInfoArr[ out   ].codeRecordSize},
+    {"outc" ,  HandleOutc , CmdInfoArr[ outc  ].argQuant, CmdInfoArr[ outc  ].codeRecordSize},
+    {"outr" ,  HandleOutr , CmdInfoArr[ outr  ].argQuant, CmdInfoArr[ outr  ].codeRecordSize},
+    {"outrc",  HandleOutrc, CmdInfoArr[ outrc ].argQuant, CmdInfoArr[ outrc ].codeRecordSize},
+    {"hlt"  ,  HandleHlt  , CmdInfoArr[ hlt   ].argQuant, CmdInfoArr[ hlt   ].codeRecordSize},
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -190,8 +190,6 @@ void RunAssembler(const IOfile* file)
     assert(file->CodeFile);
 
     AsmData AsmDataInfo = {};
-
-    // COLOR_PRINT(CYAN, "wtf?\n");
 
     ASSEMBLER_ASSERT(AsmDataCtor         (&AsmDataInfo, file));
     ASSEMBLER_ASSERT(InitAllLabels       (&AsmDataInfo));
@@ -395,6 +393,7 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
     SetCmdArrCodeElem(AsmDataInfo, GetPushArg(&Push));
     SetCmdArrCodeElem(AsmDataInfo, SetElem);
     SetCmdArrCodeElem(AsmDataInfo, Sum);
+
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }

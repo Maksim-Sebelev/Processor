@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <assert.h>
-#include "Stack.hpp"
-#include "Hash.hpp"
-#include "../Common/ColorPrint.hpp"
+#include "processor/stack/Stack.hpp"
+#include "processor/stack/Hash.hpp"
+#include "common/ColorPrint.hpp"
 
 static const size_t MinCapacity = 1<<3;
 static const size_t MaxCapacity = 1<<21;
@@ -47,12 +47,12 @@ static StackErrorType PopRealloc   (Stack_t* stack);
 
 ON_STACK_DATA_CANARY
 (
-static DataCanary_t GetLeftDataCanary    (const Stack_t* stack);
-static DataCanary_t GetRightDataCanary   (const Stack_t* stack);
-static void         SetLeftDataCanary    (Stack_t* stack);
-static void         SetRightDataCanary   (Stack_t* stack);
-static StackErrorType    MoveDataToLeftCanary (Stack_t* stack);
-static StackErrorType    MoveDataToFirstElem  (Stack_t* stack);
+static DataCanary_t   GetLeftDataCanary    (const Stack_t* stack);
+static DataCanary_t   GetRightDataCanary   (const Stack_t* stack);
+static void           SetLeftDataCanary    (Stack_t* stack);
+static void           SetRightDataCanary   (Stack_t* stack);
+static StackErrorType MoveDataToLeftCanary (Stack_t* stack);
+static StackErrorType MoveDataToFirstElem  (Stack_t* stack);
 )
 
 ON_STACK_DATA_HASH

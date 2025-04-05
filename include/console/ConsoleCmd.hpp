@@ -1,5 +1,4 @@
-// #ifndef CONSOLE_CMD_H
-// #define CONSOLE_CMD_H
+// #ifndef CONSOLE_CMD_H// #define CONSOLE_CMD_H
 
 // #include "../Assembler/Compiler.h"
 

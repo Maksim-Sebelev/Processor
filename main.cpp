@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "Processor/Processor.hpp"
-#include "Assembler/Assembler.hpp"
+#include "processor/Processor.hpp"
+#include "assembler/Assembler.hpp"
 
 int main()
 {
