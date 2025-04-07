@@ -1,28 +1,3 @@
-#------------------------------------------------------------------------------
-#
-# Makefile, approach 3
-# * implicit rule for first dependency not for all
-# * dependency gather filtered
-# * pattern substitution
-#
-#------------------------------------------------------------------------------
-#
-# This file is licensed after LGPL v3
-# Look at: https://www.gnu.org/licenses/lgpl-3.0.en.html for details
-#
-#------------------------------------------------------------------------------
-
-# make OUT_O_DIR=debug CC=clang CFLAGS="-g -O0" -f makefile.v3.mak
-# make -f makefile.v3.mak
-# touch include/cache.h
-# make -f makefile.v3.mak
-# make OUT_O_DIR=debug -f makefile.v3.mak
-# make -f makefile.v3.mak testrun
-# make -f makefile.v3.mak testrun -j4
-# make OUT_O_DIR=debug -f makefile.v3.mak testrun -j4
-# make OUT_O_DIR=debug -f makefile.v3.mak clean
-# make -f makefile.v3.mak clean
-
 ifeq ($(origin CC),default)
   CC = g++
 endif
