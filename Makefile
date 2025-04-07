@@ -15,7 +15,7 @@ override CFLAGS += $(COMMONINC)
 
 CSRC =  main.cpp 					 \
 		src/assembler/assembler.cpp   \
-		src/onegin/onegin.cpp          \
+		src/fileread/fileread.cpp      \
 		src/processor/processor.cpp     \
 		src/stack/stack.cpp 			 \
 		src/lib/lib.cpp  			      \

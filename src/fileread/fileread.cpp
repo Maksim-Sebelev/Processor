@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include "onegin/onegin.hpp"
+#include "fileread/fileread.hpp"
 
 static void   SetWord          (const char** split_buffer, size_t* word_i, const char* SetWord);
 static bool   IsPassSymbol     (const char c);
