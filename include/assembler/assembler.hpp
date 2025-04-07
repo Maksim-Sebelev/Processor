@@ -2,9 +2,8 @@
 #define ASSEMBLER_H
 
 
-#include <stdio.h>
-
-#include "common/GlobalInclude.hpp"
+#include "common/globalInclude.hpp"
+#include "lib/lib.hpp"
 
 
 enum class AssemblerErrorType

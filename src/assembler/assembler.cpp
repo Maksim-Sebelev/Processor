@@ -1,11 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
-#include <malloc.h>
-#include "assembler/Assembler.hpp"
-#include "onegin/Onegin.hpp"
-#include "processor/stack/Stack.hpp"
+#include "assembler/assembler.hpp"
+#include "onegin/onegin.hpp"
+#include "common/globalInclude.hpp"
+#include "lib/colorPrint.hpp"
+#include "stack/stack.hpp"
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

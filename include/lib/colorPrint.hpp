@@ -1,7 +1,12 @@
 #ifndef COLOR_PRINT_H
 #define COLOR_PRINT_H
 
+#ifndef _STDIO_H
+
 #include <stdio.h>
+
+#endif //_STDIO_H
+
 
 #define WHITE   "\e[0;37m"
 #define BLUE    "\e[0;34m"
@@ -19,4 +24,4 @@
     printf(RESET);                      \
 } while (0)                              \
 
-#endif
+#endif //COLOR_PRINT_H

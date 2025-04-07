@@ -1,10 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <limits.h>
 #include <assert.h>
-#include "processor/Processor.hpp"
-#include "processor/stack/Stack.hpp"
-#include "common/GlobalInclude.hpp"
-#include "onegin/Onegin.hpp"
+#include "processor/processor.hpp"
+#include "stack/stack.hpp"
+#include "common/globalInclude.hpp"
+#include "lib/colorPrint.hpp"
+#include "lib/lib.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -287,7 +289,7 @@ static ProcessorErr HandleAdd(SPU* spu)
 {
     assert(spu);
 
-    return ArithmeticCmdPattern(spu, plus);
+    return ArithmeticCmdPattern(spu, ArithmeticOperator::plus);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -295,7 +297,7 @@ static ProcessorErr HandleAdd(SPU* spu)
 static ProcessorErr HandleSub(SPU* spu)
 {   
     assert(spu);
-    return ArithmeticCmdPattern(spu, minus);;
+    return ArithmeticCmdPattern(spu, ArithmeticOperator::minus);;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -303,7 +305,7 @@ static ProcessorErr HandleSub(SPU* spu)
 static ProcessorErr HandleMul(SPU* spu)
 {
     assert(spu);
-    return ArithmeticCmdPattern(spu, multiplication);
+    return ArithmeticCmdPattern(spu, ArithmeticOperator::multiplication);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -311,7 +313,7 @@ static ProcessorErr HandleMul(SPU* spu)
 static ProcessorErr HandleDiv(SPU* spu)
 {
     assert(spu);
-    return ArithmeticCmdPattern(spu, division);
+    return ArithmeticCmdPattern(spu, ArithmeticOperator::division);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -319,7 +321,7 @@ static ProcessorErr HandleDiv(SPU* spu)
 static ProcessorErr HandleJmp(SPU* spu)
 {
     assert(spu);
-    return JumpsCmdPatter(spu, always_true);
+    return JumpsCmdPatter(spu, ComparisonOperator::always_true);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -327,7 +329,7 @@ static ProcessorErr HandleJmp(SPU* spu)
 static ProcessorErr HandleJa(SPU* spu)
 {
     assert(spu);
-    return JumpsCmdPatter(spu, above);
+    return JumpsCmdPatter(spu, ComparisonOperator::above);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -335,7 +337,7 @@ static ProcessorErr HandleJa(SPU* spu)
 static ProcessorErr HandleJae(SPU* spu)
 {
     assert(spu);
-    return JumpsCmdPatter(spu, above_or_equal);
+    return JumpsCmdPatter(spu, ComparisonOperator::above_or_equal);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -343,7 +345,7 @@ static ProcessorErr HandleJae(SPU* spu)
 static ProcessorErr HandleJb(SPU* spu)
 {
     assert(spu);
-    return JumpsCmdPatter(spu, bellow);
+    return JumpsCmdPatter(spu, ComparisonOperator::bellow);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -351,7 +353,7 @@ static ProcessorErr HandleJb(SPU* spu)
 static ProcessorErr HandleJbe(SPU* spu)
 {
     assert(spu);
-    return JumpsCmdPatter(spu, bellow_or_equal);
+    return JumpsCmdPatter(spu, ComparisonOperator::bellow_or_equal);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -359,7 +361,7 @@ static ProcessorErr HandleJbe(SPU* spu)
 static ProcessorErr HandleJe(SPU* spu)
 {
     assert(spu);
-    return JumpsCmdPatter(spu, equal);
+    return JumpsCmdPatter(spu, ComparisonOperator::equal);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -367,7 +369,7 @@ static ProcessorErr HandleJe(SPU* spu)
 static ProcessorErr HandleJne(SPU* spu)
 {
     assert(spu);
-    return JumpsCmdPatter(spu, not_equal);
+    return JumpsCmdPatter(spu, ComparisonOperator::not_equal);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

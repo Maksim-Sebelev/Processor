@@ -1,8 +1,8 @@
 #ifndef ONEGIN_H
 #define ONEGIN_H
 
+
 #include <stdio.h>
-#include <malloc.h>
 
 
 const char** ReadFile    (const char*  file, size_t* bufSize);

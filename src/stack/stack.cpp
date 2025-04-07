@@ -1,9 +1,11 @@
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <assert.h>
-#include "processor/stack/Stack.hpp"
-#include "processor/stack/Hash.hpp"
-#include "common/ColorPrint.hpp"
+#include "stack/stack.hpp"
+#include "lib/colorPrint.hpp"
+#include "lib/lib.hpp"
+#include "common/globalInclude.hpp"
 
 static const size_t MinCapacity = 1<<3;
 static const size_t MaxCapacity = 1<<21;
@@ -66,7 +68,6 @@ static uint64_t CalcStackHash (Stack_t* stack);
 
 static StackErrorType Verif       (Stack_t* stack, StackErrorType* Error ON_STACK_DEBUG(, const char* file, int line, const char* func));
 static void      PrintError  (StackErrorType Error);
-static void      PrintPlace  (const char* file, int line, const char* Function);
 ON_STACK_DEBUG
 (
 static void      ErrPlaceCtor (StackErrorType* err, const char* file, int line, const char* func);
@@ -951,14 +952,6 @@ static void ErrPlaceCtor (StackErrorType* err, const char* file, int line, const
     return;
 }
 )
-
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void PrintPlace(const char* file, int line, const char* Function)
-{
-    COLOR_PRINT(WHITE, "file [%s]\nLine [%d]\nFunc [%s]\n", file, line, Function);
-    return;
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

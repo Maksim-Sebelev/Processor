@@ -1,6 +1,7 @@
-#include <stdio.h>
-#include "processor/Processor.hpp"
-#include "assembler/Assembler.hpp"
+#include <stdlib.h>
+#include "processor/processor.hpp"
+#include "assembler/assembler.hpp"
+#include "common/globalInclude.hpp"
 
 int main()
 {

@@ -1,26 +1,25 @@
 #ifndef PROCESSOR_H
 #define PROCESSOR_H
 
-#include <stdio.h>
-#include "stack/Stack.hpp"
-#include "common/GlobalInclude.hpp"
+#include "common/globalInclude.hpp"
+#include "lib/colorPrint.hpp"
+#include "lib/lib.hpp"
 
-
-enum class ProcessorErrorType
+enum ProcessorErrorType : int
 {
-    NO_ERR,
-    INVALID_CMD,
-    SPU_CODE_CALLOC_NULL,
-    SPU_RAM_CALLOC_NULL,
-    FAILED_READ_FILE_LEN,
-    FAILED_OPEN_CODE_FILE,
-    NO_HALT,
-    DIVISION_BY_ZERO,
-    FREAD_BAD_RETURN,
-    RAM_BAD_CALLOC,
-    RAM_BAD_REALLOC,
-    RAM_OVERFLOW,
-    OUT_CHAR_NOT_CHAR,
+    NO_ERR                ,
+    INVALID_CMD           ,
+    SPU_CODE_CALLOC_NULL  ,
+    SPU_RAM_CALLOC_NULL   ,
+    FAILED_READ_FILE_LEN  ,
+    FAILED_OPEN_CODE_FILE ,
+    NO_HALT               ,
+    DIVISION_BY_ZERO      ,
+    FREAD_BAD_RETURN      ,
+    RAM_BAD_CALLOC        ,
+    RAM_BAD_REALLOC       ,
+    RAM_OVERFLOW          ,
+    OUT_CHAR_NOT_CHAR     ,
 };
 
 

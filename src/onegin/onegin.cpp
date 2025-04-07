@@ -1,10 +1,9 @@
 #include <stdio.h>
-#include <malloc.h>
 #include <sys/stat.h>
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include "onegin/Onegin.hpp"
+#include "onegin/onegin.hpp"
 
 static void   SetWord          (const char** split_buffer, size_t* word_i, const char* SetWord);
 static bool   IsPassSymbol     (const char c);
