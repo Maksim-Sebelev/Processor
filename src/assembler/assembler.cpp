@@ -307,16 +307,6 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
         fprintf(codeFile, "%d ", AsmDataInfo->code.code[i]);
     }
 
-
-    // size_t fwriteReturn = fwrite(AsmDataInfo->code.code, sizeof(int), codeArrSize, codeFile);
-    // fclose(codeFile);
-
-    // if (fwriteReturn != codeArrSize)
-    // {
-    //     err.err = AssemblerErrorType::FWRITE_BAD_RETURN;
-    //     return ASSEMBLER_VERIF(AsmDataInfo, err);
-    // }
-
     fclose(codeFile);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
@@ -1217,7 +1207,6 @@ static void PrintError(AssemblerErr* err)
             COLOR_PRINT(RED, "Error: invalid input after pop.\n");
             break;
 
-        
         case AssemblerErrorType::UNDEFINED_COMMAND:
             COLOR_PRINT(RED, "Error: undefined command.\n");
             break;
