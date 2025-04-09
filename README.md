@@ -124,13 +124,19 @@ make ASM_DIR=<your_rep> BIN_DIR=<your_rep> ASM_FILE=<your_file> BIN_FILE=<your_f
 
   примеры:
   `jmp loop:`
+
    `push 1`
+  
    `loop:` - пропустит команду push 1.
 
    `push 1`
+
    `push 2`
+
    `ja loop:`
+
    `push 3`
+
    `loop:` - пропустит команду push 3.
 
    `push 2`
