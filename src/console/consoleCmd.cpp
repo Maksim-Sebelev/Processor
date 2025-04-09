@@ -1,151 +1,138 @@
-// #include <stdio.h>
-// #include <string.h>
-// #include <malloc.h>
-// #include "ConsoleCmd.hpp"
-// #include "../Assembler2/Assembler.hpp"
-// #include "../Processor/Processor.hpp"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+#include "console/consoleCmd.hpp"
+#include "assembler/assembler.hpp"
+#include "processor/processor.hpp"
 
-// static  ConsoleCmdErrorType  Verif         (ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
-// static  void                 PrintError    (ConsoleCmdErrorType* Err);
-// static  void                 ErrPlaceCtor  (ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
-// static  void                 PrintPlace    (const char* File, int Line, const char* Func);
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// ConsoleCmdErrorType (*ConsoleCmd[]) (const int, const char**, size_t, IOfile*) = 
-// {
-//     CompileCmd,
-//     RunCodeCmd
-// };
+static ConsoleCmdErr Verif      (ConsoleCmdErr* err, const char* file, int Line, const char* func);
+static void          PrintError (ConsoleCmdErr* err);
 
-// const size_t CmdQuant = sizeof(ConsoleCmd)/sizeof(ConsoleCmd[0]);
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+ConsoleCmdErr (*ConsoleCmd[]) (const int, const char**, size_t) = 
+{
+    CompileCmd,
+    RunCodeCmd
+};
 
-// void CallCmd(const int argc, const char** argv, IOfile* File)
-// {
-//     for (size_t argv_i = 1; (int) argv_i < argc; argv_i++)
-//     {
-//         for (size_t cmd_i = 0; cmd_i < CmdQuant; cmd_i++)
-//         {
-//             CONSOLE_ASSERT((*ConsoleCmd[cmd_i]) (argc, argv, argv_i, File));
-//         }
-//     }
-//     return;
-// }
+const size_t CmdQuant = sizeof(ConsoleCmd) / sizeof(ConsoleCmd[0]);
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, size_t argv_i, IOfile* File)
-// {
-//     ConsoleCmdErrorType Err = {};
+void CallCmd(const int argc, const char** argv)
+{
+    assert(argv);
+    assert(*argv);
 
-//     if (strcmp(argv[argv_i], "-compile") == 0)
-//     {
-//         if (argc - 1 < (int) argv_i + 2)
-//         {
-//             Err.NoInputAfterCompile = 1;
-//             Err.IsFatalError = 1;
-//             return VERIF(Err);
-//         }
+    for (size_t argv_i = 1; (int) argv_i < argc; argv_i++)
+    {
+        for (size_t cmd_i = 0; cmd_i < CmdQuant; cmd_i++)
+        {
+            ConsoleCmdErr  err = (*ConsoleCmd[cmd_i]) (argc, argv, argv_i); 
+            CONSOLE_ASSERT(err);
+        }
+    }
+    return;
+}
 
-//         File->ProgrammFile = argv[argv_i + 1];
-//         File->CodeFile     = argv[argv_i + 2];
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-//         COMPILER_ASSERT(RunAssembler(File->ProgrammFile, File->ProgrammFile));
-//     }
+ConsoleCmdErr CompileCmd(const int argc, const char** argv, size_t argv_i)
+{
+    assert(argv);
+    assert(*argv);
 
-//     return VERIF(Err);
-// }
+    ConsoleCmdErr err = {};
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+    if (strcmp(argv[argv_i], "-compile") == 0)
+    {
+        if (argc - 1 < (int) argv_i + 2)
+        {
+            err.err = ConsoleCmdErrorType::NO_INPUT_AFTER_COMPILE;
+            return VERIF(err);
+        }
 
-// ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, size_t argv_i, IOfile* File)
-// {
-//     ConsoleCmdErrorType Err = {};
-//     if (strcmp(argv[argv_i], "-run") == 0)
-//     {
-//         if  (argc - 1 < (int) argv_i + 1)
-//         {
-//             Err.NoInputAfterRun = 1;
-//             Err.IsFatalError = 1;
-//             return VERIF(Err);
-//         }
+        IOfile file = {};
+    
+        file.ProgrammFile = argv[argv_i + 1];
+        file.CodeFile     = argv[argv_i + 2];
 
-//         File->CodeFile = argv[argv_i + 1];
+        RunAssembler(&file);
+    }
 
-//         SPU Spu = {};
-//         PROCESSOR_ASSERT(SpuCtor(&Spu, File));
-//         PROCESSOR_ASSERT(ReadCodeFromFile(&Spu, File));
-//         PROCESSOR_ASSERT(RunProcessor(&Spu));
-//         PROCESSOR_ASSERT(SpuDtor(&Spu));
-//     }
-//     return VERIF(Err);
-// }
+    return VERIF(err);
+}
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// void ConsoleCmdAssertPrint(ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func)
-// {
-//     COLOR_PRINT(RED, "Assert made in:\n");
-//     PrintPlace(File, Line, Func);
-//     PrintError(Err);
-//     PrintPlace(Err->Place.File, Err->Place.Line, Err->Place.Func);
-//     printf("\n");
-//     return;
-// }
+ConsoleCmdErr RunCodeCmd(const int argc, const char** argv, size_t argv_i)
+{
+    assert(argv);
+    assert(*argv);
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+    ConsoleCmdErr err = {};
+    if (strcmp(argv[argv_i], "-run") == 0)
+    {
+        if  (argc - 1 < (int) argv_i + 1)
+        {
+            err.err = ConsoleCmdErrorType::NO_INPUT_AFTER_RUN;
+            return VERIF(err);
+        }
 
-// static void ErrPlaceCtor(ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func)
-// {
-//     Err->Place.File = File;
-//     Err->Place.Line = Line;
-//     Err->Place.Func = Func;
-//     return;
-// }
+        IOfile file   = {};
+        file.CodeFile = argv[argv_i + 1];
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+        RunProcessor(&file);
+    }
+    return VERIF(err);
+}
 
-// static void PrintPlace(const char* File, int Line, const char* Func)
-// {
-//     COLOR_PRINT(WHITE, "File [%s]\n", File);
-//     COLOR_PRINT(WHITE, "Line [%d]\n", Line);
-//     COLOR_PRINT(WHITE, "Func [%s]\n", Func);
-//     return;
-// }
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+void ConsoleCmdAssertPrint(ConsoleCmdErr* err, const char* file, int Line, const char* func)
+{
+    assert(err);
+    assert(file);
+    assert(func);
 
-// static void PrintError(ConsoleCmdErrorType* Err)
-// {
-//     if (Err->IsFatalError == 0)
-//     {
-//         return;
-//     }
+    COLOR_PRINT(RED, "Assert made in:\n");
+    PrintPlace(file, Line, func);
+    PrintError(err);
+    PrintPlace(err->place.file, err->place.line, err->place.func);
+    printf("\n");
+    return;
+}
 
-//     if (Err->InvalidInpurAfterCompile == 1)
-//     {
-//         COLOR_PRINT(RED, "Error: Incorrest input format.\n");
-//     }
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-//     if (Err->NoInputAfterCompile == 1)
-//     {
-//         COLOR_PRINT(RED, "Error: No input.\n");
-//     }
+static void PrintError(ConsoleCmdErr* err)
+{
+    assert(err);
 
-//     if (Err->NoInputAfterRun)
-//     {
-//         COLOR_PRINT(RED, "Error: No input.\n");
-//     }
+    ConsoleCmdErrorType errType = err->err;
 
-//     return;
-// }
+    switch (errType)
+    {
+        case ConsoleCmdErrorType::NO_ERR_CONSOLE:                       return;                                                            break;
+        case ConsoleCmdErrorType::INVALID_INPUT_AFTER_COMPILE:  COLOR_PRINT(RED,  "Error: Incorrect input after \"-compile\".\n"); break;
+        case ConsoleCmdErrorType::NO_INPUT_AFTER_COMPILE:       COLOR_PRINT(RED,  "Error: No input after \"-compile\".\n");        break;
+        case ConsoleCmdErrorType::NO_INPUT_AFTER_RUN:           COLOR_PRINT(RED,  "Error: No input after \"-run\".\n");            break;
+        default:                                                assert     (0 &&  "undef console cmd error type");                 break;
+    }
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+    return;
+}
 
-// static ConsoleCmdErrorType Verif(ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func)
-// {
-//     ErrPlaceCtor(Err, File, Line, Func);
-//     return *Err;
-// }
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// //--------------------------------------------------------------------------------------------------------------------------------------------------
+static ConsoleCmdErr Verif(ConsoleCmdErr* err, const char* file, int Line, const char* func)
+{
+    CodePlaceCtor(&err->place, file, Line, func);
+    return *err;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

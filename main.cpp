@@ -1,17 +1,8 @@
-#include <stdlib.h>
-#include "processor/processor.hpp"
-#include "assembler/assembler.hpp"
-#include "common/globalInclude.hpp"
+#include "console/consoleCmd.hpp"
 
-int main()
+int main(const int argc, const char** argv)
 {
-
-    IOfile file = {};
-    file.CodeFile = "code.txt";
-    file.ProgrammFile = "programm.txt";
-
-    RunAssembler(&file);
-    RunProcessor(&file);
+    CallCmd(argc, argv);
 
     return EXIT_SUCCESS;
 }

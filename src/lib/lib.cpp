@@ -4,7 +4,19 @@
 
 //--------------------------------------------------------------------------------------------------------------------------------------
 
-void PrintPlace(const char* const file, const int line, const char* const func)
+void PrintPlaceStruct(CodePlace* place)
+{
+    assert(place);
+    assert(place->file);
+    assert(place->func);
+
+    printf("File [%s]\nLine [%d]\nFunc [%s]\n", place->file, place->line, place->func);
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void PrintPlace(const char* file, const int line , const char* func)
 {
     assert(file);
     assert(func);

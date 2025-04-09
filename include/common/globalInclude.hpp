@@ -10,25 +10,25 @@
 
 enum Cmd : int
 {
-    hlt = 0,
-    push,
-    pop,
-    add,
-    sub,
-    mul,
-    dive,
-    out,    // just out int
-    outc,   // out char
-    outr,   // out int and remove it
-    outrc,  // out char and remove it
-    jmp,
-    ja,
-    jae,
-    jb,
-    jbe,
-    je,
-    jne,
-    CMD_QUANT // count
+    hlt = 0    ,
+    push       ,
+    pop        ,
+    add        ,
+    sub        ,
+    mul        ,
+    dive       ,
+    out        ,  // just out int
+    outc       ,  // out char
+    outr       ,  // out int and remove it
+    outrc      ,  // out char and remove it
+    jmp        ,
+    ja         ,
+    jae        ,
+    jb         ,
+    jbe        ,
+    je         ,
+    jne        ,
+    CMD_QUANT  , // count
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -44,24 +44,24 @@ struct CmdInfo
 
 static const CmdInfo CmdInfoArr[] = 
 {
-    {Cmd::hlt,  .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::push, .argQuant = 1, .codeRecordSize = 4},
-    {Cmd::pop,  .argQuant = 1, .codeRecordSize = 4},
-    {Cmd::add,  .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::sub,  .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::mul,  .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::dive, .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::out,  .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::outc, .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::outr, .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::outrc,.argQuant = 0, .codeRecordSize = 1},
-    {Cmd::jmp,  .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::ja,   .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jae,  .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jb,   .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jbe,  .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::je,   .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jne,  .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::hlt,   .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::push,  .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::pop,   .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::add,   .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::sub,   .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::mul,   .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::dive,  .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::out,   .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::outc,  .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::outr,  .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::outrc, .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::jmp,   .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::ja,    .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jae,   .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jb,    .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jbe,   .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::je,    .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jne,   .argQuant = 1, .codeRecordSize = 2},
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ static const size_t CmdInfoArrSize = sizeof(CmdInfoArr) / sizeof(CmdInfoArr[0]);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// static_assert((Cmd::CMD_QUANT == (int) CmdInfoArrSize), "You forgot about some Cmd in CmdInfoArr");
+static_assert((Cmd::CMD_QUANT == (int) CmdInfoArrSize), "You forgot about some Cmd in CmdInfoArr");
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ enum Registers
     cx,
     dx,
     REGISTERS_QUANT, // Count
-    REGISTERS_NAME_LEN = 2,
+    REGISTERS_NAME_LEN = 2, // in my assebler-standart all registers must have the same name's lenght
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

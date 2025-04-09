@@ -1,46 +1,56 @@
-// #ifndef CONSOLE_CMD_H// #define CONSOLE_CMD_H
+#ifndef CONSOLE_CMD_H
+#define CONSOLE_CMD_H
 
-// #include "../Assembler/Compiler.h"
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// struct ConsolePlace
-// {
-//     const char* File;
-//     int         Line;
-//     const char* Func;;
-// };
+#include <stdlib.h>
+#include "common/globalInclude.hpp"
+#include "lib/lib.hpp"
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// struct ConsoleCmdErrorType
-// {
-//     ConsolePlace Place;
-//     unsigned char IsFatalError             : 1;
+enum ConsoleCmdErrorType : int
+{
+    NO_ERR_CONSOLE = 0          ,
+    NO_INPUT_AFTER_COMPILE      ,
+    INVALID_INPUT_AFTER_COMPILE ,
+    NO_INPUT_AFTER_RUN          ,
+};
 
-//     unsigned char NoInputAfterCompile      : 1;
-//     unsigned char InvalidInpurAfterCompile : 1;    
-//     unsigned char NoInputAfterRun          : 1;
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// };
+struct ConsoleCmdErr
+{
+    CodePlace           place;
+    ConsoleCmdErrorType err;
+};
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// void CallCmd(const int argc, const char** argv, IOfile* File);
-// ConsoleCmdErrorType CompileCmd(const int argc, const char** argv, size_t argv_i, IOfile* File);
-// ConsoleCmdErrorType RunCodeCmd(const int argc, const char** argv, size_t argv_i, IOfile* File);
+void          CallCmd      (const int argc, const char** argv);
+ConsoleCmdErr CompileCmd   (const int argc, const char** argv, size_t argv_i);
+ConsoleCmdErr RunCodeCmd   (const int argc, const char** argv, size_t argv_i);
 
-// void ConsoleCmdAssertPrint(ConsoleCmdErrorType* Err, const char* File, int Line, const char* Func);
+void ConsoleCmdAssertPrint (ConsoleCmdErr* Err, const char* File, int Line, const char* Func);
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// #define VERIF(Err) Verif(&Err, __FILE__, __LINE__, __func__)
+#define VERIF(err) Verif(&err, __FILE__, __LINE__, __func__)
 
-// #define CONSOLE_ASSERT(Err) do                                      \
-// {                                                                    \
-//     ConsoleCmdErrorType ErrCopy = Err;                                \
-//     if (ErrCopy.IsFatalError == 1)                                     \
-//     {                                                                   \
-//         ConsoleCmdAssertPrint(&ErrCopy, __FILE__, __LINE__, __func__);   \
-//         COLOR_PRINT(CYAN, "abort() in 3, 2, 1...\n");                     \
-//         abort();                                                           \
-//     }                                                                       \
-// } while (0)                                                                  \
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+#define CONSOLE_ASSERT(err) do                                     \
+{                                                                   \
+    ConsoleCmdErr       errCopy = err;                               \
+    ConsoleCmdErrorType errType = errCopy.err;                        \
+    if (errType != ConsoleCmdErrorType::NO_ERR_CONSOLE)                \
+    {                                                                   \
+        ConsoleCmdAssertPrint(&errCopy, __FILE__, __LINE__, __func__);   \
+        COLOR_PRINT(CYAN, "exit in 3, 2, 1...\n");                        \
+        exit(errType);                                                     \
+    }                                                                       \
+} while (0)                                                                  \
 
-// #endif
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#endif //CONSOLE_CMD_H

@@ -57,81 +57,78 @@ struct AsmData
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file);
-static AssemblerErr AsmDataDtor(AsmData* AsmDataInfo);
-static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo);
-static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file);
+static AssemblerErr AsmDataCtor           (AsmData* AsmDataInfo, const IOfile* file);
+static AssemblerErr AsmDataDtor           (AsmData* AsmDataInfo);
+static AssemblerErr WriteCmdInCodeArr     (AsmData* AsmDataInfo);
+static AssemblerErr WriteCodeArrInFile    (AsmData* AsmDataInfo, const IOfile* file);
 
 
-static void         SetCmdArrCodeElem           (AsmData* AsmDataInfo, int SetElem);
-static const char*  GetNextCmd                  (AsmData* AsmDataInfo);
-static void UpdateBufferForMemory(const char** buffer, size_t* bufferSize);
+static void         SetCmdArrCodeElem     (AsmData* AsmDataInfo, int SetElem);
+static const char*  GetNextCmd            (AsmData* AsmDataInfo);
+static void         UpdateBufferForMemory (const char** buffer, size_t* bufferSize);
 
-static const char* GetCmdName(size_t cmdPointer);
+static const char * GetCmdName            (size_t cmdPointer);
 
-static AssemblerErr NullArgCmdPattern(AsmData* AsmDataInfo, Cmd cmd);
-
-
-static int           GetPushArg    (PushType* Push);
-static int           GetPopArg     (PopType*  Pop );
-static void          PushTypeCtor  (PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t Sum);
-static void          PopTypeCtor   (PopType*  Pop , uint8_t Reg, uint8_t Mem, uint8_t Sum);
-
-static int GetRegisterPointer(const char* buffer);
-
-static bool IsCharNum        (char c);
-static bool IsStrInt         (const char* str);
-static bool IsInt            (const char* str, const char* StrEnd, size_t strSize);
-static bool IsRegister       (const char* str, size_t strSize);
-static bool IsMemory         (const char* str, size_t strSize);
-static bool IsSum            (const char* str, size_t strSize);
-static bool IsLabel          (const char* str);
-static bool IsCommentBegin   (const char* str);
-static bool IsCommentEnd     (const char* str);
+static AssemblerErr NullArgCmdPattern     (AsmData* AsmDataInfo, Cmd cmd);
 
 
-static AssemblerErr InitAllLabels   (AsmData* AsmDataInfo);
-static AssemblerErr LabelsCtor      (AsmData* AsmDataInfo);
-static AssemblerErr LabelsDtor      (AsmData* AsmDataInfo);
+static int           GetPushArg           (PushType* Push);
+static int           GetPopArg            (PopType*  Pop );
+static void          PushTypeCtor         (PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t Sum);
+static void          PopTypeCtor          (PopType*  Pop , uint8_t Reg, uint8_t Mem, uint8_t Sum);
 
-static Label        LabelCtor       (const char* name, size_t pointer, bool alreadyDefined);
-static AssemblerErr PushLabel       (AsmData* AsmDataInfo, const Label* label);
-static bool         IsLabelAlready  (const AsmData* AsmDataInfo, const char* label, size_t* labelPlace);
+static int           GetRegisterPointer   (const char* buffer);
 
-
-static bool FindDefaultCmd(const char* cmd, size_t* defaultCmdPointer);
-static size_t CalcCodeSize(const CmdArr* cmd);
-
-static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType);
-
-
-static AssemblerErr HandlePush          (AsmData* AsmDataInfo);
-static AssemblerErr HandlePop           (AsmData* AsmDataInfo);
-static AssemblerErr HandleJmp           (AsmData* AsmDataInfo);
-static AssemblerErr HandleJa            (AsmData* AsmDataInfo);
-static AssemblerErr HandleJae           (AsmData* AsmDataInfo);
-static AssemblerErr HandleJb            (AsmData* AsmDataInfo);
-static AssemblerErr HandleJbe           (AsmData* AsmDataInfo);
-static AssemblerErr HandleJe            (AsmData* AsmDataInfo);
-static AssemblerErr HandleJne           (AsmData* AsmDataInfo);
-static AssemblerErr HandleAdd           (AsmData* AsmDataInfo);
-static AssemblerErr HandleSub           (AsmData* AsmDataInfo);
-static AssemblerErr HandleMul           (AsmData* AsmDataInfo);
-static AssemblerErr HandleDiv           (AsmData* AsmDataInfo);
-static AssemblerErr HandleOut           (AsmData* AsmDataInfo);
-static AssemblerErr HandleOutc          (AsmData* AsmDataInfo);
-static AssemblerErr HandleOutr          (AsmData* AsmDataInfo);
-static AssemblerErr HandleOutrc         (AsmData* AsmDataInfo);
-static AssemblerErr HandleHlt           (AsmData* AsmDataInfo);
-static AssemblerErr HandleLabel         (AsmData* AsmDataInfo);
-static AssemblerErr HandleComment       (AsmData* AsmDataInfo);
+static bool          IsCharNum            (char c);
+static bool          IsStrInt             (const char* str);
+static bool          IsInt                (const char* str, const char* StrEnd, size_t strSize);
+static bool          IsRegister           (const char* str, size_t strSize);
+static bool          IsMemory             (const char* str, size_t strSize);
+static bool          IsSum                (const char* str, size_t strSize);
+static bool          IsLabel              (const char* str);
+static bool          IsCommentBegin       (const char* str);
+static bool          IsCommentEnd         (const char* str);
 
 
-static AssemblerErr Verif(AsmData* AsmDataInfo, AssemblerErr* err, const char* file, int line, const char* func);
-static void PrintError(AssemblerErr* err);
+static AssemblerErr InitAllLabels         (AsmData* AsmDataInfo);
+static AssemblerErr LabelsCtor            (AsmData* AsmDataInfo);
+static AssemblerErr LabelsDtor            (AsmData* AsmDataInfo);
+
+static Label        LabelCtor            (const char* name, size_t pointer, bool alreadyDefined);
+static AssemblerErr PushLabel            (  AsmData* AsmDataInfo, const Label* label);
+static bool         IsLabelAlready       (const AsmData* AsmDataInfo, const char* label, size_t* labelPlace);
 
 
-// static void LabelDump(const Label *label);
+static bool         FindDefaultCmd       (const char* cmd, size_t* defaultCmdPointer);
+static size_t       CalcCodeSize         (const CmdArr* cmd);
+
+static AssemblerErr JmpCmdPattern        (AsmData* AsmDataInfo, Cmd JumpType);
+
+
+static AssemblerErr HandlePush           (AsmData* AsmDataInfo);
+static AssemblerErr HandlePop            (AsmData* AsmDataInfo);
+static AssemblerErr HandleJmp            (AsmData* AsmDataInfo);
+static AssemblerErr HandleJa             (AsmData* AsmDataInfo);
+static AssemblerErr HandleJae            (AsmData* AsmDataInfo);
+static AssemblerErr HandleJb             (AsmData* AsmDataInfo);
+static AssemblerErr HandleJbe            (AsmData* AsmDataInfo);
+static AssemblerErr HandleJe             (AsmData* AsmDataInfo);
+static AssemblerErr HandleJne            (AsmData* AsmDataInfo);
+static AssemblerErr HandleAdd            (AsmData* AsmDataInfo);
+static AssemblerErr HandleSub            (AsmData* AsmDataInfo);
+static AssemblerErr HandleMul            (AsmData* AsmDataInfo);
+static AssemblerErr HandleDiv            (AsmData* AsmDataInfo);
+static AssemblerErr HandleOut            (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutc           (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutr           (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutrc          (AsmData* AsmDataInfo);
+static AssemblerErr HandleHlt            (AsmData* AsmDataInfo);
+static AssemblerErr HandleLabel          (AsmData* AsmDataInfo);
+static AssemblerErr HandleComment        (AsmData* AsmDataInfo);
+
+
+static AssemblerErr Verif                (AsmData* AsmDataInfo, AssemblerErr* err, const char* file, int line, const char* func);
+static void         PrintError           (AssemblerErr* err);
 
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -714,7 +711,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
         if (IsLabelAlready(AsmDataInfo, JumpArg, &labelPointer))
         {
             Label label = AsmDataInfo->labels.labels[labelPointer];
-            SetElem    = (int) label.codePlace;
+            SetElem     = (int) label.codePlace;
         }
 
         else
@@ -723,7 +720,6 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
             return ASSEMBLER_VERIF(AsmDataInfo, err);
         }
     }
-
 
     else if (IsStrInt(JumpArg))
     {

@@ -1,5 +1,8 @@
-#===testing=out(r)c===/
+#=== hello world ===/
 
+
+
+#=== pushing chars for "Hello, World!" string in reverse order (because it's stack) ===/
 
 push 10
 push 33
@@ -17,6 +20,8 @@ push 101
 push 72
 
 
+#=== printing chars in cycle ====/
+
 arman:
 
 outrc
@@ -31,5 +36,7 @@ pop [ax+100]
 push 14
 
 ja arman:
+
+#==== end of programm ====/
 
 hlt

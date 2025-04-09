@@ -1,28 +1,31 @@
-#ifndef ASSEMBLER_H
-#define ASSEMBLER_H
+#ifndef ASSEMBLER_HPP
+#define ASSEMBLER_HPP
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #include "common/globalInclude.hpp"
 #include "lib/lib.hpp"
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 enum class AssemblerErrorType
 {
-    NO_ERR                      ,
-    INVALID_INPUT_AFTER_PUSH    ,
-    INVALID_INPUT_AFTER_POP     ,
-    FAILED_OPEN_INPUT_STREAM    ,
-    FAILED_OPEN_OUTPUT_STREAM   ,
-    FWRITE_BAD_RETURN           ,
-    UNDEFINED_COMMAND           ,
-    BAD_CODE_ARR_REALLOC        ,
-    LABEL_REDEFINE              ,
-    BAD_LABELS_CALLOC           ,
-    BAD_LABELS_REALLOC          ,
-    INCORRECT_SUM_FIRST_OPERAND ,
-    INCORRECT_SUM_SECOND_OPERAND,
+    NO_ERR                       ,
+    INVALID_INPUT_AFTER_PUSH     ,
+    INVALID_INPUT_AFTER_POP      ,
+    FAILED_OPEN_INPUT_STREAM     ,
+    FAILED_OPEN_OUTPUT_STREAM    ,
+    FWRITE_BAD_RETURN            ,
+    UNDEFINED_COMMAND            ,
+    BAD_CODE_ARR_REALLOC         ,
+    LABEL_REDEFINE               ,
+    BAD_LABELS_CALLOC            ,
+    BAD_LABELS_REALLOC           ,
+    INCORRECT_SUM_FIRST_OPERAND  ,
+    INCORRECT_SUM_SECOND_OPERAND ,
 };
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 struct AssemblerErr
 {
@@ -30,10 +33,12 @@ struct AssemblerErr
     AssemblerErrorType err;
 };
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void RunAssembler        (const IOfile* file);
+void RunAssembler         (const IOfile* file);
+void AssemblerAssertPrint (AssemblerErr* err, const char* file, int line, const char* func);
 
-void AssemblerAssertPrint(AssemblerErr* err, const char* file, int line, const char* func);
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define ASSEMBLER_ASSERT(Err) do                                 \
 {                                                                 \
@@ -45,7 +50,6 @@ void AssemblerAssertPrint(AssemblerErr* err, const char* file, int line, const c
     }                                                                   \
 } while (0)                                                              \
 
-
-
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #endif
