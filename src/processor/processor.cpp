@@ -97,15 +97,13 @@ static int            GetCodeElem                (SPU* spu);
 static int            GetNextCodeElem            (SPU* spu);
 static void           SetCodeElem                (SPU* spu, size_t Code_i, int NewCodeElem);
 
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// static void ProcessorDump(const SPU* spu, const char* file, int line, const char* func);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void ProcessorDump(const SPU* spu, const char* file, int line, const char* func);
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-#define PROCESSSOR_DUMP(SpuPtr) ProcessorDump(SpuPtr, __FILE__, __LINE__, __func__)
-
+// #define PROCESSSOR_DUMP(SpuPtr) ProcessorDump(SpuPtr, __FILE__, __LINE__, __func__)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -627,7 +625,7 @@ static ProcessorErr SetPopMemoryWithRegister(SPU* spu, StackElem_t PopElem)
 
     ProcessorErr err = {};
 
-    size_t pointer = GetPushPopRegister(spu);
+    size_t pointer = (size_t) GetPushPopRegister(spu);
 
     if (pointer >= spu->ram.size)
     {
@@ -648,7 +646,7 @@ static ProcessorErr SetPopSum(SPU* spu, StackElem_t PopElem)
 
     ProcessorErr err = {};
 
-    size_t pointer = GetPushPopRegister(spu) + GetPushPopSum(spu);
+    size_t pointer = (size_t) (GetPushPopRegister(spu) + GetPushPopSum(spu));
 
     if (pointer >= spu->ram.size)
     {
@@ -912,52 +910,52 @@ static void PrintError(ProcessorErr* err)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void ProcessorDump(const SPU* spu, const char* file, int line, const char* func)
-{
-    assert(spu);
-    assert(file);
-    assert(func);
+// static void ProcessorDump(const SPU* spu, const char* file, int line, const char* func)
+// {
+//     assert(spu);
+//     assert(file);
+//     assert(func);
 
-    COLOR_PRINT(GREEN, "PROCESSOR DUMP BEGIN\n\n");
+//     COLOR_PRINT(GREEN, "PROCESSOR DUMP BEGIN\n\n");
 
-    COLOR_PRINT(VIOLET, "Dump made in:\n");
-    PrintPlace(file, line, func);
+//     COLOR_PRINT(VIOLET, "Dump made in:\n");
+//     PrintPlace(file, line, func);
 
-    COLOR_PRINT(VIOLET, "Registers:\n");
+//     COLOR_PRINT(VIOLET, "Registers:\n");
 
-    COLOR_PRINT(VIOLET, "ax = %d\n",   spu->registers[ax]);
-    COLOR_PRINT(VIOLET, "bx = %d\n",   spu->registers[bx]);
-    COLOR_PRINT(VIOLET, "cx = %d\n",   spu->registers[cx]);
-    COLOR_PRINT(VIOLET, "dx = %d\n\n", spu->registers[dx]);
+//     COLOR_PRINT(VIOLET, "ax = %d\n",   spu->registers[ax]);
+//     COLOR_PRINT(VIOLET, "bx = %d\n",   spu->registers[bx]);
+//     COLOR_PRINT(VIOLET, "cx = %d\n",   spu->registers[cx]);
+//     COLOR_PRINT(VIOLET, "dx = %d\n\n", spu->registers[dx]);
 
-    COLOR_PRINT(BLUE, "ram.ram:\n");
+//     COLOR_PRINT(BLUE, "ram.ram:\n");
 
-    for (size_t RAM_i = 0; RAM_i < 128; RAM_i++)
-    {
-        COLOR_PRINT(CYAN, "[%3lu] %d\n", RAM_i, spu->ram.ram[RAM_i]);
-    }
+//     for (size_t RAM_i = 0; RAM_i < 128; RAM_i++)
+//     {
+//         COLOR_PRINT(CYAN, "[%3lu] %d\n", RAM_i, spu->ram.ram[RAM_i]);
+//     }
 
-    printf("\n");
+//     printf("\n");
 
-    COLOR_PRINT(YELLOW, "Code size = %lu\n\n", spu->code.size);
+//     COLOR_PRINT(YELLOW, "Code size = %lu\n\n", spu->code.size);
 
-    COLOR_PRINT(WHITE, "CODE:\n");
-    for (size_t code_i = 0; code_i < spu->code.size; code_i++)
-    {
-        COLOR_PRINT(BLUE, "[%2lu] %d", code_i, spu->code.code[code_i]);
-        if (code_i == spu->ip)
-        {
-            COLOR_PRINT(WHITE, " < ip");
-        }
-        printf("\n");
-    }
+//     COLOR_PRINT(WHITE, "CODE:\n");
+//     for (size_t code_i = 0; code_i < spu->code.size; code_i++)
+//     {
+//         COLOR_PRINT(BLUE, "[%2lu] %d", code_i, spu->code.code[code_i]);
+//         if (code_i == spu->ip)
+//         {
+//             COLOR_PRINT(WHITE, " < ip");
+//         }
+//         printf("\n");
+//     }
 
-    COLOR_PRINT(RED, "CODE END\n");
+//     COLOR_PRINT(RED, "CODE END\n");
 
-    COLOR_PRINT(GREEN, "\nPROCESSOR DUMP END\n");
+//     COLOR_PRINT(GREEN, "\nPROCESSOR DUMP END\n");
 
-    return;
-}
+//     return;
+// }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

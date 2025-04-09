@@ -2,18 +2,6 @@
 #include <assert.h>
 #include "lib/lib.hpp"
 
-//--------------------------------------------------------------------------------------------------------------------------------------
-
-void PrintPlaceStruct(CodePlace* place)
-{
-    assert(place);
-    assert(place->file);
-    assert(place->func);
-
-    printf("File [%s]\nLine [%d]\nFunc [%s]\n", place->file, place->line, place->func);
-    return;
-}
-
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 void PrintPlace(const char* file, const int line , const char* func)
