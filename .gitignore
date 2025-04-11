@@ -1,0 +1,8 @@
+# my makefile config file
+local.mk
+
+# my asm files
+asm/
+
+# my bin files
+code/

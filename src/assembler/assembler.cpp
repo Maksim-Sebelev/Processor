@@ -574,6 +574,7 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
 
         else
         {
+            COLOR_PRINT(RED, "Call arg = '%s'\n", CallArg);
             err.err = AssemblerErrorType::LABEL_REDEFINE;
             return ASSEMBLER_VERIF(AsmDataInfo, err);
         }

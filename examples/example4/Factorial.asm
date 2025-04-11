@@ -1,53 +1,47 @@
+# init args for factorial /
 
+push 7 
+pop ax 
 
+call factorial: 
 
-
-
-
-    push 5
-pop ax
-
-call factorial:
-
-push bx
 out
-
 hlt
 
-
 #
-arg: ax - num for factorial
-ret: bx - factorial of ax
+args: ax - num for factorial
+entry: last stack element (factorial of ax)
+destr: ax, bx
 /
 
 factorial:
+    # check ax > 1. if ax > 1, than recursive call. else return /
+    push ax 
     push 1
-    pop bx
-    call factorial_help:
-    ret
+    jbe recursive_end:
 
 
-factorial_help:
     push ax
-    push 1
-    je end:
 
-    # ax * bx /
-    push ax
-    push bx
-    mul
-    pop bx
-
-
-    # ax = ax - 1 /
+    # ax -= 1 / 
     push ax
     push 1
     sub
-
     pop ax
 
     # recursive call /
-    call factorial_help:
+    call factorial:
 
-    end:
+    mul
+
+    pop ax
+    pop bx
+    push ax 
+    push bx 
+    ret 
+    
+recursive_end: 
+    pop bx
+    push 1
+    push bx
     ret

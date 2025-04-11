@@ -1,1 +1,1 @@
-push 7 pop ax call max_loh: out hlt # ax = arg / # entry in stack / max_loh: push ax push 1 jae ret_1: push ax # ax -= 1 / push ax push 1 sub pop ax call max_loh: mul pop ax pop bx push ax push bx ret ret_1: pop bx push 1 push bx ret
+push 7 pop ax call max_loh: out hlt # ax = arg / # entry in stack / max_loh: push ax push 1 jbe ret_1: push ax # ax -= 1 / push ax push 1 sub pop ax call max_loh: mul pop ax pop bx push ax push bx ret ret_1: pop bx push 1 push bx ret

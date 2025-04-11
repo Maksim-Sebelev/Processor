@@ -552,8 +552,8 @@ static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator Operator)
     StackElem_t FirstOperand  = 0;
     StackElem_t SecondOperand = 0;
 
-    STACK_ASSERT(StackPop(&spu->stack, &FirstOperand));
     STACK_ASSERT(StackPop(&spu->stack, &SecondOperand));
+    STACK_ASSERT(StackPop(&spu->stack, &FirstOperand));
 
     StackElem_t PushElem = MakeArithmeticOperation(FirstOperand, SecondOperand, Operator);
     STACK_ASSERT(StackPush(&spu->stack, PushElem));
@@ -574,8 +574,8 @@ static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator Operator)
 
     if (Operator != always_true)
     {
-        STACK_ASSERT(StackPop(&spu->stack, &FirstOperand));
         STACK_ASSERT(StackPop(&spu->stack, &SecondOperand));
+        STACK_ASSERT(StackPop(&spu->stack, &FirstOperand));
     }
 
     if (MakeComparisonOperation(FirstOperand, SecondOperand, Operator))
@@ -899,18 +899,18 @@ static StackElem_t MakeArithmeticOperation(StackElem_t FirstOperand, StackElem_t
     switch (Operator)
     {
         case plus:           return FirstOperand + SecondOperand;
-        case minus:          return SecondOperand - FirstOperand;
+        case minus:          return FirstOperand - SecondOperand;
         case multiplication: return FirstOperand * SecondOperand;
         case division: 
         {
-            if (FirstOperand == 0)
+            if (SecondOperand == 0)
             {
                 ProcessorErr err = {};
                 CodePlaceCtor(&err.place, __FILE__, __LINE__, __func__);
                 err.err = ProcessorErrorType::DIVISION_BY_ZERO;
                 PROCESSOR_ASSERT(err);
             }
-            return SecondOperand / FirstOperand;
+            return FirstOperand / SecondOperand;
         }
 
         default: assert(0 && "undefined ariphmetic type");
