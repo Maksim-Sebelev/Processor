@@ -555,7 +555,7 @@ static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator Operator)
     STACK_ASSERT(StackPop(&spu->stack, &FirstOperand));
     STACK_ASSERT(StackPop(&spu->stack, &SecondOperand));
 
-    StackElem_t PushElem = MakeArithmeticOperation(SecondOperand, FirstOperand, Operator);
+    StackElem_t PushElem = MakeArithmeticOperation(FirstOperand, SecondOperand, Operator);
     STACK_ASSERT(StackPush(&spu->stack, PushElem));
     spu->ip += CmdInfoArr[Operator].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);
@@ -899,18 +899,18 @@ static StackElem_t MakeArithmeticOperation(StackElem_t FirstOperand, StackElem_t
     switch (Operator)
     {
         case plus:           return FirstOperand + SecondOperand;
-        case minus:          return FirstOperand - SecondOperand;
+        case minus:          return SecondOperand - FirstOperand;
         case multiplication: return FirstOperand * SecondOperand;
         case division: 
         {
-            if (SecondOperand == 0)
+            if (FirstOperand == 0)
             {
                 ProcessorErr err = {};
                 CodePlaceCtor(&err.place, __FILE__, __LINE__, __func__);
                 err.err = ProcessorErrorType::DIVISION_BY_ZERO;
                 PROCESSOR_ASSERT(err);
             }
-            return FirstOperand / SecondOperand;
+            return SecondOperand / FirstOperand;
         }
 
         default: assert(0 && "undefined ariphmetic type");
@@ -991,66 +991,66 @@ static void PrintError(ProcessorErr* err)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// ON_PROCESSOR_DEBUG
-// (
-// static void ProcessorDump(const SPU* spu, const char* file, int line, const char* func)
-// {
-//     assert(spu);
-//     assert(file);
-//     assert(func);
+ON_PROCESSOR_DEBUG
+(
+static void ProcessorDump(const SPU* spu, const char* file, int line, const char* func)
+{
+    assert(spu);
+    assert(file);
+    assert(func);
 
-//     COLOR_PRINT(GREEN, "PROCESSOR DUMP BEGIN\n\n");
+    COLOR_PRINT(GREEN, "PROCESSOR DUMP BEGIN\n\n");
 
-//     COLOR_PRINT(VIOLET, "Dump made in:\n");
-//     PrintPlace(file, line, func);
+    COLOR_PRINT(VIOLET, "Dump made in:\n");
+    PrintPlace(file, line, func);
 
-//     COLOR_PRINT(VIOLET, "Registers:\n");
+    COLOR_PRINT(VIOLET, "Registers:\n");
 
-//     COLOR_PRINT(VIOLET, "ax = %d\n",   spu->registers[ax]);
-//     COLOR_PRINT(VIOLET, "bx = %d\n",   spu->registers[bx]);
-//     COLOR_PRINT(VIOLET, "cx = %d\n",   spu->registers[cx]);
-//     COLOR_PRINT(VIOLET, "dx = %d\n\n", spu->registers[dx]);
+    COLOR_PRINT(VIOLET, "ax = %d\n",   spu->registers[ax]);
+    COLOR_PRINT(VIOLET, "bx = %d\n",   spu->registers[bx]);
+    COLOR_PRINT(VIOLET, "cx = %d\n",   spu->registers[cx]);
+    COLOR_PRINT(VIOLET, "dx = %d\n\n", spu->registers[dx]);
 
-//     COLOR_PRINT(BLUE, "ram.ram:\n");
+    COLOR_PRINT(BLUE, "ram.ram:\n");
 
-//     for (size_t RAM_i = 0; RAM_i < 128; RAM_i++)
-//     {
-//         COLOR_PRINT(CYAN, "[%3lu] %d\n", RAM_i, spu->ram.ram[RAM_i]);
-//     }
+    for (size_t RAM_i = 0; RAM_i < 128; RAM_i++)
+    {
+        COLOR_PRINT(CYAN, "[%3lu] %d\n", RAM_i, spu->ram.ram[RAM_i]);
+    }
 
-//     printf("\n");
+    printf("\n");
 
-//     COLOR_PRINT(YELLOW, "Code size = %lu\n\n", spu->code.size);
+    COLOR_PRINT(YELLOW, "Code size = %lu\n\n", spu->code.size);
 
-//     COLOR_PRINT(WHITE, "CODE:\n");
-//     for (size_t code_i = 0; code_i < spu->code.size; code_i++)
-//     {
-//         COLOR_PRINT(BLUE, "[%2lu] %d", code_i, spu->code.code[code_i]);
-//         if (code_i == spu->ip)
-//         {
-//             COLOR_PRINT(WHITE, " < ip");
-//         }
-//         printf("\n");
-//     }
+    COLOR_PRINT(WHITE, "CODE:\n");
+    for (size_t code_i = 0; code_i < spu->code.size; code_i++)
+    {
+        COLOR_PRINT(BLUE, "[%2lu] %d", code_i, spu->code.code[code_i]);
+        if (code_i == spu->ip)
+        {
+            COLOR_PRINT(WHITE, " < ip");
+        }
+        printf("\n");
+    }
 
-//     COLOR_PRINT(RED, "CODE END\n");
+    COLOR_PRINT(RED, "CODE END\n");
 
-//     COLOR_PRINT(GREEN, "\nPROCESSOR DUMP END\n");
+    COLOR_PRINT(GREEN, "\nPROCESSOR DUMP END\n");
 
-//     return;
-// }
+    return;
+}
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// static void WhereProcessorIs(const char* cmd)
-// {
-//     assert(cmd);
+static void WhereProcessorIs(const char* cmd)
+{
+    assert(cmd);
 
-//     COLOR_PRINT(GREEN, "processor::%s\n", cmd);
-//     return;
-// }
+    COLOR_PRINT(GREEN, "processor::%s\n", cmd);
+    return;
+}
 
-// )
+)
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 void ProcessorAssertPrint(ProcessorErr * err, const char* file, int line, const char* func)
