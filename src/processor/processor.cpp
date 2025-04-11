@@ -63,6 +63,8 @@ static ProcessorErr   HandleJb                   (SPU* spu);
 static ProcessorErr   HandleJbe                  (SPU* spu);
 static ProcessorErr   HandleJe                   (SPU* spu);
 static ProcessorErr   HandleJne                  (SPU* spu);
+static ProcessorErr   HandleCall                 (SPU* spu);
+static ProcessorErr   HandleRet                  (SPU* spu);
 static ProcessorErr   HandleOut                  (SPU* spu);
 static ProcessorErr   HandleOutc                 (SPU* spu);
 static ProcessorErr   HandleOutr                 (SPU* spu);
@@ -99,12 +101,15 @@ static void           SetCodeElem                (SPU* spu, size_t Code_i, int N
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// static void ProcessorDump(const SPU* spu, const char* file, int line, const char* func);
+ON_PROCESSOR_DEBUG
+(
+static void ProcessorDump    (const SPU* spu, const char* file, int line, const char* func);
+static void WhereProcessorIs (const char* cmd);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// #define PROCESSSOR_DUMP(SpuPtr) ProcessorDump(SpuPtr, __FILE__, __LINE__, __func__)
-
+#define PROCESSSOR_DUMP(SpuPtr) ProcessorDump(SpuPtr, __FILE__, __LINE__, __func__)
+)
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define PROCESSOR_VERIF(spu, err) Verif(spu, &err, __FILE__, __LINE__, __func__)
@@ -118,8 +123,6 @@ void RunProcessor(const IOfile* file)
     SPU spu = {};
     PROCESSOR_ASSERT(SpuCtor(&spu, file));
     PROCESSOR_ASSERT(ExecuteCommands(&spu));
-
-    // PROCESSSOR_DUMP(&spu);
 
     PROCESSOR_ASSERT(SpuDtor(&spu));
 
@@ -196,6 +199,8 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::sub:   PROCESSOR_ASSERT(HandleSub  (spu)); break;
             case Cmd::mul:   PROCESSOR_ASSERT(HandleMul  (spu)); break;
             case Cmd::dive:  PROCESSOR_ASSERT(HandleDiv  (spu)); break;
+            case Cmd::call:  PROCESSOR_ASSERT(HandleCall (spu)); break;
+            case Cmd::ret:   PROCESSOR_ASSERT(HandleRet  (spu)); break;
             case Cmd::jmp:   PROCESSOR_ASSERT(HandleJmp  (spu)); break;
             case Cmd::ja:    PROCESSOR_ASSERT(HandleJa   (spu)); break;
             case Cmd::jae:   PROCESSOR_ASSERT(HandleJae  (spu)); break;
@@ -225,6 +230,8 @@ static ProcessorErr ExecuteCommands(SPU* spu)
 
 static ProcessorErr HandlePush(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("push"));
+
     assert(spu);
 
     ProcessorErr err = {};
@@ -256,6 +263,8 @@ static ProcessorErr HandlePush(SPU* spu)
 
 static ProcessorErr HandlePop(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("pop"));
+
     assert(spu);
     ProcessorErr err = {};
 
@@ -285,6 +294,8 @@ static ProcessorErr HandlePop(SPU* spu)
 
 static ProcessorErr HandleAdd(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("add"));
+
     assert(spu);
 
     return ArithmeticCmdPattern(spu, ArithmeticOperator::plus);
@@ -293,7 +304,9 @@ static ProcessorErr HandleAdd(SPU* spu)
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static ProcessorErr HandleSub(SPU* spu)
-{   
+{
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("sub"));
+
     assert(spu);
     return ArithmeticCmdPattern(spu, ArithmeticOperator::minus);;
 }
@@ -302,6 +315,8 @@ static ProcessorErr HandleSub(SPU* spu)
 
 static ProcessorErr HandleMul(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("mul"));
+
     assert(spu);
     return ArithmeticCmdPattern(spu, ArithmeticOperator::multiplication);
 }
@@ -310,6 +325,8 @@ static ProcessorErr HandleMul(SPU* spu)
 
 static ProcessorErr HandleDiv(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("div"));
+
     assert(spu);
     return ArithmeticCmdPattern(spu, ArithmeticOperator::division);
 }
@@ -318,6 +335,8 @@ static ProcessorErr HandleDiv(SPU* spu)
 
 static ProcessorErr HandleJmp(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("jmp"));
+
     assert(spu);
     return JumpsCmdPatter(spu, ComparisonOperator::always_true);
 }
@@ -326,6 +345,8 @@ static ProcessorErr HandleJmp(SPU* spu)
 
 static ProcessorErr HandleJa(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("ja"));
+
     assert(spu);
     return JumpsCmdPatter(spu, ComparisonOperator::above);
 }
@@ -334,6 +355,8 @@ static ProcessorErr HandleJa(SPU* spu)
 
 static ProcessorErr HandleJae(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("jae"));
+
     assert(spu);
     return JumpsCmdPatter(spu, ComparisonOperator::above_or_equal);
 }
@@ -342,6 +365,8 @@ static ProcessorErr HandleJae(SPU* spu)
 
 static ProcessorErr HandleJb(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("jb"));
+
     assert(spu);
     return JumpsCmdPatter(spu, ComparisonOperator::bellow);
 }
@@ -350,6 +375,8 @@ static ProcessorErr HandleJb(SPU* spu)
 
 static ProcessorErr HandleJbe(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("jbe"));
+
     assert(spu);
     return JumpsCmdPatter(spu, ComparisonOperator::bellow_or_equal);
 }
@@ -358,6 +385,8 @@ static ProcessorErr HandleJbe(SPU* spu)
 
 static ProcessorErr HandleJe(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("je"));
+
     assert(spu);
     return JumpsCmdPatter(spu, ComparisonOperator::equal);
 }
@@ -366,14 +395,57 @@ static ProcessorErr HandleJe(SPU* spu)
 
 static ProcessorErr HandleJne(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("jne"));
+
     assert(spu);
     return JumpsCmdPatter(spu, ComparisonOperator::not_equal);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static ProcessorErr HandleCall(SPU* spu)
+{
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("call"));
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t returnAddr  = (StackElem_t) spu->ip;
+                returnAddr += (StackElem_t) CmdInfoArr[call].codeRecordSize; // skip 'call func:' in code array.
+
+    STACK_ASSERT(StackPush(&spu->stack, returnAddr));
+
+    spu->ip = (size_t) GetNextCodeElem(spu);
+
+    return PROCESSOR_VERIF(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleRet(SPU* spu)
+{
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("ret"));
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t returnAddr = 0;
+
+    STACK_ASSERT(StackPop(&spu->stack, &returnAddr));
+    spu->ip = (size_t) returnAddr;
+
+
+    return PROCESSOR_VERIF(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static ProcessorErr HandleOut(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("out"));
+
     assert(spu);
 
     ProcessorErr err = {};
@@ -390,6 +462,8 @@ static ProcessorErr HandleOut(SPU* spu)
 
 static ProcessorErr HandleOutc(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("outrc"));
+
     assert(spu);
 
     ProcessorErr err = {};
@@ -412,6 +486,8 @@ static ProcessorErr HandleOutc(SPU* spu)
 
 static ProcessorErr HandleOutrc(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("outrc"));
+
     assert(spu);
 
     ProcessorErr err = {};
@@ -435,6 +511,8 @@ static ProcessorErr HandleOutrc(SPU* spu)
 
 static ProcessorErr HandleOutr(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("outr"));
+
     assert(spu);
 
     ProcessorErr err = {};
@@ -453,6 +531,8 @@ static ProcessorErr HandleOutr(SPU* spu)
 
 static ProcessorErr HandleHalt(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("hlt"));
+
     assert(spu);
 
     ProcessorErr err = {};
@@ -489,7 +569,8 @@ static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator Operator)
 
     ProcessorErr err = {};
 
-    StackElem_t SecondOperand = 0, FirstOperand = 0;
+    StackElem_t FirstOperand  = 0;
+    StackElem_t SecondOperand = 0;
 
     if (Operator != always_true)
     {
@@ -910,6 +991,8 @@ static void PrintError(ProcessorErr* err)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+// ON_PROCESSOR_DEBUG
+// (
 // static void ProcessorDump(const SPU* spu, const char* file, int line, const char* func)
 // {
 //     assert(spu);
@@ -957,6 +1040,17 @@ static void PrintError(ProcessorErr* err)
 //     return;
 // }
 
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// static void WhereProcessorIs(const char* cmd)
+// {
+//     assert(cmd);
+
+//     COLOR_PRINT(GREEN, "processor::%s\n", cmd);
+//     return;
+// }
+
+// )
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 void ProcessorAssertPrint(ProcessorErr * err, const char* file, int line, const char* func)

@@ -28,6 +28,8 @@ enum Cmd : int
     jbe        ,
     je         ,
     jne        ,
+    call       ,
+    ret        ,
     CMD_QUANT  , // count
 };
 
@@ -44,24 +46,26 @@ struct CmdInfo
 
 static const CmdInfo CmdInfoArr[] = 
 {
-    {Cmd::hlt,   .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::push,  .argQuant = 1, .codeRecordSize = 4},
-    {Cmd::pop,   .argQuant = 1, .codeRecordSize = 4},
-    {Cmd::add,   .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::sub,   .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::mul,   .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::dive,  .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::out,   .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::outc,  .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::outr,  .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::hlt  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::push , .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::pop  , .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::add  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::sub  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::mul  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::dive , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::out  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::outc , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::outr , .argQuant = 0, .codeRecordSize = 1},
     {Cmd::outrc, .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::jmp,   .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::ja,    .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jae,   .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jb,    .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jbe,   .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::je,    .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jne,   .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jmp  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::ja   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jae  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jb   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jbe  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::je   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jne  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::call , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::ret  , .argQuant = 0, .codeRecordSize = 1},
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

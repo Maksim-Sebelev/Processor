@@ -845,7 +845,7 @@ static void PrintError(StackErrorType Error)
 
 ON_STACK_DEBUG
 (
-// void Dump(const Stack_t* stack, const char* file, int line, const char* func)
+// void StackDump(const Stack_t* stack, const char* file, int line, const char* func)
 // {   
 //     COLOR_PRINT(GREEN, "\nDump BEGIN\n\n");
 
@@ -912,7 +912,7 @@ ON_STACK_DEBUG
 //     COLOR_PRINT(BLUE, "data = \n{\n");
 //     for (size_t data_i = 0; data_i < stack->size; data_i++)
 //     {
-//         COLOR_PRINT(BLUE, "*[%2lu] %d\n", data_i, stack->data[data_i]);
+//         COLOR_PRINT(BLUE, "*[%2d] %d\n", data_i, stack->data[data_i]);
 //     }
 
 //     for (size_t data_i = stack->size; data_i < stack->capacity; data_i++)

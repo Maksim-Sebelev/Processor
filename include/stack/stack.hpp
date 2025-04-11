@@ -167,9 +167,9 @@ StackElem_t    GetLastStackElem        (const Stack_t* stack);
 
 ON_STACK_DEBUG
 (
-void Dump(const Stack_t* stack, const char* file, int line, const char* func);
+// void StackDump(const Stack_t* stack, const char* file, int line, const char* func);
 
-#define DUMP(stack) Dump(stack, __FILE__, __LINE__, __func__)
+// #define STACK_DUMP(stack) StackDump(stack, __FILE__, __LINE__, __func__)
 )
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
