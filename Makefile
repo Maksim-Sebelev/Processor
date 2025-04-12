@@ -81,7 +81,7 @@ clean:
 cleanDirs:
 	rm -rf $(OUT_O_DIR) $(TARGET_DIR)
 
-#======================================================
+#========== examples ===================================
 
 EXAMPLE1_DIR  = example1
 EXAMPLE1_FILE = HelloWorld
@@ -134,7 +134,6 @@ example4:
 
 #======================================================
 
-# targets which we have no need to recollect deps
 NODEPS = clean
 
 ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
