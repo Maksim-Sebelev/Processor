@@ -42,8 +42,7 @@ make
 2. Папка для ваших бинарных файлов - `CODE_SIR`.
 3. Если вы планируете работать с одним ассемблерным файлов, то рекомендуетс присвоить желаемые значения переменным `ASM_FILE` и `BIN_FILE`, для ваших ассемблерного и бинарного файла.
 
-![Processor Logo](https://github.com/Maksim-Sebelev/Processor/blob/main/assets/make_variable.png)
-
+![Processor Logo](https://github.com/Maksim-Sebelev/Processor/blob/main/assets/make_variables.png)
 
 В таком случае работа с процессором сводится к 3 командам:
   
