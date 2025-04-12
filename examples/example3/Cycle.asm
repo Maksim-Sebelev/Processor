@@ -10,12 +10,14 @@ pop ax
 cycle:
 push ax
 out
-push 1
-add
-pop ax
-push ax
 push 10
-jae cycle:
+pp ax
+jbe cycle:
+
+#=== print \n ===/
+
+push 10
+outc
 
 #=== init ax for second (back) cycle (ax = 11) ===/
 
@@ -25,14 +27,11 @@ pop ax
 #=== print 10 9 ... 2 1 0 ===/
 
 back_cycle:
+mm ax
 push ax
-push 1
-sub
 out
-pop ax
-push ax
 push 0
-jb back_cycle:
+ja back_cycle:
 
 
 #=== end of programm ===/

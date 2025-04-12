@@ -4,5 +4,11 @@ local.mk
 # my asm files
 asm/
 
+# obj (.o) and dep (.d) files
+bin/
+
+# dir for target 
+build/
+
 # my bin files
 code/

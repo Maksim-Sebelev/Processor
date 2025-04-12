@@ -56,6 +56,8 @@ static ProcessorErr   HandleAdd                  (SPU* spu);
 static ProcessorErr   HandleSub                  (SPU* spu);
 static ProcessorErr   HandleMul                  (SPU* spu);
 static ProcessorErr   HandleDiv                  (SPU* spu);
+static ProcessorErr   HandlePp                   (SPU* spu);
+static ProcessorErr   HandleMm                   (SPU* spu);
 static ProcessorErr   HandleJmp                  (SPU* spu);
 static ProcessorErr   HandleJa                   (SPU* spu);
 static ProcessorErr   HandleJae                  (SPU* spu);
@@ -72,6 +74,7 @@ static ProcessorErr   HandleOutrc                (SPU* spu);
 
 
 static ProcessorErr   ArithmeticCmdPattern       (SPU* spu, ArithmeticOperator Operator);
+static ProcessorErr   PpMmPattern                (SPU* spu, Cmd cmd);
 static ProcessorErr   JumpsCmdPatter             (SPU* spu, ComparisonOperator Operator);
 
 static StackElem_t    MakeArithmeticOperation    (StackElem_t FirstOperand, StackElem_t SecondOperand, ArithmeticOperator Operator);
@@ -105,11 +108,10 @@ ON_PROCESSOR_DEBUG
 (
 static void ProcessorDump    (const SPU* spu, const char* file, int line, const char* func);
 static void WhereProcessorIs (const char* cmd);
-
+)
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define PROCESSSOR_DUMP(SpuPtr) ProcessorDump(SpuPtr, __FILE__, __LINE__, __func__)
-)
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define PROCESSOR_VERIF(spu, err) Verif(spu, &err, __FILE__, __LINE__, __func__)
@@ -199,6 +201,8 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::sub:   PROCESSOR_ASSERT(HandleSub  (spu)); break;
             case Cmd::mul:   PROCESSOR_ASSERT(HandleMul  (spu)); break;
             case Cmd::dive:  PROCESSOR_ASSERT(HandleDiv  (spu)); break;
+            case Cmd::pp:    PROCESSOR_ASSERT(HandlePp   (spu)); break;
+            case Cmd::mm:    PROCESSOR_ASSERT(HandleMm   (spu)); break;
             case Cmd::call:  PROCESSOR_ASSERT(HandleCall (spu)); break;
             case Cmd::ret:   PROCESSOR_ASSERT(HandleRet  (spu)); break;
             case Cmd::jmp:   PROCESSOR_ASSERT(HandleJmp  (spu)); break;
@@ -329,6 +333,28 @@ static ProcessorErr HandleDiv(SPU* spu)
 
     assert(spu);
     return ArithmeticCmdPattern(spu, ArithmeticOperator::division);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandlePp(SPU* spu)
+{
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("pp"));
+    
+    assert(spu);
+
+    return PpMmPattern(spu, Cmd::pp);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleMm(SPU* spu)
+{
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("mm"));
+    
+    assert(spu);
+
+    return PpMmPattern(spu, Cmd::mm);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -558,6 +584,37 @@ static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator Operator)
     StackElem_t PushElem = MakeArithmeticOperation(FirstOperand, SecondOperand, Operator);
     STACK_ASSERT(StackPush(&spu->stack, PushElem));
     spu->ip += CmdInfoArr[Operator].codeRecordSize;
+    return PROCESSOR_VERIF(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr PpMmPattern(SPU* spu, Cmd cmd)
+{
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    size_t registerPointer = (size_t) spu->code.code[GetIp(spu) +1];
+
+    if (cmd == Cmd::pp)
+    {
+        spu->registers[registerPointer]++;
+        spu->ip += CmdInfoArr[pp].codeRecordSize; 
+    }
+
+    else if (cmd == Cmd::mm)
+    {
+        spu->registers[registerPointer]--;
+        spu->ip += CmdInfoArr[mm].codeRecordSize; 
+    }
+
+    else 
+    {
+        assert(0 && "undef situation: msut be 'pp' or 'mm' cmd.");
+    }
+
+    
     return PROCESSOR_VERIF(spu, err);
 }
 

@@ -17,6 +17,8 @@ enum Cmd : int
     sub        ,
     mul        ,
     dive       ,
+    pp         , 
+    mm         ,
     out        ,  // just out int
     outc       ,  // out char
     outr       ,  // out int and remove it
@@ -53,6 +55,8 @@ static const CmdInfo CmdInfoArr[] =
     {Cmd::sub  , .argQuant = 0, .codeRecordSize = 1},
     {Cmd::mul  , .argQuant = 0, .codeRecordSize = 1},
     {Cmd::dive , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::pp   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::mm   , .argQuant = 1, .codeRecordSize = 2},
     {Cmd::out  , .argQuant = 0, .codeRecordSize = 1},
     {Cmd::outc , .argQuant = 0, .codeRecordSize = 1},
     {Cmd::outr , .argQuant = 0, .codeRecordSize = 1},

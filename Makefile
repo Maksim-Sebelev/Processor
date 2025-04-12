@@ -19,10 +19,11 @@ COMMONINC = -I./include
 SRC = ./src
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TARGET = processor
-CODE_DIR ?= code
 ASM_DIR  ?= asm
+CODE_DIR ?= code
 ASM_FILE ?= programm.asm
 BIN_FILE ?= code.bin
+EXAMPLE_DIR = examples
 
 -include local.mk
 
@@ -79,6 +80,57 @@ clean:
 
 cleanDirs:
 	rm -rf $(OUT_O_DIR) $(TARGET_DIR)
+
+#======================================================
+
+EXAMPLE1_DIR  = example1
+EXAMPLE1_FILE = HelloWorld
+
+example1:
+	@make									\
+	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE1_DIR)   \
+	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE1_DIR)   \
+	ASM_FILE=$(EXAMPLE1_FILE).asm         	   \
+	BIN_FILE=$(EXAMPLE1_FILE).bin               \
+	processor									 \
+
+
+EXAMPLE2_DIR  = example2
+EXAMPLE2_FILE = Math
+
+example2:
+	@make                                  \
+	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE2_DIR)  \
+	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE2_DIR)  \
+	ASM_FILE=$(EXAMPLE2_FILE).asm             \
+	BIN_FILE=$(EXAMPLE2_FILE).bin              \
+	processor                                   \
+
+
+EXAMPLE3_DIR  = example3
+EXAMPLE3_FILE = Cycle
+
+example3:
+	@make                                  \
+	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE3_DIR)  \
+	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE3_DIR)  \
+	ASM_FILE=$(EXAMPLE3_FILE).asm        	  \
+	BIN_FILE=$(EXAMPLE3_FILE).bin              \
+	processor                                   \
+
+
+
+EXAMPLE4_DIR  = example4
+EXAMPLE4_FILE = Factorial
+
+example4:
+	@make                                  \
+	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE4_DIR)  \
+	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE4_DIR)  \
+	ASM_FILE=$(EXAMPLE4_FILE).asm         	  \
+	BIN_FILE=$(EXAMPLE4_FILE).bin              \
+	processor                                   \
+
 
 #======================================================
 

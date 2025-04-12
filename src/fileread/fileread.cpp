@@ -52,7 +52,8 @@ const char** ReadFile(const char* file, size_t* bufSize)
     assert(file);
     assert(bufSize);
 
-    FILE* filePtr = fopen(file, "rb");
+    FILE* filePtr = fopen(file, "r");
+    // printf("file = '%s'\n", file);
     assert(filePtr);
 
     size_t bufferLen = CalcFileLen(file);
