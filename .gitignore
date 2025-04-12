@@ -12,3 +12,6 @@ build/
 
 # my bin files
 code/
+
+# vs code seetings
+.vscode/

@@ -11,8 +11,12 @@
 enum Cmd : int
 {
     hlt = 0    ,
-    push       ,
-    pop        ,
+    pushc      ,
+    pushi      ,
+    pushd      ,
+    popc       ,
+    popi       ,
+    popd       ,
     add        ,
     sub        ,
     mul        ,
@@ -49,8 +53,12 @@ struct CmdInfo
 static const CmdInfo CmdInfoArr[] = 
 {
     {Cmd::hlt  , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::push , .argQuant = 1, .codeRecordSize = 4},
-    {Cmd::pop  , .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::pushc, .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::pushi, .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::pushd, .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::popc , .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::popi , .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::popd , .argQuant = 1, .codeRecordSize = 4},
     {Cmd::add  , .argQuant = 0, .codeRecordSize = 1},
     {Cmd::sub  , .argQuant = 0, .codeRecordSize = 1},
     {Cmd::mul  , .argQuant = 0, .codeRecordSize = 1},
@@ -82,14 +90,38 @@ static_assert((Cmd::CMD_QUANT == (int) CmdInfoArrSize), "You forgot about some C
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-enum Registers
+enum CharRegisters : int
 {
-    ax = 0,
-    bx,
-    cx,
-    dx,
-    REGISTERS_QUANT, // Count
-    REGISTERS_NAME_LEN = 2, // in my assebler-standart all registers must have the same name's lenght
+    cax = 0,
+    cbx,
+    ccx,
+    cdx,
+    CHAR_REGISTERS_QUANT, // Count
+    CHAR_REGISTERS_NAME_LEN = 3, // in my assebler-standart all registers must have the same name's lenght
+};
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+enum IntRegisters : int
+{
+    iax = 0,
+    ibx,
+    icx,
+    idx,
+    INT_REGISTERS_QUANT, // Count
+    INT_REGISTERS_NAME_LEN = 3, // in my assebler-standart all registers must have the same name's lenght
+};
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+enum DoubleRegisters : int
+{
+    dax = 0,
+    dbx,
+    dcx,
+    ddx,
+    DOUBLE_REGISTERS_QUANT, // Count
+    DOUBLE_REGISTERS_NAME_LEN = 3, // in my assebler-standart all registers must have the same name's lenght
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

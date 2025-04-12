@@ -6,15 +6,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "lib/colorPrint.hpp"
-
-//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-#define STACK_DEBUG
-#define STACK_CANARY
-#define STACK_DATA_CANARY
-// #define STACK_HASH
-// #define STACK_DATA_HASH
-// #define STACK_DATA_POISON
+#include "lib/lib.hpp"
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -60,18 +52,6 @@
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#ifdef STACK_DATA_POISON
-    #define ON_STACK_DATA_POISON(...) __VA_ARGS__
-#else
-    #define ON_STACK_DATA_POISON(...)
-#endif
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-typedef int StackElem_t;
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 ON_STACK_CANARY(typedef uint64_t StackCanary_t;)
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -81,7 +61,7 @@ struct Stack_t
     ON_STACK_CANARY(StackCanary_t leftStackCanary;)
     size_t size;
     size_t capacity;
-    StackElem_t* data;
+    void* data;
     ON_STACK_HASH(uint64_t stackHash;)
     ON_STACK_DATA_HASH(uint64_t dataHash;)
     ON_STACK_CANARY(StackCanary_t rightStackCanary;)
@@ -116,10 +96,6 @@ struct FatalErrors
     unsigned char LeftDataCanaryChanged       : 1;
     unsigned char RightDataCanaryChanged      : 1;
     )
-    ON_STACK_DATA_POISON
-    (
-    unsigned char DataElemBiggerSizeNotPoison : 1;
-    )
     ON_STACK_HASH
     (    
     unsigned char StackHashChanged            : 1;
@@ -148,20 +124,16 @@ struct StackErrorType
     unsigned int IsWarning    : 1;
     Warnings     Warning;
     FatalErrors  FatalError;
-    const char*  file;
-    int          line;
-    const char*  func;
+    CodePlace    place;
 };
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-StackErrorType StackCtor               (Stack_t* stack, size_t StackDataSize);
-StackErrorType StackDtor               (Stack_t* stack);
-StackErrorType PrintStack              (Stack_t* stack);
-StackErrorType PrintLastStackElem      (Stack_t* stack);
-StackErrorType StackPush               (Stack_t* stack, StackElem_t PushElem);
-StackErrorType StackPop                (Stack_t* stack, StackElem_t* PopElem);
-StackElem_t    GetLastStackElem        (const Stack_t* stack);
+StackErrorType StackCtor         (Stack_t* stack, size_t StackDataSize);
+StackErrorType StackDtor         (Stack_t* stack);
+StackErrorType StackPush         (Stack_t* stack, void* PushElem, size_t typeSize);
+StackErrorType StackPop          (Stack_t* stack, void* PopElem,  size_t typeSize);
+void*          GetLastStackElem  (const Stack_t* stack, size_t typeSize);
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -181,7 +153,7 @@ void AssertPrint (StackErrorType Err, const char* file, int line, const char* fu
 #ifdef STACK_DEBUG
     #define STACK_ASSERT(Err) do                             \
     {                                                         \
-        StackErrorType ErrCopy = Err;                               \
+        StackErrorType ErrCopy = Err;                          \
         if (ErrCopy.IsFatalError || ErrCopy.IsWarning)          \
         {                                                        \
             AssertPrint(ErrCopy, __FILE__, __LINE__, __func__);   \

@@ -4,7 +4,7 @@ endif
 
 CFLAGS ?= 
 
-BUILD_TYPE ?= release
+BUILD_TYPE ?= debug
 
 ifeq ($(BUILD_TYPE), release)
 	CFLAGS += -D _NDEBUG -O2
@@ -35,7 +35,7 @@ CSRC =  main.cpp 					 \
 		src/fileread/fileread.cpp       \
 		src/console/consoleCmd.cpp       \
 		src/assembler/assembler.cpp       \
-		src/processor/processor.cpp        \
+		# src/processor/processor.cpp        \
 
 
 COBJ := $(addprefix $(OUT_O_DIR)/,$(CSRC:.cpp=.o))

@@ -18,7 +18,7 @@ static void          PrintError (ConsoleCmdErr* err);
 ConsoleCmdErr (*ConsoleCmd[]) (const int, const char**, size_t) = 
 {
     CompileCmd,
-    RunCodeCmd
+    // RunCodeCmd
 };
 
 const size_t CmdQuant = sizeof(ConsoleCmd) / sizeof(ConsoleCmd[0]);
@@ -88,7 +88,7 @@ ConsoleCmdErr RunCodeCmd(const int argc, const char** argv, size_t argv_i)
         IOfile file   = {};
         file.CodeFile = argv[argv_i + 1];
 
-        RunProcessor(&file);
+        // RunProcessor(&file);
     }
     return VERIF(err);
 }

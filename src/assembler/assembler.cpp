@@ -64,7 +64,7 @@ static AssemblerErr WriteCmdInCodeArr     (AsmData* AsmDataInfo);
 static AssemblerErr WriteCodeArrInFile    (AsmData* AsmDataInfo, const IOfile* file);
 
 
-static void         SetCmdArrCodeElem     (AsmData* AsmDataInfo, int SetElem);
+static void         SetCmdArrCodeElem     (AsmData* AsmDataInfo, int setElem);
 static const char*  GetNextCmd            (AsmData* AsmDataInfo);
 static void         UpdateBufferForMemory (const char** buffer, size_t* bufferSize);
 
@@ -75,12 +75,12 @@ static AssemblerErr NullArgCmdPattern     (AsmData* AsmDataInfo, Cmd cmd);
 static AssemblerErr PpMmPattern           (AsmData* AsmDataInfo, Cmd cmd);
 
 
-static int           GetPushArg           (PushType* Push);
+static int           GetPushArg           (PushType* push);
 static int           GetPopArg            (PopType*  Pop );
-static void          PushTypeCtor         (PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t Sum);
-static void          PopTypeCtor          (PopType*  Pop , uint8_t Reg, uint8_t Mem, uint8_t Sum);
+static void          PushTypeCtor         (PushType* push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t sum);
+static void          PopTypeCtor          (PopType*  Pop , uint8_t Reg, uint8_t Mem, uint8_t sum);
 
-static int           GetRegisterPointer   (const char* buffer);
+static int           GetIntRegisterPointer   (const char* buffer);
 static char          GetChar              (const char* buffer, size_t bufferSize);
 
 static bool          IsCharNum            (char c);
@@ -110,8 +110,8 @@ static size_t       CalcCodeSize         (const CmdArr* cmd);
 static AssemblerErr JmpCmdPattern        (AsmData* AsmDataInfo, Cmd JumpType);
 
 
-static AssemblerErr HandlePush           (AsmData* AsmDataInfo);
-static AssemblerErr HandlePop            (AsmData* AsmDataInfo);
+static AssemblerErr HandlePushi          (AsmData* AsmDataInfo);
+static AssemblerErr HandlePopi           (AsmData* AsmDataInfo);
 static AssemblerErr HandleJmp            (AsmData* AsmDataInfo);
 static AssemblerErr HandleJa             (AsmData* AsmDataInfo);
 static AssemblerErr HandleJae            (AsmData* AsmDataInfo);
@@ -154,8 +154,12 @@ struct CmdFunc
 
 static const CmdFunc DefaultCmd[] =
 {
-    {"push" ,  HandlePush , CmdInfoArr[ push  ].argQuant, CmdInfoArr[ push  ].codeRecordSize},
-    {"pop"  ,  HandlePop  , CmdInfoArr[ pop   ].argQuant, CmdInfoArr[ pop   ].codeRecordSize},
+    // {"pushc",  HandlePushc, CmdInfoArr[ pushc ].argQuant, CmdInfoArr[ pushc ].codeRecordSize},
+    {"pushi",  HandlePushi, CmdInfoArr[ pushi ].argQuant, CmdInfoArr[ pushi ].codeRecordSize},
+    // {"pushd",  HandlePushd, CmdInfoArr[ pushd ].argQuant, CmdInfoArr[ pushd ].codeRecordSize},
+    // {"popc" ,  HandlePopc , CmdInfoArr[ popc  ].argQuant, CmdInfoArr[ popc  ].codeRecordSize},
+    {"popi" ,  HandlePopi , CmdInfoArr[ popi  ].argQuant, CmdInfoArr[ popi  ].codeRecordSize},
+    // {"popd" ,  HandlePopd , CmdInfoArr[ popd  ].argQuant, CmdInfoArr[ popd  ].codeRecordSize},
     {"jmp"  ,  HandleJmp  , CmdInfoArr[ jmp   ].argQuant, CmdInfoArr[ jmp   ].codeRecordSize},
     {"ja"   ,  HandleJa   , CmdInfoArr[ ja    ].argQuant, CmdInfoArr[ ja    ].codeRecordSize},
     {"jae"  ,  HandleJae  , CmdInfoArr[ jae   ].argQuant, CmdInfoArr[ jae   ].codeRecordSize},
@@ -327,70 +331,98 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr HandlePush(AsmData* AsmDataInfo)
+static AssemblerErr PushCmdPattern(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
 
     AssemblerErr err = {};
 
     const char* buffer    = GetNextCmd(AsmDataInfo);
-    size_t      BufferLen = strlen(buffer);
-    char*       EndBuffer = nullptr;
+    size_t      bufferLen = strlen(buffer);
+    char*       endBuffer = nullptr;
 
-    StackElem_t PushElem = (StackElem_t) strtol(buffer, &EndBuffer, 10);
-    PushType    Push     = {};
-    int         SetElem  = 0;
-    int         Sum      = 0;
+    int         pushElem  = (int) strtol(buffer, &endBuffer, 10);
+    PushType    push      = {};
+    int         setElem   = 0;
+    int         sum       = 0;
 
-    if (IsInt(buffer, EndBuffer, BufferLen))
+
+    return ASSEMBLER_VERIF(AsmDataInfo, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool (*GetTypeCheckFunction)(Cmd push)
+{
+
+};
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static AssemblerErr HandlePushi(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+
+    AssemblerErr err = {};
+
+    const char* buffer    = GetNextCmd(AsmDataInfo);
+    size_t      bufferLen = strlen(buffer);
+    char*       endBuffer = nullptr;
+
+    int         pushElem  = (int) strtol(buffer, &endBuffer, 10);
+    PushType    push      = {};
+    int         setElem   = 0;
+    int         sum       = 0;
+
+    if (IsInt(buffer, endBuffer, bufferLen))
     {
-        PushTypeCtor(&Push, 1, 0, 0, 0);
-        SetElem = PushElem;
-        Sum = 0;
+        PushTypeCtor(&push, 1, 0, 0, 0);
+        setElem = pushElem;
+        sum = 0;
     }
 
-    else if (IsChar(buffer, EndBuffer, BufferLen))
+    else if (IsChar(buffer, endBuffer, bufferLen))
     {
-        PushTypeCtor(&Push, 1, 0, 0, 0);
-        SetElem = GetChar(buffer, BufferLen);
-        Sum = 0; 
+        PushTypeCtor(&push, 1, 0, 0, 0);
+        setElem = GetChar(buffer, bufferLen);
+        sum = 0; 
     }
 
-    else if (IsRegister(buffer, BufferLen))
+    else if (IsRegister(buffer, bufferLen))
     {
-        PushTypeCtor(&Push, 0, 1, 0, 0);
-        SetElem = GetRegisterPointer(buffer);
-        Sum = 0;
+        PushTypeCtor(&push, 0, 1, 0, 0);
+        setElem = GetIntRegisterPointer(buffer);
+        sum = 0;
     }
 
-    else if (IsMemory(buffer, BufferLen))
-    {
-        UpdateBufferForMemory(&buffer, &BufferLen);
+    // else if (IsMemory(buffer, bufferLen))
+    // {
+    //     UpdateBufferForMemory(&buffer, &bufferLen);
 
-        StackElem_t PushElemMemIndex = (StackElem_t) strtol(buffer, &EndBuffer, 10);
+    //     StackElem_t PushElemMemIndex = (StackElem_t) strtol(buffer, &endBuffer, 10);
 
-        if (IsInt(buffer, EndBuffer, BufferLen))
-        {
-            PushTypeCtor(&Push, 0, 0, 1, 0);
-            SetElem = PushElemMemIndex;
-            Sum = 0;
-        }
+    //     if (IsInt(buffer, endBuffer, bufferLen))
+    //     {
+    //         PushTypeCtor(&push, 0, 0, 1, 0);
+    //         setElem = PushElemMemIndex;
+    //         sum = 0;
+    //     }
 
-        else if (IsRegister(buffer, BufferLen))
-        {
-            PushTypeCtor(&Push, 0, 1, 1, 0);
-            SetElem = GetRegisterPointer(buffer);
-            Sum = 0;
-        }
+    //     else if (IsRegister(buffer, bufferLen))
+    //     {
+    //         PushTypeCtor(&push, 0, 1, 1, 0);
+    //         setElem = GetIntRegisterPointer(buffer);
+    //         sum = 0;
+    //     }
 
-        else if (IsSum(buffer, BufferLen))
-        {
-            PushTypeCtor(&Push, 0, 0, 1, 1);
-            SetElem = GetRegisterPointer(buffer);
-            buffer += Registers::REGISTERS_NAME_LEN + 1;
-            Sum     = (int) strtol(buffer, &EndBuffer, 10);
-        }
-    }
+    //     else if (IsSum(buffer, bufferLen))
+    //     {
+    //         PushTypeCtor(&push, 0, 0, 1, 1);
+    //         setElem = GetIntRegisterPointer(buffer);
+    //         buffer += Registers::REGISTERS_NAME_LEN + 1;
+    //         sum     = (int) strtol(buffer, &endBuffer, 10);
+    //     }
+    // }
 
     else
     {
@@ -398,10 +430,10 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
         return ASSEMBLER_VERIF(AsmDataInfo, err);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, push);
-    SetCmdArrCodeElem(AsmDataInfo, GetPushArg(&Push));
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
-    SetCmdArrCodeElem(AsmDataInfo, Sum);
+    SetCmdArrCodeElem(AsmDataInfo, pushi);
+    SetCmdArrCodeElem(AsmDataInfo, GetPushArg(&push));
+    SetCmdArrCodeElem(AsmDataInfo, setElem);
+    SetCmdArrCodeElem(AsmDataInfo, sum);
 
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
@@ -438,55 +470,55 @@ static void UpdateBufferForMemory(const char** buffer, size_t* bufferSize)
 
 // //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr HandlePop(AsmData* AsmDataInfo)
+static AssemblerErr HandlePopi(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
     
     AssemblerErr err = {};
 
     const char* buffer = GetNextCmd(AsmDataInfo);
-    size_t BufferLen = strlen(buffer);
+    size_t bufferLen = strlen(buffer);
 
     PopType Pop = {};
-    int SetElem = 0;
-    int Sum     = 0;
+    int setElem = 0;
+    int sum     = 0;
 
-    if (IsRegister(buffer, BufferLen))
+    if (IsRegister(buffer, bufferLen))
     {
         PopTypeCtor(&Pop, 1, 0, 0);
-        SetElem = GetRegisterPointer(buffer);
-        Sum = 0;
+        setElem = GetIntRegisterPointer(buffer);
+        sum = 0;
     }
 
-    else if (IsMemory(buffer, BufferLen))
-    {
-        UpdateBufferForMemory(&buffer, &BufferLen);
+    // else if (IsMemory(buffer, bufferLen))
+    // {
+    //     UpdateBufferForMemory(&buffer, &bufferLen);
 
-        char*       EndBuffer       = nullptr;
-        StackElem_t PopElemMemIndex = (StackElem_t) strtol(buffer, &EndBuffer,  10);
+    //     char*       endBuffer       = nullptr;
+    //     StackElem_t PopElemMemIndex = (StackElem_t) strtol(buffer, &endBuffer,  10);
 
-        if (IsInt(buffer, EndBuffer, BufferLen))
-        {
-            PopTypeCtor(&Pop, 0, 1, 0);
-            SetElem = PopElemMemIndex;
-            Sum = 0;
-        }
+    //     if (IsInt(buffer, endBuffer, bufferLen))
+    //     {
+    //         PopTypeCtor(&Pop, 0, 1, 0);
+    //         setElem = PopElemMemIndex;
+    //         sum = 0;
+    //     }
 
-        else if (IsRegister(buffer, BufferLen))
-        {
-            PopTypeCtor(&Pop, 1, 1, 0);
-            SetElem = GetRegisterPointer(buffer);
-            Sum = 0;
-        }
+    //     else if (IsRegister(buffer, bufferLen))
+    //     {
+    //         PopTypeCtor(&Pop, 1, 1, 0);
+    //         setElem = GetIntRegisterPointer(buffer);
+    //         sum = 0;
+    //     }
 
-        else if (IsSum(buffer, BufferLen))
-        {
-            PopTypeCtor(&Pop, 0, 1, 1);
-            SetElem = GetRegisterPointer(buffer);
-            buffer += Registers::REGISTERS_NAME_LEN + 1;
-            Sum     = (int) strtol(buffer, &EndBuffer, 10);
-        }
-    }
+    //     else if (IsSum(buffer, bufferLen))
+    //     {
+    //         PopTypeCtor(&Pop, 0, 1, 1);
+    //         setElem = GetIntRegisterPointer(buffer);
+    //         buffer += Registers::REGISTERS_NAME_LEN + 1;
+    //         sum     = (int) strtol(buffer, &endBuffer, 10);
+    //     }
+    // }
 
     else
     {
@@ -494,10 +526,10 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
         return ASSEMBLER_VERIF(AsmDataInfo, err);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, pop);
+    SetCmdArrCodeElem(AsmDataInfo, popi);
     SetCmdArrCodeElem(AsmDataInfo, GetPopArg(&Pop));
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
-    SetCmdArrCodeElem(AsmDataInfo, Sum);
+    SetCmdArrCodeElem(AsmDataInfo, setElem);
+    SetCmdArrCodeElem(AsmDataInfo, sum);
 
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
@@ -576,7 +608,7 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
 
     const char* CallArg = GetNextCmd(AsmDataInfo);
 
-    int SetElem = 0;
+    int setElem = 0;
 
     if (IsLabel(CallArg))
     {
@@ -585,7 +617,7 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
         if (IsLabelAlready(AsmDataInfo, CallArg, &labelPointer))
         {
             Label label = AsmDataInfo->labels.labels[labelPointer];
-            SetElem     = (int) (label.codePlace);
+            setElem     = (int) (label.codePlace);
         }
 
         else
@@ -603,7 +635,7 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
     }
 
     SetCmdArrCodeElem(AsmDataInfo, Cmd::call);
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
+    SetCmdArrCodeElem(AsmDataInfo, setElem);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -628,11 +660,11 @@ static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd cmd)
     const char* ppArg    = GetNextCmd(AsmDataInfo);
     size_t      ppArgLen = strlen(ppArg);
 
-    int         SetElem  = 0;
+    int         setElem  = 0;
 
     if (IsRegister(ppArg, ppArgLen))
     {
-        SetElem = GetRegisterPointer(ppArg);
+        setElem = GetIntRegisterPointer(ppArg);
     }
 
     else
@@ -656,7 +688,7 @@ static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd cmd)
     }
 
     SetCmdArrCodeElem(AsmDataInfo, cmd);
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
+    SetCmdArrCodeElem(AsmDataInfo, setElem);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -824,7 +856,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
 
     const char* JumpArg = GetNextCmd(AsmDataInfo);
 
-    int SetElem = 0;
+    int setElem = 0;
 
     if (IsLabel(JumpArg))
     {
@@ -833,7 +865,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
         if (IsLabelAlready(AsmDataInfo, JumpArg, &labelPointer))
         {
             Label label = AsmDataInfo->labels.labels[labelPointer];
-            SetElem     = (int) label.codePlace;
+            setElem     = (int) label.codePlace;
         }
 
         else
@@ -845,7 +877,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
 
     else if (IsStrInt(JumpArg))
     {
-        SetElem = strintToInt(JumpArg);
+        setElem = strintToInt(JumpArg);
     }
 
     else
@@ -855,7 +887,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
     }
 
     SetCmdArrCodeElem(AsmDataInfo, JumpType);
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
+    SetCmdArrCodeElem(AsmDataInfo, setElem);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -1087,36 +1119,36 @@ static bool FindDefaultCmd(const char* cmd, size_t* defaultCmdPointer)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void PushTypeCtor(PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t Sum)
+static void PushTypeCtor(PushType* push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t sum)
 {
-    assert(Push);
+    assert(push);
 
-    Push->stk = Stk ? 1 : 0;
-    Push->reg = Reg ? 1 : 0;
-    Push->mem = Mem ? 1 : 0;
-    Push->sum = Sum ? 1 : 0;
+    push->stk = Stk ? 1 : 0;
+    push->reg = Reg ? 1 : 0;
+    push->mem = Mem ? 1 : 0;
+    push->sum = sum ? 1 : 0;
 
     return;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static int GetPushArg(PushType* Push)
+static int GetPushArg(PushType* push)
 {
-    assert(Push);
+    assert(push);
 
-    return *(int*) Push;
+    return *(int*) push;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void PopTypeCtor(PopType* Pop, uint8_t Reg, uint8_t Mem, uint8_t Sum)
+static void PopTypeCtor(PopType* Pop, uint8_t Reg, uint8_t Mem, uint8_t sum)
 {
     assert(Pop);
 
     Pop->reg = Reg ? 1 : 0;
     Pop->mem = Mem ? 1 : 0;
-    Pop->sum = Sum ? 1 : 0;
+    Pop->sum = sum ? 1 : 0;
 
     return;
 }
@@ -1132,14 +1164,14 @@ static int GetPopArg(PopType* Pop)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static int GetRegisterPointer(const char* buffer)
+static int GetIntRegisterPointer(const char* buffer)
 {
     assert(buffer);
 
     const char fisrtBuf  = buffer[0];
     const char secondBuf = buffer[1];
 
-    if ((fisrtBuf < 'a') || (fisrtBuf >= Registers::REGISTERS_QUANT + 'a') || (secondBuf != 'x'))
+    if ((fisrtBuf < 'a') || (fisrtBuf >= IntRegisters::INT_REGISTERS_QUANT + 'a') || (secondBuf != 'x'))
     {
         AssemblerErr err = {};
         err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
@@ -1311,13 +1343,13 @@ static const char* GetCmdName(size_t cmdPointer)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void SetCmdArrCodeElem(AsmData* AsmDataInfo, int SetElem)
+static void SetCmdArrCodeElem(AsmData* AsmDataInfo, int setElem)
 {
     assert(AsmDataInfo);
     assert(AsmDataInfo->code.code);
 
     size_t pointer = AsmDataInfo->code.pointer;
-    AsmDataInfo->code.code[pointer] = SetElem;
+    AsmDataInfo->code.code[pointer] = setElem;
     AsmDataInfo->code.pointer++;
     return;
 }
