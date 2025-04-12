@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 const char** ReadFile    (const char*  file, size_t* bufSize);
-int          strtoi      (const char*  str);
+int          strintToInt      (const char*  str);
 void         BufferDtor  (const char** buffer);
 
 size_t       CalcFileLen (const char* fileName);

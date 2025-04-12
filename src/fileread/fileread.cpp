@@ -4,6 +4,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "fileread/fileread.hpp"
+#include "lib/colorPrint.hpp"
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static void   SetWord          (const char** split_buffer, size_t* word_i, const char* SetWord);
 static bool   IsPassSymbol     (const char c);
@@ -18,7 +21,7 @@ static bool   IsInt            (const char* str, const char* strEnd);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-int strtoi(const char* const str)
+int strintToInt(const char* const str)
 {
     assert(str);
 
@@ -53,16 +56,23 @@ const char** ReadFile(const char* file, size_t* bufSize)
     assert(bufSize);
 
     FILE* filePtr = fopen(file, "r");
-    // printf("file = '%s'\n", file);
-    assert(filePtr);
+
+    if (!filePtr)
+    {
+        COLOR_PRINT(RED, "Failed open input file '%s'.\nPossible reason: this file doesn`t exist.\n", file);
+        exit(EXIT_FAILURE);
+    }
 
     size_t bufferLen = CalcFileLen(file);
 
     char*  buffer             = (char*)        calloc(bufferLen + 2, sizeof(*buffer));
     const char** split_buffer = (const char**) calloc(bufferLen + 2, sizeof(*split_buffer));
 
-    assert(buffer);
-    assert(split_buffer);
+    if (!buffer || !split_buffer)
+    {
+        COLOR_PRINT(RED, "Failed to allocate memory to read all input file '%s'\n.", file);
+        exit(EXIT_FAILURE);
+    }
 
     Fread(buffer, bufferLen, filePtr);
     fclose(filePtr);

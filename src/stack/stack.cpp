@@ -2,10 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
+#include "lib/lib.hpp"
 #include "stack/stack.hpp"
 #include "lib/colorPrint.hpp"
-#include "lib/lib.hpp"
-#include "common/globalInclude.hpp"
 
 static const size_t MinCapacity = 1<<3;
 static const size_t MaxCapacity = 1<<21;

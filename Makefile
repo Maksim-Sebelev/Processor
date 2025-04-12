@@ -14,11 +14,11 @@ endif
 
 
 OUT_O_DIR ?= bin
-TARGET_DIR ?= build
+EXECUTABLE_DIR ?= build
 COMMONINC = -I./include
 SRC = ./src
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-TARGET = processor
+EXECUTABLE ?= processor
 ASM_DIR  ?= asm
 CODE_DIR ?= code
 ASM_FILE ?= programm.asm
@@ -42,9 +42,9 @@ COBJ := $(addprefix $(OUT_O_DIR)/,$(CSRC:.cpp=.o))
 DEPS = $(COBJ:.o=.d)
 
 .PHONY: all
-all: $(TARGET_DIR)/$(TARGET)
+all: $(EXECUTABLE_DIR)/$(EXECUTABLE)
 
-$(TARGET_DIR)/$(TARGET): $(COBJ)
+$(EXECUTABLE_DIR)/$(EXECUTABLE): $(COBJ)
 	@mkdir -p $(@D)
 	$(CC) $^ -o $@ $(LDFLAGS)
 
@@ -62,24 +62,24 @@ $(DEPS) : $(OUT_O_DIR)/%.d : %.cpp
 .PHONY: processor compile run
 processor:
 	@mkdir -p $(CODE_DIR)
-	@./$(TARGET_DIR)/$(TARGET) -compile $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE) -run $(CODE_DIR)/$(BIN_FILE)
+	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -compile $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE) -run $(CODE_DIR)/$(BIN_FILE)
 
 compile:
 	@mkdir -p $(CODE_DIR)
-	@./$(TARGET_DIR)/$(TARGET) -compile $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE)
+	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -compile $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE)
 
 run:
 	@mkdir -p $(CODE_DIR)
-	@./$(TARGET_DIR)/$(TARGET) -run $(CODE_DIR)/$(BIN_FILE)
+	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -run $(CODE_DIR)/$(BIN_FILE)
 
 #======= clean ========================================
 
 .PHONY: clean cleanDirs
 clean:
-	rm -rf $(COBJ) $(DEPS) $(TARGET_DIR)/$(TARGET) $(OUT_O_DIR)/$(SRC)
+	rm -rf $(COBJ) $(DEPS) $(EXECUTABLE_DIR)/$(EXECUTABLE) $(OUT_O_DIR)/$(SRC)
 
 cleanDirs:
-	rm -rf $(OUT_O_DIR) $(TARGET_DIR)
+	rm -rf $(OUT_O_DIR) $(EXECUTABLE_DIR)
 
 #========== examples ===================================
 
@@ -131,6 +131,17 @@ example4:
 	BIN_FILE=$(EXAMPLE4_FILE).bin              \
 	processor                                   \
 
+
+EXAMPLE5_DIR  = example4
+EXAMPLE5_FILE = Kvadratka
+
+example5:
+	@make                                  \
+	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE5_DIR)  \
+	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE5_DIR)  \
+	ASM_FILE=$(EXAMPLE5_FILE).asm         	  \
+	BIN_FILE=$(EXAMPLE5_FILE).bin              \
+	processor                                   \
 
 #======================================================
 

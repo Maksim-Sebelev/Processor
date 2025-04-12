@@ -7,7 +7,7 @@ asm/
 # obj (.o) and dep (.d) files
 bin/
 
-# dir for target 
+# dir for executable
 build/
 
 # my bin files

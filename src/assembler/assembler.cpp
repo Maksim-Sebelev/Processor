@@ -6,6 +6,7 @@
 #include "assembler/assembler.hpp"
 #include "fileread/fileread.hpp"
 #include "common/globalInclude.hpp"
+#include "lib/lib.hpp"
 #include "lib/colorPrint.hpp"
 #include "stack/stack.hpp"
 
@@ -844,7 +845,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
 
     else if (IsStrInt(JumpArg))
     {
-        SetElem = strtoi(JumpArg);
+        SetElem = strintToInt(JumpArg);
     }
 
     else

@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <assert.h>
 #include "console/consoleCmd.hpp"
 #include "assembler/assembler.hpp"
 #include "processor/processor.hpp"
+#include "common/globalInclude.hpp"
+#include "lib/colorPrint.hpp"
+#include "lib/lib.hpp"
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
