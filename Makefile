@@ -4,7 +4,7 @@ endif
 
 CFLAGS ?= 
 
-BUILD_TYPE ?= debug
+BUILD_TYPE ?= release
 
 ifeq ($(BUILD_TYPE), release)
 	CFLAGS += -D _NDEBUG -O2
