@@ -29,14 +29,19 @@ EXAMPLE_DIR = examples
 
 override CFLAGS += $(COMMONINC)
 
-CSRC =  main.cpp 					 \
-		src/lib/lib.cpp  			  \
+CSRC =  main.cpp 					\
+		src/lib/lib.cpp  			 \
+		src/lib/log.cpp  			  \
 		src/stack/stack.cpp 		   \
 		src/fileread/fileread.cpp       \
 		src/console/consoleCmd.cpp       \
 		src/assembler/assembler.cpp       \
 		# src/processor/processor.cpp        \
 
+
+ifeq ($(BUILD_TYPE), debug)
+	CSRC += src/log/log.cpp
+endif
 
 COBJ := $(addprefix $(OUT_O_DIR)/,$(CSRC:.cpp=.o))
 DEPS = $(COBJ:.o=.d)
@@ -117,7 +122,6 @@ example3:
 	ASM_FILE=$(EXAMPLE3_FILE).asm        	  \
 	BIN_FILE=$(EXAMPLE3_FILE).bin              \
 	processor                                   \
-
 
 
 EXAMPLE4_DIR  = example4

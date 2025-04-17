@@ -59,6 +59,7 @@ ON_STACK_CANARY(typedef uint64_t StackCanary_t;)
 struct Stack_t
 {
     ON_STACK_CANARY(StackCanary_t leftStackCanary;)
+    size_t pointer;
     size_t size;
     size_t capacity;
     void* data;

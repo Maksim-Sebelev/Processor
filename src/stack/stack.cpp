@@ -89,7 +89,8 @@ StackErrorType StackCtor(Stack_t* stack, size_t StackDataSize)
 {
     StackErrorType err = {};
 
-    stack->size = 0;
+    stack->pointer = 0;
+    stack->size    = 0;
 
     stack->capacity = GetNewCtorCapacity(StackDataSize);
     STACK_ASSERT(CtorCalloc(stack));
@@ -123,6 +124,7 @@ StackErrorType StackDtor(Stack_t* stack)
     stack->data     = nullptr;
     stack->capacity = 0;
     stack->size     = 0;
+    stack->pointer  = 0;
     return err;
 }
 
@@ -137,7 +139,7 @@ StackErrorType StackPush(Stack_t*  stack, void* pushElem, size_t typeSize)
 
     typeSize = GetSize(typeSize);
 
-    size_t newSize = stack->size + typeSize;
+    size_t newSize = stack->pointer + typeSize;
 
     if (newSize > MaxCapacity)
     {
@@ -145,14 +147,15 @@ StackErrorType StackPush(Stack_t*  stack, void* pushElem, size_t typeSize)
         err.IsWarning = 1;
         return STACK_VERIF(stack, err);
     }
-           
+    
+    stack->size++;
 
     if (newSize <= stack->capacity)
     {
-        void*  data = (char*) stack->data + stack->size;
+        void*  data = (char*) stack->data + stack->pointer;
         memcpy(data, pushElem, typeSize);
 
-        stack->size = newSize;
+        stack->pointer = newSize;
 
         ON_STACK_DATA_HASH(stack->dataHash  = CalcDataHash(stack);)
         ON_STACK_HASH(stack->stackHash = CalcStackHash(stack);)
@@ -168,10 +171,10 @@ StackErrorType StackPush(Stack_t*  stack, void* pushElem, size_t typeSize)
         return STACK_VERIF(stack, err);
     }
 
-    void*  data = (char*) stack->data + stack->size;
+    void*  data = (char*) stack->data + stack->pointer;
     memcpy(data, pushElem, typeSize);
     
-    stack->size = newSize;
+    stack->pointer = newSize;
 
     ON_STACK_DATA_CANARY(SetRightDataCanary(stack);)
 
@@ -199,23 +202,25 @@ StackErrorType StackPop(Stack_t* stack, void* popElem, size_t typeSize)
 
     typeSize = GetSize(typeSize);
 
-    if (stack->size < typeSize)
+    if (stack->pointer < typeSize)
     {
         err.Warning.PopInEmptyStack = 1;
         err.IsWarning = 1;
         return STACK_VERIF(stack, err);
     }
 
-    void* data = (char*) stack->data + stack->size - typeSize;
+    stack->size--;
+
+    void* data = (char*) stack->data + stack->pointer - typeSize;
     memcpy(popElem, data, typeSize);
 
-    size_t newSize = stack->size - typeSize;
-    stack->size = newSize;
+    size_t newSize = stack->pointer - typeSize;
+    stack->pointer = newSize;
 
     ON_STACK_DATA_HASH(stack->dataHash  = CalcDataHash(stack);)
     ON_STACK_HASH(stack->stackHash = CalcStackHash(stack);)
 
-    if (stack->size * CapPopReallocCoef > stack->capacity)
+    if (stack->pointer * CapPopReallocCoef > stack->capacity)
     {
         return STACK_VERIF(stack, err);
     }
@@ -243,7 +248,7 @@ void* GetLastStackElem(const Stack_t* stack, size_t typeSize)
 
     typeSize = GetSize(typeSize);
 
-    if (stack->size < typeSize)
+    if (stack->pointer < typeSize)
     {
         StackErrorType err = {};
         err.IsWarning = 1;
@@ -252,7 +257,7 @@ void* GetLastStackElem(const Stack_t* stack, size_t typeSize)
         STACK_ASSERT(err);
     }
 
-    void* data = (char*) stack->data + stack->size;
+    void* data = (char*) stack->data + stack->pointer;
     return (char*) data - typeSize;
 }
 
@@ -263,7 +268,7 @@ void* GetLastStackElem(const Stack_t* stack, size_t typeSize)
 // {
 //     StackErrorType err = {};
 //     RETURN_IF_ERR_OR_WARN(stack, err);
-//     COLOR_PRINT(WHITE, "Last stack Elem = %d\n", stack->data[stack->size - 1]);
+//     COLOR_PRINT(WHITE, "Last stack Elem = %d\n", stack->data[stack->pointer - 1]);
 //     return STACK_VERIF(stack, err);
 // }
 
@@ -382,10 +387,12 @@ static StackErrorType MoveDataToFirstElem(Stack_t* stack)
 
 static size_t GetSize(size_t typeSize)
 {
-    size_t rem = typeSize % 4;
-    size_t tmp = (rem == 0) ? 0 : 4 - rem;
-    return typeSize + tmp;
+    // size_t rem = typeSize % 4;
+    // size_t tmp = (rem == 0) ? 0 : 4 - rem;
+    // return typeSize + tmp;
+    return typeSize;
 }
+
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -602,7 +609,7 @@ static StackErrorType Verif(Stack_t* stack, StackErrorType* err ON_STACK_DEBUG(,
 
     ON_STACK_DEBUG
     (
-    if (stack->size > stack->capacity)
+    if (stack->pointer > stack->capacity)
     {
         err->FatalError.SizeBiggerCapacity = 1;
         err->IsFatalError = 1;
@@ -680,7 +687,7 @@ static void PrintError(StackErrorType err)
 
         if (err.Warning.TooBigCapacity == 1)
         {
-            COLOR_PRINT(YELLOW, "Warning: to big data size.\n");
+            COLOR_PRINT(YELLOW, "Warning: to big data pointer.\n");
             COLOR_PRINT(YELLOW, "capacity have a max allowed value.\n");
         }
 
@@ -757,7 +764,7 @@ static void PrintError(StackErrorType err)
         (
         if (err.FatalError.SizeBiggerCapacity == 1)
         {
-            COLOR_PRINT(RED, "err: size > capacity.\n");
+            COLOR_PRINT(RED, "err: pointer > capacity.\n");
         }
         
         if (err.FatalError.CapacityBiggerMax == 1)
@@ -867,17 +874,17 @@ static void PrintError(StackErrorType err)
 //     ON_STACK_HASH (COLOR_PRINT(BLUE, "stack Hash = %lu\n",   stack->stackHash);)
 //     ON_STACK_DATA_HASH (COLOR_PRINT(BLUE, "data  Hash = %lu\n\n", stack->dataHash);)
 
-//     COLOR_PRINT(CYAN, "size = %lu\n", stack->size);
+//     COLOR_PRINT(CYAN, "pointer = %lu\n", stack->pointer);
 //     COLOR_PRINT(CYAN, "capacity = %lu\n\n", stack->capacity);
 
 
 //     COLOR_PRINT(BLUE, "data = \n{\n");
-//     for (size_t data_i = 0; data_i < stack->size; data_i++)
+//     for (size_t data_i = 0; data_i < stack->pointer; data_i++)
 //     {
 //         COLOR_PRINT(BLUE, "*[%2d] %d\n", data_i, stack->data[data_i]);
 //     }
 
-//     for (size_t data_i = stack->size; data_i < stack->capacity; data_i++)
+//     for (size_t data_i = stack->pointer; data_i < stack->capacity; data_i++)
 //     {
 //         COLOR_PRINT(CYAN, " [%2lu] 0x%x\n", data_i, stack->data[data_i]);   
 //     }
@@ -885,12 +892,12 @@ static void PrintError(StackErrorType err)
 
 
 //     COLOR_PRINT(VIOLET, "data ptrs = \n{\n");
-//     for (size_t data_i = 0; data_i < stack->size; data_i++)
+//     for (size_t data_i = 0; data_i < stack->pointer; data_i++)
 //     {
 //         COLOR_PRINT(VIOLET, "*[%2lu] 0x%p\n", data_i, &stack->data[data_i]);
 //     }
 
-//     for (size_t data_i = stack->size; data_i < stack->capacity; data_i++)
+//     for (size_t data_i = stack->pointer; data_i < stack->capacity; data_i++)
 //     {
 //         COLOR_PRINT(CYAN, " [%2lu] 0x%p\n", data_i, &stack->data[data_i]);   
 //     }

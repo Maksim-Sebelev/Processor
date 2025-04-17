@@ -9,6 +9,9 @@
 #include "lib/lib.hpp"
 #include "lib/colorPrint.hpp"
 #include "stack/stack.hpp"
+ON_DEBUG(
+#include "lib/log.hpp"
+)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -21,12 +24,7 @@ struct CmdArr
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-struct CodeArr
-{
-    size_t size;
-    size_t pointer;
-    int*   code;
-};
+typedef Stack_t CodeArr;
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -60,11 +58,11 @@ struct AsmData
 
 static AssemblerErr AsmDataCtor           (AsmData* AsmDataInfo, const IOfile* file);
 static AssemblerErr AsmDataDtor           (AsmData* AsmDataInfo);
-static AssemblerErr WriteCmdInCodeArr     (AsmData* AsmDataInfo);
+static AssemblerErr WriteIntCmdInCodeArr     (AsmData* AsmDataInfo);
 static AssemblerErr WriteCodeArrInFile    (AsmData* AsmDataInfo, const IOfile* file);
 
 
-static void         SetCmdArrCodeElem     (AsmData* AsmDataInfo, int setElem);
+static void         WriteIntCmdInCodeArr     (AsmData* AsmDataInfo, int setElem);
 static const char*  GetNextCmd            (AsmData* AsmDataInfo);
 static void         UpdateBufferForMemory (const char** buffer, size_t* bufferSize);
 
@@ -85,8 +83,9 @@ static char          GetChar              (const char* buffer, size_t bufferSize
 
 static bool          IsCharNum            (char c);
 static bool          IsStrInt             (const char* str);
-static bool          IsInt                (const char* str, const char* StrEnd, size_t strSize);
-static bool          IsChar               (const char* str, const char* StrEnd, size_t strSize);
+static bool          IsChar               (const char* str, const char* strEnd, size_t strSize);
+static bool          IsInt                (const char* str, const char* strEnd, size_t strSize);
+static bool          IsDouble             (const char* str, const char* strEnd, size_t strSize);
 static bool          IsRegister           (const char* str,                     size_t strSize);
 static bool          IsMemory             (const char* str,                     size_t strSize);
 static bool          IsSum                (const char* str,                     size_t strSize);
@@ -111,6 +110,8 @@ static AssemblerErr JmpCmdPattern        (AsmData* AsmDataInfo, Cmd JumpType);
 
 
 static AssemblerErr HandlePushi          (AsmData* AsmDataInfo);
+static AssemblerErr HandlePushc          (AsmData* AsmDataInfo);
+static AssemblerErr HandlePushd          (AsmData* AsmDataInfo);
 static AssemblerErr HandlePopi           (AsmData* AsmDataInfo);
 static AssemblerErr HandleJmp            (AsmData* AsmDataInfo);
 static AssemblerErr HandleJa             (AsmData* AsmDataInfo);
@@ -154,9 +155,9 @@ struct CmdFunc
 
 static const CmdFunc DefaultCmd[] =
 {
-    // {"pushc",  HandlePushc, CmdInfoArr[ pushc ].argQuant, CmdInfoArr[ pushc ].codeRecordSize},
+    {"pushc",  HandlePushc, CmdInfoArr[ pushc ].argQuant, CmdInfoArr[ pushc ].codeRecordSize},
     {"pushi",  HandlePushi, CmdInfoArr[ pushi ].argQuant, CmdInfoArr[ pushi ].codeRecordSize},
-    // {"pushd",  HandlePushd, CmdInfoArr[ pushd ].argQuant, CmdInfoArr[ pushd ].codeRecordSize},
+    {"pushd",  HandlePushd, CmdInfoArr[ pushd ].argQuant, CmdInfoArr[ pushd ].codeRecordSize},
     // {"popc" ,  HandlePopc , CmdInfoArr[ popc  ].argQuant, CmdInfoArr[ popc  ].codeRecordSize},
     {"popi" ,  HandlePopi , CmdInfoArr[ popi  ].argQuant, CmdInfoArr[ popi  ].codeRecordSize},
     // {"popd" ,  HandlePopd , CmdInfoArr[ popd  ].argQuant, CmdInfoArr[ popd  ].codeRecordSize},
@@ -209,7 +210,7 @@ void RunAssembler(const IOfile* file)
 
     ASSEMBLER_ASSERT(AsmDataCtor         (&AsmDataInfo, file));
     ASSEMBLER_ASSERT(InitAllLabels       (&AsmDataInfo));
-    ASSEMBLER_ASSERT(WriteCmdInCodeArr   (&AsmDataInfo));
+    ASSEMBLER_ASSERT(WriteIntCmdInCodeArr   (&AsmDataInfo));
     ASSEMBLER_ASSERT(WriteCodeArrInFile  (&AsmDataInfo, file));
     ASSEMBLER_ASSERT(AsmDataDtor         (&AsmDataInfo));
 
@@ -230,10 +231,8 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
     AsmDataInfo->cmd.cmd = ReadFile(file->ProgrammFile, &AsmDataInfo->cmd.size);
 
     size_t codeArrSize     = CalcCodeSize(&AsmDataInfo->cmd);
-    AsmDataInfo->code.size = codeArrSize;
-    AsmDataInfo->code.code = (int*) calloc(codeArrSize, sizeof(int));
 
-    assert(AsmDataInfo->code.code);
+    STACK_ASSERT(StackCtor(&AsmDataInfo->code, codeArrSize));
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -246,7 +245,7 @@ static AssemblerErr AsmDataDtor(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    FREE(AsmDataInfo->code.code);
+    STACK_ASSERT(StackDtor(&AsmDataInfo->code));
     BufferDtor(AsmDataInfo->cmd.cmd);
     LabelsDtor(AsmDataInfo);
 
@@ -257,7 +256,7 @@ static AssemblerErr AsmDataDtor(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
+static AssemblerErr WriteIntCmdInCodeArr(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
 
@@ -303,7 +302,7 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
 static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
 {
     assert(AsmDataInfo);
-    assert(AsmDataInfo->code.code);
+    assert(AsmDataInfo->code.data);
 
     AssemblerErr err = {};
 
@@ -321,7 +320,8 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
 
     for (size_t i = 0; i < codeArrSize; i++)
     {
-        fprintf(codeFile, "%d ", AsmDataInfo->code.code[i]);
+        fprintf(codeFile, "%d ", *(int*) ((char*) AsmDataInfo->code.data + i));
+        i += sizeof(int);
     }
 
     fclose(codeFile);
@@ -331,31 +331,137 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr PushCmdPattern(AsmData* AsmDataInfo)
+typedef bool (*CheckPushArgFunction) (PushArgBuffer);
+
+CheckPushArgFunction GetCheckPushArgFunction(Cmd cmd)
+{
+    switch (cmd)
+    {
+        case Cmd::pushc: return IsChar;   break;
+        case Cmd::pushi: return IsInt;    break;
+        case Cmd::pushd: return IsDouble; break;
+        default:
+        {
+            assert(0 && "undefined situation: this cmd must be not here.");
+        }
+    }
+
+    assert(0 && "undefined situation: this cmd must be not here.");
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+struct PushArgBuffer
+{
+    const char* buffer;
+    char*       endBuffer;
+    size_t      bufferLen; 
+};
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushArgBuffer PushArgBufferCtor(AsmData* AsmDataInfo)
+{
+    PushArgBuffer buffer = {};
+    buffer.buffer    = GetNextCmd(AsmDataInfo);
+    buffer.bufferLen = strlen(buffer.buffer);
+    buffer.endBuffer = nullptr;
+
+    return buffer;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+struct PushArg
+{
+
+};
+
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static AssemblerErr PushCmdPattern(AsmData* AsmDataInfo, Cmd cmd)
 {
     assert(AsmDataInfo);
+    assert((cmd == Cmd::pushi) || (cmd == Cmd::pushc) || (cmd == Cmd::pushd));
 
     AssemblerErr err = {};
 
-    const char* buffer    = GetNextCmd(AsmDataInfo);
-    size_t      bufferLen = strlen(buffer);
-    char*       endBuffer = nullptr;
+    PushArgBuffer buffer = PushArgBufferCtor(AsmDataInfo);
 
-    int         pushElem  = (int) strtol(buffer, &endBuffer, 10);
+
+    int         pushElem  = (int) strtol(buffer.buffer, &buffer.endBuffer, 10);
     PushType    push      = {};
     int         setElem   = 0;
     int         sum       = 0;
 
+
+    CheckPushArgFunction CheckArgType = GetCheckPushArgFunction(cmd);
+
+
+    if (CheckArgType(buffer))
+    {
+        PushTypeCtor(&push, 1, 0, 0, 0);
+        setElem = pushElem;
+        sum = 0;
+    }
+
+    else if (IsRegister(buffer, bufferLen))
+    {
+        PushTypeCtor(&push, 0, 1, 0, 0);
+        setElem = GetIntRegisterPointer(buffer);
+        sum = 0;
+    }
+
+    else if (IsMemory(buffer, bufferLen))
+    {
+        UpdateBufferForMemory(&buffer, &bufferLen);
+        
+        int PushElemMemIndex = (int) strtol(buffer, &endBuffer, 10);
+
+
+        switch (cmd)
+        {
+            case Cmd::pushc: char   PushElemMemIndex = (char)   strtol(buffer, &endBuffer, 10); break;
+            case Cmd::pushd: double PushElemMemIndex = (double) strtod(buffer, &endBuffer);     break;
+        }
+        // StackElem_t PushElemMemIndex = (StackElem_t) strtol(buffer, &endBuffer, 10);
+
+        if (IsInt(buffer, endBuffer, bufferLen))
+        {
+            PushTypeCtor(&push, 0, 0, 1, 0);
+            setElem = PushElemMemIndex;
+            sum = 0;
+        }
+
+        else if (IsRegister(buffer, bufferLen))
+        {
+            PushTypeCtor(&push, 0, 1, 1, 0);
+            setElem = GetIntRegisterPointer(buffer);
+            sum = 0;
+        }
+
+        else if (IsSum(buffer, bufferLen))
+        {
+            PushTypeCtor(&push, 0, 0, 1, 1);
+            setElem = GetIntRegisterPointer(buffer);
+            buffer += Registers::REGISTERS_NAME_LEN + 1;
+            sum     = (int) strtol(buffer, &endBuffer, 10);
+        }
+    }
+
+    else
+    {
+        err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
+        return ASSEMBLER_VERIF(AsmDataInfo, err);
+    }
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool (*GetTypeCheckFunction)(Cmd push)
-{
-
-};
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -430,10 +536,10 @@ static AssemblerErr HandlePushi(AsmData* AsmDataInfo)
         return ASSEMBLER_VERIF(AsmDataInfo, err);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, pushi);
-    SetCmdArrCodeElem(AsmDataInfo, GetPushArg(&push));
-    SetCmdArrCodeElem(AsmDataInfo, setElem);
-    SetCmdArrCodeElem(AsmDataInfo, sum);
+    WriteIntCmdInCodeArr(AsmDataInfo, pushi);
+    WriteIntCmdInCodeArr(AsmDataInfo, GetPushArg(&push));
+    WriteIntCmdInCodeArr(AsmDataInfo, setElem);
+    WriteIntCmdInCodeArr(AsmDataInfo, sum);
 
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
@@ -526,10 +632,10 @@ static AssemblerErr HandlePopi(AsmData* AsmDataInfo)
         return ASSEMBLER_VERIF(AsmDataInfo, err);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, popi);
-    SetCmdArrCodeElem(AsmDataInfo, GetPopArg(&Pop));
-    SetCmdArrCodeElem(AsmDataInfo, setElem);
-    SetCmdArrCodeElem(AsmDataInfo, sum);
+    WriteIntCmdInCodeArr(AsmDataInfo, popi);
+    WriteIntCmdInCodeArr(AsmDataInfo, GetPopArg(&Pop));
+    WriteIntCmdInCodeArr(AsmDataInfo, setElem);
+    WriteIntCmdInCodeArr(AsmDataInfo, sum);
 
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
@@ -634,8 +740,8 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
         return ASSEMBLER_VERIF(AsmDataInfo, err);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, Cmd::call);
-    SetCmdArrCodeElem(AsmDataInfo, setElem);
+    WriteIntCmdInCodeArr(AsmDataInfo, Cmd::call);
+    WriteIntCmdInCodeArr(AsmDataInfo, setElem);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -687,8 +793,8 @@ static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd cmd)
         return ASSEMBLER_VERIF(AsmDataInfo, err);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, cmd);
-    SetCmdArrCodeElem(AsmDataInfo, setElem);
+    WriteIntCmdInCodeArr(AsmDataInfo, cmd);
+    WriteIntCmdInCodeArr(AsmDataInfo, setElem);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -841,7 +947,7 @@ static AssemblerErr NullArgCmdPattern(AsmData* AsmDataInfo, Cmd cmd)
     assert(AsmDataInfo);
 
     AssemblerErr err = {};
-    SetCmdArrCodeElem(AsmDataInfo, cmd);
+    WriteIntCmdInCodeArr(AsmDataInfo, cmd);
     AsmDataInfo->code.size++;
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -886,8 +992,8 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
         return ASSEMBLER_VERIF(AsmDataInfo, err);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, JumpType);
-    SetCmdArrCodeElem(AsmDataInfo, setElem);
+    WriteIntCmdInCodeArr(AsmDataInfo, JumpType);
+    WriteIntCmdInCodeArr(AsmDataInfo, setElem);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
@@ -1232,23 +1338,36 @@ static bool IsCharNum(char c)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsInt(const char* str, const char* StrEnd, size_t strSize)
+static bool IsDouble(const char* str, const char* strEnd, size_t strSize)
 {
     assert(str);
-    assert(StrEnd);
+    assert(strEnd);
 
-    int ptrDif = (int) (StrEnd - str);
-    int strLen = (int)  strSize;
+    int ptrDif = (int) (strEnd - str);
+    int strLen = (int) (strSize);
 
     return ptrDif == strLen;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsChar(const char* str, const char* StrEnd, size_t strSize)
+static bool IsInt(const char* str, const char* strEnd, size_t strSize)
 {
     assert(str);
-    assert(StrEnd);
+    assert(strEnd);
+
+    int ptrDif = (int) (strEnd - str);
+    int strLen = (int) (strSize);
+
+    return ptrDif == strLen;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsChar(const char* str, const char* strEnd, size_t strSize)
+{
+    assert(str);
+    assert(strEnd);
 
     const char str0    = str[0];
     const char strLast = str[strSize - 1];
@@ -1343,13 +1462,26 @@ static const char* GetCmdName(size_t cmdPointer)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void SetCmdArrCodeElem(AsmData* AsmDataInfo, int setElem)
+static void WriteIntCmdInCodeArr(AsmData* AsmDataInfo, int setElem)
 {
     assert(AsmDataInfo);
-    assert(AsmDataInfo->code.code);
+    assert(AsmDataInfo->code.data);
 
     size_t pointer = AsmDataInfo->code.pointer;
-    AsmDataInfo->code.code[pointer] = setElem;
+    // AsmDataInfo->code.code[pointer] = setElem;
+    AsmDataInfo->code.pointer++;
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void WriteDoubleCmdInCodeArr(AsmData* AsmDataInfo, double setElem)
+{
+    assert(AsmDataInfo);
+    assert(AsmDataInfo->code.data);
+
+    size_t pointer = AsmDataInfo->code.pointer;
+    // AsmDataInfo->code.code[pointer] = setElem;
     AsmDataInfo->code.pointer++;
     return;
 }
@@ -1372,7 +1504,7 @@ void AssemblerAssertPrint(AssemblerErr* err, const char* file, int line, const c
     assert(file);
     assert(func);
 
-    COLOR_PRINT(RED, "Assert made in:\n");
+    LOG(RED, "Assert made in:\n");
     PrintPlace(file, line, func);
     PrintError(err);
     PrintPlace(err->place.file, err->place.line, err->place.func);
@@ -1410,7 +1542,12 @@ static void PrintError(AssemblerErr* err)
             return;
 
         case AssemblerErrorType::FAILED_OPEN_INPUT_STREAM:
-            COLOR_PRINT(RED, "Error: failed open input file.\n");
+            ON_DEBUG(
+            LOG_ERROR("failed open input file.")''
+            )
+            OFF_DEBUG(
+            PRINT_ERROR("failed open input file.");
+            )
             break;
 
         case AssemblerErrorType::FAILED_OPEN_OUTPUT_STREAM:
