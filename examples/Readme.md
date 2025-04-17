@@ -14,6 +14,9 @@ make example3
 ```bash
 make example4
 ```
+```bash
+make example5
+```
 
 If you want to see it without make use:
 ```bash
@@ -27,4 +30,7 @@ If you want to see it without make use:
 ```
 ```bash
 ./build/processor -compile examples/example4/Factorial.asm examples/example4/Factorial.bin -run examples/example4/Factorial.bin 
+```
+```bash
+./build/processor -compile examples/example5/circle.asm examples/example5/circle.bin -run examples/example5/circle.bin 
 ```

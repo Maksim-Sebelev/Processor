@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <SFML/Graphics.hpp>
 #include <assert.h>
 #include "processor/processor.hpp"
 #include "stack/stack.hpp"
 #include "common/globalInclude.hpp"
 #include "lib/colorPrint.hpp"
 #include "lib/lib.hpp"
+#include "log/log.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -25,7 +27,6 @@ struct RAM
 };
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 
 struct SPU
 {
@@ -70,6 +71,7 @@ static ProcessorErr   HandleRet                  (SPU* spu);
 static ProcessorErr   HandleOut                  (SPU* spu);
 static ProcessorErr   HandleOutc                 (SPU* spu);
 static ProcessorErr   HandleOutr                 (SPU* spu);
+static ProcessorErr   HandleDraw                 (SPU* spu);
 static ProcessorErr   HandleOutrc                (SPU* spu);
 
 
@@ -101,6 +103,22 @@ static size_t         GetIp                      (SPU* spu);
 static int            GetCodeElem                (SPU* spu);
 static int            GetNextCodeElem            (SPU* spu);
 static void           SetCodeElem                (SPU* spu, size_t Code_i, int NewCodeElem);
+static int            GetMemElem                 (SPU* spu, size_t index);
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+struct RGBA
+{
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+    unsigned char a;
+};
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void           GetRGBA                    (int pixel, RGBA* rgba);
+static ProcessorErr   VertexArrayCtor            (sf::VertexArray& pixels, size_t high, size_t width, SPU* spu);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -152,7 +170,7 @@ static ProcessorErr SpuCtor(SPU* spu, const IOfile* file)
         spu->registers[registers_i] = 0;
     }
 
-    static const size_t DefaultRamSize = 1<<20;
+    static const size_t DefaultRamSize = 1<<25;
 
     spu->ram.ram = (int*) calloc(DefaultRamSize, sizeof(int));
 
@@ -216,6 +234,7 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::outc:  PROCESSOR_ASSERT(HandleOutc (spu)); break;
             case Cmd::outr:  PROCESSOR_ASSERT(HandleOutr (spu)); break;
             case Cmd::outrc: PROCESSOR_ASSERT(HandleOutrc(spu)); break;
+            case Cmd::draw:  PROCESSOR_ASSERT(HandleDraw (spu)); break; 
 
             case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return HandleHalt(spu);
             default:
@@ -555,6 +574,101 @@ static ProcessorErr HandleOutr(SPU* spu)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
+static void GetRGBA(int pixel, RGBA* rgba)
+{
+    rgba->r = (unsigned char) (pixel >> 0)   & 0xFF;
+    rgba->g = (unsigned char) (pixel >> 8)   & 0xFF;
+    rgba->b = (unsigned char) (pixel >> 16)  & 0xFF;
+    rgba->a = (unsigned char) (pixel >> 24)  & 0xFF;
+
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr VertexArrayCtor(sf::VertexArray& pixels, size_t high, size_t width, SPU* spu)
+{
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    for (size_t i = 0; i < width; i++)
+    {
+        for (size_t j = 0; j < high; j++)
+        {
+            size_t index = j * width + i;
+            int memElem = GetMemElem(spu, index);
+            RGBA rgba = {};
+            GetRGBA(memElem, &rgba);
+
+            pixels[index].position = sf::Vector2f((float) i, (float) j);
+            pixels[index].color    = sf::Color(rgba.r, rgba.g, rgba.b, rgba.a);
+        }
+    }
+
+    return PROCESSOR_VERIF(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleDraw(SPU* spu)
+{
+    assert(spu);
+
+    ProcessorErr err = {};    
+
+    int firstArg  = spu->code.code[GetIp(spu) + 1];
+    int secondArg = spu->code.code[GetIp(spu) + 2];
+
+
+    size_t high  = (size_t) spu->registers[firstArg];
+    size_t width = (size_t) spu->registers[secondArg];
+
+    size_t vertexCount = high * width;
+
+    sf::VertexArray pixels(sf::PrimitiveType::Points, vertexCount);
+    PROCESSOR_ASSERT(VertexArrayCtor(pixels, high, width, spu));
+
+    // ON_DEBUG(
+    // LOG_COLOR(Yellow);
+
+    // for (size_t i = 0; i < vertexCount; i++)
+    // {
+    //     LOG_ADC_PRINT("pixels[%lu].color = '%d %d %d %d'\n", i, (int) pixels[i].color.r, (int) pixels[i].color.g, (int) pixels[i].color.b, (int) pixels[i].color.a);
+    // }
+    // )
+
+    sf::RenderWindow window(sf::VideoMode((unsigned int) width, (unsigned int) high), "Best policarbonate: SEBELEV GROUPP.");
+
+    window.draw(pixels);
+    window.display(); 
+
+    while (window.isOpen())
+    {
+        sf::Event event = {};
+    
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::KeyPressed)
+                if (event.key.code == sf::Keyboard::Escape)
+                    window.close();
+
+            if (event.type == sf::Event::Closed)
+                window.close();
+        }
+    }
+    
+    pixels.clear();
+    window.clear();
+
+    spu->ip += CmdInfoArr[draw].codeRecordSize;
+
+    return PROCESSOR_VERIF(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static ProcessorErr HandleHalt(SPU* spu)
 {
     ON_PROCESSOR_DEBUG(WhereProcessorIs("hlt"));
@@ -652,7 +766,7 @@ static PushType GetPushType(int PushArg)
     return *(PushType*) &PushArg;
 }
 
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static PopType GetPopType(int PopArg)
 {
@@ -832,6 +946,14 @@ static size_t GetIp(SPU* spu)
     assert(spu);
 
     return spu->ip;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static int GetMemElem(SPU* spu, size_t index)
+{
+    assert(index < spu->ram.size);
+    return spu->ram.ram[index];
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1067,6 +1189,9 @@ static void ProcessorDump(const SPU* spu, const char* file, int line, const char
     COLOR_PRINT(VIOLET, "bx = %d\n",   spu->registers[bx]);
     COLOR_PRINT(VIOLET, "cx = %d\n",   spu->registers[cx]);
     COLOR_PRINT(VIOLET, "dx = %d\n\n", spu->registers[dx]);
+    COLOR_PRINT(VIOLET, "ex = %d\n\n", spu->registers[ex]);
+    COLOR_PRINT(VIOLET, "fx = %d\n\n", spu->registers[fx]);
+
 
     COLOR_PRINT(BLUE, "ram.ram:\n");
 
@@ -1102,8 +1227,9 @@ static void ProcessorDump(const SPU* spu, const char* file, int line, const char
 static void WhereProcessorIs(const char* cmd)
 {
     assert(cmd);
-
-    COLOR_PRINT(GREEN, "processor::%s\n", cmd);
+    ON_DEBUG(
+    LOG_PRINT(Green, "processor::%s", cmd);
+    )
     return;
 }
 

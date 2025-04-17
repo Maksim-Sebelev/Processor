@@ -7,8 +7,9 @@
 #include "fileread/fileread.hpp"
 #include "common/globalInclude.hpp"
 #include "lib/lib.hpp"
-#include "lib/colorPrint.hpp"
 #include "stack/stack.hpp"
+#include "lib/colorPrint.hpp"
+#include "log/log.hpp"
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -34,7 +35,7 @@ struct Label
 {
     const char* name;
     size_t      codePlace;
-    bool       alradyDefined;
+    bool        alradyDefined;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -131,6 +132,7 @@ static AssemblerErr HandleOut            (AsmData* AsmDataInfo);
 static AssemblerErr HandleOutc           (AsmData* AsmDataInfo);
 static AssemblerErr HandleOutr           (AsmData* AsmDataInfo);
 static AssemblerErr HandleOutrc          (AsmData* AsmDataInfo);
+static AssemblerErr HandleDraw           (AsmData* AsmDataInfo);
 static AssemblerErr HandleHlt            (AsmData* AsmDataInfo);
 static AssemblerErr HandleLabel          (AsmData* AsmDataInfo);
 static AssemblerErr HandleComment        (AsmData* AsmDataInfo);
@@ -154,33 +156,38 @@ struct CmdFunc
 
 static const CmdFunc DefaultCmd[] =
 {
-    {"push" ,  HandlePush , CmdInfoArr[ push  ].argQuant, CmdInfoArr[ push  ].codeRecordSize},
-    {"pop"  ,  HandlePop  , CmdInfoArr[ pop   ].argQuant, CmdInfoArr[ pop   ].codeRecordSize},
-    {"jmp"  ,  HandleJmp  , CmdInfoArr[ jmp   ].argQuant, CmdInfoArr[ jmp   ].codeRecordSize},
-    {"ja"   ,  HandleJa   , CmdInfoArr[ ja    ].argQuant, CmdInfoArr[ ja    ].codeRecordSize},
-    {"jae"  ,  HandleJae  , CmdInfoArr[ jae   ].argQuant, CmdInfoArr[ jae   ].codeRecordSize},
-    {"jb"   ,  HandleJb   , CmdInfoArr[ jb    ].argQuant, CmdInfoArr[ jb    ].codeRecordSize},
-    {"jbe"  ,  HandleJbe  , CmdInfoArr[ jbe   ].argQuant, CmdInfoArr[ jbe   ].codeRecordSize},
-    {"je"   ,  HandleJe   , CmdInfoArr[ je    ].argQuant, CmdInfoArr[ je    ].codeRecordSize},
-    {"jne"  ,  HandleJne  , CmdInfoArr[ jne   ].argQuant, CmdInfoArr[ jne   ].codeRecordSize},
-    {"call" ,  HandleCall , CmdInfoArr[ call  ].argQuant, CmdInfoArr[ call  ].codeRecordSize},
-    {"ret"  ,  HandleRet  , CmdInfoArr[ ret   ].argQuant, CmdInfoArr[ ret   ].codeRecordSize},
-    {"add"  ,  HandleAdd  , CmdInfoArr[ add   ].argQuant, CmdInfoArr[ add   ].codeRecordSize},
-    {"sub"  ,  HandleSub  , CmdInfoArr[ sub   ].argQuant, CmdInfoArr[ sub   ].codeRecordSize},
-    {"mul"  ,  HandleMul  , CmdInfoArr[ mul   ].argQuant, CmdInfoArr[ mul   ].codeRecordSize},
-    {"div"  ,  HandleDiv  , CmdInfoArr[ dive  ].argQuant, CmdInfoArr[ dive  ].codeRecordSize},
-    {"pp"   ,  HandlePp   , CmdInfoArr[ pp    ].argQuant, CmdInfoArr[ pp    ].codeRecordSize},
-    {"mm"   ,  HandleMm   , CmdInfoArr[ mm    ].argQuant, CmdInfoArr[ mm    ].codeRecordSize},
-    {"out"  ,  HandleOut  , CmdInfoArr[ out   ].argQuant, CmdInfoArr[ out   ].codeRecordSize},
-    {"outc" ,  HandleOutc , CmdInfoArr[ outc  ].argQuant, CmdInfoArr[ outc  ].codeRecordSize},
-    {"outr" ,  HandleOutr , CmdInfoArr[ outr  ].argQuant, CmdInfoArr[ outr  ].codeRecordSize},
-    {"outrc",  HandleOutrc, CmdInfoArr[ outrc ].argQuant, CmdInfoArr[ outrc ].codeRecordSize},
-    {"hlt"  ,  HandleHlt  , CmdInfoArr[ hlt   ].argQuant, CmdInfoArr[ hlt   ].codeRecordSize},
+    {"push" ,  HandlePush , CmdInfoArr[ Cmd::push  ].argQuant, CmdInfoArr[ Cmd::push  ].codeRecordSize},
+    {"pop"  ,  HandlePop  , CmdInfoArr[ Cmd::pop   ].argQuant, CmdInfoArr[ Cmd::pop   ].codeRecordSize},
+    {"jmp"  ,  HandleJmp  , CmdInfoArr[ Cmd::jmp   ].argQuant, CmdInfoArr[ Cmd::jmp   ].codeRecordSize},
+    {"ja"   ,  HandleJa   , CmdInfoArr[ Cmd::ja    ].argQuant, CmdInfoArr[ Cmd::ja    ].codeRecordSize},
+    {"jae"  ,  HandleJae  , CmdInfoArr[ Cmd::jae   ].argQuant, CmdInfoArr[ Cmd::jae   ].codeRecordSize},
+    {"jb"   ,  HandleJb   , CmdInfoArr[ Cmd::jb    ].argQuant, CmdInfoArr[ Cmd::jb    ].codeRecordSize},
+    {"jbe"  ,  HandleJbe  , CmdInfoArr[ Cmd::jbe   ].argQuant, CmdInfoArr[ Cmd::jbe   ].codeRecordSize},
+    {"je"   ,  HandleJe   , CmdInfoArr[ Cmd::je    ].argQuant, CmdInfoArr[ Cmd::je    ].codeRecordSize},
+    {"jne"  ,  HandleJne  , CmdInfoArr[ Cmd::jne   ].argQuant, CmdInfoArr[ Cmd::jne   ].codeRecordSize},
+    {"draw" ,  HandleDraw , CmdInfoArr[ Cmd::draw  ].argQuant, CmdInfoArr[ Cmd::draw  ].codeRecordSize},
+    {"call" ,  HandleCall , CmdInfoArr[ Cmd::call  ].argQuant, CmdInfoArr[ Cmd::call  ].codeRecordSize},
+    {"ret"  ,  HandleRet  , CmdInfoArr[ Cmd::ret   ].argQuant, CmdInfoArr[ Cmd::ret   ].codeRecordSize},
+    {"add"  ,  HandleAdd  , CmdInfoArr[ Cmd::add   ].argQuant, CmdInfoArr[ Cmd::add   ].codeRecordSize},
+    {"sub"  ,  HandleSub  , CmdInfoArr[ Cmd::sub   ].argQuant, CmdInfoArr[ Cmd::sub   ].codeRecordSize},
+    {"mul"  ,  HandleMul  , CmdInfoArr[ Cmd::mul   ].argQuant, CmdInfoArr[ Cmd::mul   ].codeRecordSize},
+    {"div"  ,  HandleDiv  , CmdInfoArr[ Cmd::dive  ].argQuant, CmdInfoArr[ Cmd::dive  ].codeRecordSize},
+    {"pp"   ,  HandlePp   , CmdInfoArr[ Cmd::pp    ].argQuant, CmdInfoArr[ Cmd::pp    ].codeRecordSize},
+    {"mm"   ,  HandleMm   , CmdInfoArr[ Cmd::mm    ].argQuant, CmdInfoArr[ Cmd::mm    ].codeRecordSize},
+    {"out"  ,  HandleOut  , CmdInfoArr[ Cmd::out   ].argQuant, CmdInfoArr[ Cmd::out   ].codeRecordSize},
+    {"outc" ,  HandleOutc , CmdInfoArr[ Cmd::outc  ].argQuant, CmdInfoArr[ Cmd::outc  ].codeRecordSize},
+    {"outr" ,  HandleOutr , CmdInfoArr[ Cmd::outr  ].argQuant, CmdInfoArr[ Cmd::outr  ].codeRecordSize},
+    {"outrc",  HandleOutrc, CmdInfoArr[ Cmd::outrc ].argQuant, CmdInfoArr[ Cmd::outrc ].codeRecordSize},
+    {"hlt"  ,  HandleHlt  , CmdInfoArr[ Cmd::hlt   ].argQuant, CmdInfoArr[ Cmd::hlt   ].codeRecordSize},
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static const size_t DefaultCmdQuant = sizeof(DefaultCmd) / sizeof(DefaultCmd[0]);
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static_assert(DefaultCmdQuant == CmdInfoArrSize, "in include/common/globalIncude.hpp is init array with all cmd. this numbers must be equal, or you forgot about some cmd");
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -203,11 +210,13 @@ void RunAssembler(const IOfile* file)
 
     AsmData AsmDataInfo = {};
 
+
     ASSEMBLER_ASSERT(AsmDataCtor         (&AsmDataInfo, file));
     ASSEMBLER_ASSERT(InitAllLabels       (&AsmDataInfo));
     ASSEMBLER_ASSERT(WriteCmdInCodeArr   (&AsmDataInfo));
     ASSEMBLER_ASSERT(WriteCodeArrInFile  (&AsmDataInfo, file));
     ASSEMBLER_ASSERT(AsmDataDtor         (&AsmDataInfo));
+
 
     return;
 }
@@ -313,10 +322,18 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
 
     size_t codeArrSize = AsmDataInfo->code.size;
 
+    ON_DEBUG(
+    LOG_PRINT(Red, "code arr size = '%lu'\n", codeArrSize);
+    LOG_ALL_INT_ARRAY(Yellow, AsmDataInfo->code.code, codeArrSize, 3);
+    )
+
     fprintf(codeFile, "%lu\n", codeArrSize);
 
     for (size_t i = 0; i < codeArrSize; i++)
     {
+        ON_DEBUG(
+        LOG_PRINT(Red, "code[%2lu] = '%d'\n", i, AsmDataInfo->code.code[i]);
+        )
         fprintf(codeFile, "%d ", AsmDataInfo->code.code[i]);
     }
 
@@ -775,6 +792,39 @@ static AssemblerErr HandleLabel(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static AssemblerErr HandleDraw(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+
+    AssemblerErr err = {};
+
+    const char* firstArg  = GetNextCmd(AsmDataInfo);
+    const char* secondArg = GetNextCmd(AsmDataInfo);
+
+    size_t firstArgLen  = strlen(firstArg);
+    size_t secondArgLen = strlen(secondArg);
+
+    char* firstArgEndPtr  = nullptr;
+    char* secondArgEndPtr = nullptr;
+
+    strtol(firstArg,  &firstArgEndPtr,  10);
+    strtol(secondArg, &secondArgEndPtr, 10);
+    
+    if (IsRegister(firstArg, firstArgLen) && IsRegister(secondArg, secondArgLen))
+    {
+        SetCmdArrCodeElem(AsmDataInfo, Cmd::draw                    );
+        SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(firstArg ));
+        SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(secondArg));
+
+        return ASSEMBLER_VERIF(AsmDataInfo, err);
+    }
+
+    err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
+    return ASSEMBLER_VERIF(AsmDataInfo, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static AssemblerErr HandleComment(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
@@ -892,6 +942,9 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
     
         if (IsLabel(cmd))
         {
+            ON_DEBUG(
+            LOG_PRINT(Green, "label: '%s'\n", cmd);
+            )
             if (!IsLabelAlready(AsmDataInfo, cmd, &cmdIndex))
             {
                 cmdPointer++;
@@ -899,7 +952,9 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
                 ASSEMBLER_ASSERT(PushLabel(AsmDataInfo, &label));
                 continue;
             }
-
+            ON_DEBUG(
+            LOG_PRINT(Red, "redefine: '%s'\n", cmd);
+            )
             err.err = AssemblerErrorType::LABEL_REDEFINE;
             return ASSEMBLER_VERIF(AsmDataInfo, err);
         }
@@ -921,6 +976,15 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
         return ASSEMBLER_VERIF(AsmDataInfo, err);
     }
 
+
+
+    ON_DEBUG(
+    size_t size = AsmDataInfo->labels.size;
+    for (size_t i = 0; i < size; i++)
+    {
+        LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
+    }
+    )
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
 
@@ -932,7 +996,7 @@ static AssemblerErr LabelsCtor(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    static size_t const DefaultLabelsQuant = 2;
+    static size_t const DefaultLabelsQuant = 10;
 
     AsmDataInfo->labels.labels = (Label*) calloc(DefaultLabelsQuant, sizeof(Label));
 
@@ -1246,7 +1310,7 @@ static bool IsChar(const char* str, const char* StrEnd, size_t strSize)
 static bool IsRegister(const char* str, size_t strSize)
 {
     assert(str);
-    return strSize == 2 && 'a' <= str[0] && str[0] <= 'd' &&  str[1] == 'x';
+    return strSize == 2 && 'a' <= str[0] && str[0] <= 'a' + Registers::REGISTERS_QUANT &&  str[1] == 'x';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

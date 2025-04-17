@@ -1,3 +1,8 @@
+.gitignore
+
+# my dir for log file
+Log/
+
 # my makefile config file
 local.mk
 
@@ -12,3 +17,6 @@ build/
 
 # my bin files
 code/
+
+# my log background
+include/log/backgrounds/anime_tyan.webp

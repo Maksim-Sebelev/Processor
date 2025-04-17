@@ -30,6 +30,7 @@ enum Cmd : int
     jbe        ,
     je         ,
     jne        ,
+    draw       ,
     call       ,
     ret        ,
     CMD_QUANT  , // count
@@ -68,6 +69,7 @@ static const CmdInfo CmdInfoArr[] =
     {Cmd::jbe  , .argQuant = 1, .codeRecordSize = 2},
     {Cmd::je   , .argQuant = 1, .codeRecordSize = 2},
     {Cmd::jne  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::draw , .argQuant = 2, .codeRecordSize = 3},
     {Cmd::call , .argQuant = 1, .codeRecordSize = 2},
     {Cmd::ret  , .argQuant = 0, .codeRecordSize = 1},
 };
@@ -88,6 +90,8 @@ enum Registers
     bx,
     cx,
     dx,
+    ex,
+    fx,
     REGISTERS_QUANT, // Count
     REGISTERS_NAME_LEN = 2, // in my assebler-standart all registers must have the same name's lenght
 };

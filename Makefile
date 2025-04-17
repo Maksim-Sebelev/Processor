@@ -2,15 +2,39 @@ ifeq ($(origin CC),default)
   CC = g++
 endif
 
-CFLAGS ?= 
 
+SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
+
+CFLAGS ?= $(SFML_FLAGS)
+LDFLAGS = $(SFML_FLAGS)
+
+
+# BUILD_TYPE ?= debug
 BUILD_TYPE ?= release
+
+
 
 ifeq ($(BUILD_TYPE), release)
 	CFLAGS += -D _NDEBUG -O2
-else
-	CFLAGS += -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ -Waggressive-loop-optimizations -Wc++14-compat -Wmissing-declarations -Wcast-align -Wcast-qual -Wchar-subscripts -Wconditionally-supported -Wconversion -Wctor-dtor-privacy -Wempty-body -Wfloat-equal -Wformat-nonliteral -Wformat-security -Wformat-signedness -Wformat=2 -Winline -Wlogical-op -Wnon-virtual-dtor -Wopenmp-simd -Woverloaded-virtual -Wpacked -Wpointer-arith -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=2 -Wsuggest-attribute=noreturn -Wsuggest-final-methods -Wsuggest-final-types -Wsuggest-override -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunreachable-code -Wunused -Wuseless-cast -Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing -Wno-old-style-cast -Wno-varargs -Wstack-protector -fcheck-new -fsized-deallocation -fstack-protector -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -Wlarger-than=8192 -Wstack-usage=8192 -pie -fPIE -Werror=vla
+endif 
+
+ifeq ($(BUILD_TYPE), debug)
+	CFLAGS += -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ 									  \
+			  -Waggressive-loop-optimizations -Wc++14-compat -Wmissing-declarations 					   \
+			  -Wcast-align -Wcast-qual -Wchar-subscripts -Wconditionally-supported 							\
+			  -Wconversion -Wctor-dtor-privacy -Wempty-body -Wfloat-equal -Wformat-nonliteral 			     \
+			  -Wformat-security -Wformat-signedness -Wformat=2 -Winline -Wlogical-op 					      \
+			  -Wnon-virtual-dtor -Wopenmp-simd -Woverloaded-virtual -Wpacked -Wpointer-arith 				   \
+			  -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel      \
+			  -Wstrict-overflow=2 -Wsuggest-attribute=noreturn -Wsuggest-final-methods -Wsuggest-final-types     \
+			  -Wsuggest-override -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunreachable-code -Wunused   \
+			  -Wuseless-cast -Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing  \
+			  -Wno-old-style-cast -Wno-varargs -Wstack-protector -fcheck-new -fsized-deallocation -fstack-protector \
+			  -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -Wlarger-than=8192 -Wstack-usage=8192 \
+			  -pie -fPIE -Werror=vla																			      \
+
 endif
+
 
 
 OUT_O_DIR ?= bin
@@ -37,6 +61,10 @@ CSRC =  main.cpp 					 \
 		src/assembler/assembler.cpp       \
 		src/processor/processor.cpp        \
 
+
+ifeq ($(BUILD_TYPE), debug)
+	CSRC += src/log/log.cpp
+endif
 
 COBJ := $(addprefix $(OUT_O_DIR)/,$(CSRC:.cpp=.o))
 DEPS = $(COBJ:.o=.d)
@@ -74,12 +102,15 @@ run:
 
 #======= clean ========================================
 
-.PHONY: clean cleanDirs
+.PHONY: clean cleanDirs cleanLog
 clean:
 	rm -rf $(COBJ) $(DEPS) $(EXECUTABLE_DIR)/$(EXECUTABLE) $(OUT_O_DIR)/$(SRC)
 
 cleanDirs:
 	rm -rf $(OUT_O_DIR) $(EXECUTABLE_DIR)
+
+cleanLog:
+	rm -rf Log/
 
 #========== examples ===================================
 
@@ -132,8 +163,8 @@ example4:
 	processor                                   \
 
 
-EXAMPLE5_DIR  = example4
-EXAMPLE5_FILE = Kvadratka
+EXAMPLE5_DIR  = example5
+EXAMPLE5_FILE = circle
 
 example5:
 	@make                                  \
