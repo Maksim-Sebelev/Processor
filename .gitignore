@@ -1,3 +1,6 @@
+# 
+.gitignore
+
 # my makefile config file
 local.mk
 
