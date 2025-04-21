@@ -71,8 +71,9 @@ static ProcessorErr   HandleRet                  (SPU* spu);
 static ProcessorErr   HandleOut                  (SPU* spu);
 static ProcessorErr   HandleOutc                 (SPU* spu);
 static ProcessorErr   HandleOutr                 (SPU* spu);
-static ProcessorErr   HandleDraw                 (SPU* spu);
 static ProcessorErr   HandleOutrc                (SPU* spu);
+static ProcessorErr   HandleDraw                 (SPU* spu);
+static ProcessorErr   HandleRGBA                 (SPU* spu);
 
 
 static ProcessorErr   ArithmeticCmdPattern       (SPU* spu, ArithmeticOperator Operator);
@@ -119,6 +120,8 @@ struct RGBA
 
 static void           GetRGBA                    (int pixel, RGBA* rgba);
 static ProcessorErr   VertexArrayCtor            (sf::VertexArray& pixels, size_t high, size_t width, SPU* spu);
+static int            PackRGBA                   (RGBA rgba);
+static void           GetRGBAType                (int rgbaInt, bool* isReg1, bool* isReg2, bool* isReg3, bool* isReg4);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -209,6 +212,8 @@ static ProcessorErr ExecuteCommands(SPU* spu)
 
     ProcessorErr  err = {};
 
+    LOG_PRINT(Green, "We are in processor\n");
+
     while (GetIp(spu) < GetCodeSize(spu))
     {
         switch (GetCodeElem(spu))
@@ -234,11 +239,13 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::outc:  PROCESSOR_ASSERT(HandleOutc (spu)); break;
             case Cmd::outr:  PROCESSOR_ASSERT(HandleOutr (spu)); break;
             case Cmd::outrc: PROCESSOR_ASSERT(HandleOutrc(spu)); break;
-            case Cmd::draw:  PROCESSOR_ASSERT(HandleDraw (spu)); break; 
+            case Cmd::draw:  PROCESSOR_ASSERT(HandleDraw (spu)); break;
+            case Cmd::rgba:  PROCESSOR_ASSERT(HandleRGBA (spu)); break;
 
             case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return HandleHalt(spu);
             default:
             {
+                LOG_PRINT(Red, "udef cmd = '%d'\n", GetCodeElem(spu));
                 err.err = ProcessorErrorType::INVALID_CMD;
                 return PROCESSOR_VERIF(spu, err);
             }
@@ -577,10 +584,22 @@ static ProcessorErr HandleOutr(SPU* spu)
 
 static void GetRGBA(int pixel, RGBA* rgba)
 {
-    rgba->r = (unsigned char) (pixel >> 0)   & 0xFF;
-    rgba->g = (unsigned char) (pixel >> 8)   & 0xFF;
-    rgba->b = (unsigned char) (pixel >> 16)  & 0xFF;
-    rgba->a = (unsigned char) (pixel >> 24)  & 0xFF;
+    rgba->r = (unsigned char) (pixel >> 0)  & 0xFF;
+    rgba->g = (unsigned char) (pixel >> 8)  & 0xFF;
+    rgba->b = (unsigned char) (pixel >> 16) & 0xFF;
+    rgba->a = (unsigned char) (pixel >> 24) & 0xFF;
+
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void GetRGBAType(int rgbaInt, bool* isReg1, bool* isReg2, bool* isReg3, bool* isReg4)
+{
+    *isReg1 = (rgbaInt >> 0)  & 0xFF;
+    *isReg2 = (rgbaInt >> 8)  & 0xFF; 
+    *isReg3 = (rgbaInt >> 16) & 0xFF; 
+    *isReg4 = (rgbaInt >> 24) & 0xFF; 
 
     return;
 }
@@ -614,6 +633,8 @@ static ProcessorErr VertexArrayCtor(sf::VertexArray& pixels, size_t high, size_t
 
 static ProcessorErr HandleDraw(SPU* spu)
 {
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("rgba"));
+
     assert(spu);
 
     ProcessorErr err = {};    
@@ -650,6 +671,7 @@ static ProcessorErr HandleDraw(SPU* spu)
     
         while (window.pollEvent(event))
         {
+            fprintf(stderr, "a\n");
             if (event.type == sf::Event::KeyPressed)
                 if (event.key.code == sf::Keyboard::Escape)
                     window.close();
@@ -663,6 +685,52 @@ static ProcessorErr HandleDraw(SPU* spu)
     window.clear();
 
     spu->ip += CmdInfoArr[draw].codeRecordSize;
+
+    return PROCESSOR_VERIF(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleRGBA(SPU* spu)
+{
+    ON_PROCESSOR_DEBUG(WhereProcessorIs("rgba"));
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    int type      = spu->code.code[GetIp(spu) + 1]; 
+    int firstArg  = spu->code.code[GetIp(spu) + 2];
+    int secondArg = spu->code.code[GetIp(spu) + 3];
+    int thirdArg  = spu->code.code[GetIp(spu) + 4];
+    int fourthArg = spu->code.code[GetIp(spu) + 5];
+
+    bool isReg1 = false;
+    bool isReg2 = false;
+    bool isReg3 = false;
+    bool isReg4 = false;
+
+    GetRGBAType(type, &isReg1, &isReg3, &isReg3, &isReg4);
+
+    if (isReg1) firstArg  = spu->registers[firstArg];
+    if (isReg2) secondArg = spu->registers[secondArg];
+    if (isReg3) thirdArg  = spu->registers[thirdArg];
+    if (isReg4) fourthArg = spu->registers[fourthArg];
+
+    RGBA rgba = {.r = (unsigned char) firstArg,
+                 .g = (unsigned char) secondArg, 
+                 .b = (unsigned char) thirdArg,
+                 .a = (unsigned char) fourthArg};
+
+    int pixel = PackRGBA(rgba);
+
+    static size_t p = 0;
+    p++;
+
+    STACK_ASSERT(StackPush(&spu->stack, pixel));
+
+
+
+    spu->ip += CmdInfoArr[Cmd::rgba].codeRecordSize;
 
     return PROCESSOR_VERIF(spu, err);
 }
@@ -766,7 +834,7 @@ static PushType GetPushType(int PushArg)
     return *(PushType*) &PushArg;
 }
 
-//----------------------------------------------------------------------------F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static PopType GetPopType(int PopArg)
 {
@@ -969,6 +1037,13 @@ static void SetCodeElem(SPU* spu, size_t Code_i, int NewCodeElem)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static int PackRGBA(RGBA rgba)
+{
+    return (rgba.a << 24) | (rgba.b << 16) | (rgba.g << 8) | (rgba.r << 0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static ProcessorErr ReadCodeFromFile(SPU* spu, FILE* codeFilePtr)
 {
     assert(spu);
@@ -989,6 +1064,7 @@ static ProcessorErr ReadCodeFromFile(SPU* spu, FILE* codeFilePtr)
         SetCodeElem(spu, cmd_i, Cmd);
     }
 
+    LOG_ALL_INT_ARRAY(Yellow, spu->code.code, spu->code.size, 3);
     return PROCESSOR_VERIF(spu, err);
 }
 

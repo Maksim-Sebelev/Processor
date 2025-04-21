@@ -7,7 +7,7 @@ push 800
 pop bx
 
 
-push 120
+push 100
 pop cx
 
 # call function to draw a circle with args high (ax) = 600, width (bx) = 800, radius (cx) = 100 /
@@ -31,6 +31,11 @@ draw_circle:
     mul
     pop  cx   # in cx square of radius /
 
+    push ax
+    push bx
+    mul
+    pop ex
+
     push 0
     pop dx
 
@@ -46,10 +51,9 @@ draw_circle:
 
     pp   dx
     push dx
-    push ax
-    push bx
-    mul
-
+    out
+    push ex
+    out
     jb cycle:
 
     draw ax bx
@@ -75,7 +79,7 @@ calc_dist_to_centre:
     div
     push bx
     mul
-    sub  # x-coordinat of aray elem (y = i%ax = i - (i:ax)*ax) / 
+    sub  # x-coordinat of aray elem (y = i%ax = i - (i:ax)*ax) /
 
     push bx
     push 2
@@ -88,14 +92,13 @@ calc_dist_to_centre:
     mul     # (x - x_center)^2 /
 
 
-
     push dx
     push bx
-    div  # y-coordinat of array elem (x = i:ax) /
+    div      # y-coordinat of array elem (x = i:ax) /
 
     push ax
     push 2
-    div  # y-coordinat of center /
+    div     # y-coordinat of center /
 
     sub
     pop  fx
@@ -114,14 +117,48 @@ calc_dist_to_centre:
 
 
 inCircle:
-    push 2147483175
+    rgba 100 200 100 255
     pop [dx]
+
     jmp back_in_cycle:
 
 
 notINCircle:
-    push 1
+    push ax
+    push bx
+    push cx
+
+    push dx 
+    push dx
+    push bx
+    div
+    push bx
+    mul
+    sub  # x-coordinat of aray elem (y = i%ax = i - (i:ax)*ax) /
+
+    pop ax # in ax - x coordinat /
+
+
+    push dx
+    push bx
+    div      # y-coordinat of array elem (x = i:ax) /
+
+    pop bx # in bx - y coordaninat /
+
+
+    push ax
+    push bx
+    add
+
+    pop cx
+
+    rgba cx ax bx 255
     pop [dx]
+
+    pop cx
+    pop bx
+    pop ax
+
     jmp back_in_cycle:
 
 

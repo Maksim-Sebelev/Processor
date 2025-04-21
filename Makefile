@@ -9,8 +9,8 @@ CFLAGS ?= $(SFML_FLAGS)
 LDFLAGS = $(SFML_FLAGS)
 
 
-# BUILD_TYPE ?= debug
-BUILD_TYPE ?= release
+BUILD_TYPE ?= debug
+# BUILD_TYPE ?= release
 
 
 
@@ -31,7 +31,7 @@ ifeq ($(BUILD_TYPE), debug)
 			  -Wuseless-cast -Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing  \
 			  -Wno-old-style-cast -Wno-varargs -Wstack-protector -fcheck-new -fsized-deallocation -fstack-protector \
 			  -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -Wlarger-than=8192 -Wstack-usage=8192 \
-			  -pie -fPIE -Werror=vla																			      \
+			  -pie -fPIE -Werror=vla 																				  \
 
 endif
 
@@ -43,8 +43,8 @@ COMMONINC = -I./include
 SRC = ./src
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 EXECUTABLE ?= processor
-ASM_DIR  ?= asm
-CODE_DIR ?= code
+ASM_DIR  ?=
+CODE_DIR ?=
 ASM_FILE ?= programm.asm
 BIN_FILE ?= code.bin
 EXAMPLE_DIR = examples

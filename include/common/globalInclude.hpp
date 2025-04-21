@@ -30,9 +30,10 @@ enum Cmd : int
     jbe        ,
     je         ,
     jne        ,
-    draw       ,
     call       ,
     ret        ,
+    draw       ,
+    rgba       ,
     CMD_QUANT  , // count
 };
 
@@ -69,9 +70,10 @@ static const CmdInfo CmdInfoArr[] =
     {Cmd::jbe  , .argQuant = 1, .codeRecordSize = 2},
     {Cmd::je   , .argQuant = 1, .codeRecordSize = 2},
     {Cmd::jne  , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::draw , .argQuant = 2, .codeRecordSize = 3},
     {Cmd::call , .argQuant = 1, .codeRecordSize = 2},
     {Cmd::ret  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::draw , .argQuant = 2, .codeRecordSize = 3},
+    {Cmd::rgba , .argQuant = 4, .codeRecordSize = 6},
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

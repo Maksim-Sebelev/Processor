@@ -136,6 +136,8 @@ static AssemblerErr HandleDraw           (AsmData* AsmDataInfo);
 static AssemblerErr HandleHlt            (AsmData* AsmDataInfo);
 static AssemblerErr HandleLabel          (AsmData* AsmDataInfo);
 static AssemblerErr HandleComment        (AsmData* AsmDataInfo);
+static AssemblerErr HandleRGBA           (AsmData* AsmDataInfo);
+
 
 
 static AssemblerErr Verif                (AsmData* AsmDataInfo, AssemblerErr* err, const char* file, int line, const char* func);
@@ -166,6 +168,7 @@ static const CmdFunc DefaultCmd[] =
     {"je"   ,  HandleJe   , CmdInfoArr[ Cmd::je    ].argQuant, CmdInfoArr[ Cmd::je    ].codeRecordSize},
     {"jne"  ,  HandleJne  , CmdInfoArr[ Cmd::jne   ].argQuant, CmdInfoArr[ Cmd::jne   ].codeRecordSize},
     {"draw" ,  HandleDraw , CmdInfoArr[ Cmd::draw  ].argQuant, CmdInfoArr[ Cmd::draw  ].codeRecordSize},
+    {"rgba" ,  HandleRGBA , CmdInfoArr[ Cmd::rgba  ].argQuant, CmdInfoArr[ Cmd::rgba  ].codeRecordSize},
     {"call" ,  HandleCall , CmdInfoArr[ Cmd::call  ].argQuant, CmdInfoArr[ Cmd::call  ].codeRecordSize},
     {"ret"  ,  HandleRet  , CmdInfoArr[ Cmd::ret   ].argQuant, CmdInfoArr[ Cmd::ret   ].codeRecordSize},
     {"add"  ,  HandleAdd  , CmdInfoArr[ Cmd::add   ].argQuant, CmdInfoArr[ Cmd::add   ].codeRecordSize},
@@ -322,18 +325,18 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo, const IOfile* file)
 
     size_t codeArrSize = AsmDataInfo->code.size;
 
-    ON_DEBUG(
-    LOG_PRINT(Red, "code arr size = '%lu'\n", codeArrSize);
-    LOG_ALL_INT_ARRAY(Yellow, AsmDataInfo->code.code, codeArrSize, 3);
-    )
+    // ON_DEBUG(
+    // LOG_PRINT(Red, "code arr size = '%lu'\n", codeArrSize);
+    // LOG_ALL_INT_ARRAY(Yellow, AsmDataInfo->code.code, codeArrSize, 3);
+    // )
 
     fprintf(codeFile, "%lu\n", codeArrSize);
 
     for (size_t i = 0; i < codeArrSize; i++)
     {
-        ON_DEBUG(
-        LOG_PRINT(Red, "code[%2lu] = '%d'\n", i, AsmDataInfo->code.code[i]);
-        )
+        // ON_DEBUG(
+        // LOG_PRINT(Red, "code[%2lu] = '%d'\n", i, AsmDataInfo->code.code[i]);
+        // )
         fprintf(codeFile, "%d ", AsmDataInfo->code.code[i]);
     }
 
@@ -825,6 +828,111 @@ static AssemblerErr HandleDraw(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+typedef int RGBATYpe;
+
+static RGBATYpe GetRGBAType(bool IsReg1, bool IsReg2, bool IsReg3, bool IsReg4)
+{
+    return (IsReg4 << 24) | (IsReg3 << 16) | (IsReg2 << 8) | IsReg1;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+
+    AssemblerErr err = {};
+
+    const char* arg1 = GetNextCmd(AsmDataInfo); char* arg1End = nullptr;
+    const char* arg2 = GetNextCmd(AsmDataInfo); char* arg2End = nullptr;
+    const char* arg3 = GetNextCmd(AsmDataInfo); char* arg3End = nullptr;
+    const char* arg4 = GetNextCmd(AsmDataInfo); char* arg4End = nullptr;
+
+    LOG_PRINT(Yellow, 
+        "arg1 = '%s'\n"
+        "arg2 = '%s'\n"
+        "arg3 = '%s'\n"
+        "arg4 = '%s'\n",
+        arg1, arg2, arg3, arg4
+    );
+
+    size_t arg1Len = strlen(arg1);
+    size_t arg2Len = strlen(arg2);
+    size_t arg3Len = strlen(arg3);
+    size_t arg4Len = strlen(arg4);
+
+    int arg1Int = (int) strtol(arg1, &arg1End, 10);
+    int arg2Int = (int) strtol(arg2, &arg2End, 10);
+    int arg3Int = (int) strtol(arg3, &arg3End, 10);
+    int arg4Int = (int) strtol(arg4, &arg4End, 10);
+
+    bool IsReg1 = IsRegister(arg1, arg1Len); 
+    bool IsReg2 = IsRegister(arg2, arg2Len);
+    bool IsReg3 = IsRegister(arg3, arg3Len);
+    bool IsReg4 = IsRegister(arg4, arg4Len);
+
+
+    bool IsInt1 = IsInt(arg1, arg1End, arg1Len); 
+    bool IsInt2 = IsInt(arg2, arg2End, arg2Len);
+    bool IsInt3 = IsInt(arg3, arg3End, arg3Len);
+    bool IsInt4 = IsInt(arg4, arg4End, arg4Len);
+
+    LOG_PRINT(Green,
+        "reg1 = %d\n"
+        "reg2 = %d\n"
+        "reg3 = %d\n"
+        "reg4 = %d\n"
+        "int1 = %d\n"
+        "int2 = %d\n"
+        "int3 = %d\n"
+        "int4 = %d\n",
+        IsReg1, IsReg2, IsReg3, IsReg4, IsInt1, IsInt2, IsInt3, IsInt4
+    );
+
+    LOG_PRINT(Blue, 
+        "rgba type = '%d'\n", GetRGBAType(IsReg1, IsReg2, IsReg3, IsReg4)
+    );
+
+    SetCmdArrCodeElem(AsmDataInfo, Cmd::rgba);
+    SetCmdArrCodeElem(AsmDataInfo, GetRGBAType       (IsReg1, IsReg2, IsReg3, IsReg4));
+
+    if      (IsReg1) SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg1));
+    else if (IsInt1) SetCmdArrCodeElem(AsmDataInfo, arg1Int);
+    else 
+    {
+        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
+        return ASSEMBLER_VERIF(AsmDataInfo, err);
+    }
+
+    if      (IsReg2) SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg2));
+    else if (IsInt2) SetCmdArrCodeElem(AsmDataInfo, arg2Int);
+    else 
+    {
+        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
+        return ASSEMBLER_VERIF(AsmDataInfo, err);
+    }
+
+    if      (IsReg3) SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg3));
+    else if (IsInt3) SetCmdArrCodeElem(AsmDataInfo, arg3Int);
+    else 
+    {
+        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
+        return ASSEMBLER_VERIF(AsmDataInfo, err);
+    }
+
+    if      (IsReg4) SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg4));
+    else if (IsInt4) SetCmdArrCodeElem(AsmDataInfo, arg4Int);
+    else 
+    {
+    return ASSEMBLER_VERIF(AsmDataInfo, err);
+        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
+    }
+
+    return ASSEMBLER_VERIF(AsmDataInfo, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static AssemblerErr HandleComment(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
@@ -942,9 +1050,9 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
     
         if (IsLabel(cmd))
         {
-            ON_DEBUG(
-            LOG_PRINT(Green, "label: '%s'\n", cmd);
-            )
+            // ON_DEBUG(
+            // LOG_PRINT(Green, "label: '%s'\n", cmd);
+            // )
             if (!IsLabelAlready(AsmDataInfo, cmd, &cmdIndex))
             {
                 cmdPointer++;
@@ -952,9 +1060,9 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
                 ASSEMBLER_ASSERT(PushLabel(AsmDataInfo, &label));
                 continue;
             }
-            ON_DEBUG(
-            LOG_PRINT(Red, "redefine: '%s'\n", cmd);
-            )
+            // ON_DEBUG(
+            // LOG_PRINT(Red, "redefine: '%s'\n", cmd);
+            // )
             err.err = AssemblerErrorType::LABEL_REDEFINE;
             return ASSEMBLER_VERIF(AsmDataInfo, err);
         }
@@ -978,13 +1086,13 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
 
 
 
-    ON_DEBUG(
-    size_t size = AsmDataInfo->labels.size;
-    for (size_t i = 0; i < size; i++)
-    {
-        LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
-    }
-    )
+    // ON_DEBUG(
+    // size_t size = AsmDataInfo->labels.size;
+    // for (size_t i = 0; i < size; i++)
+    // {
+    //     LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
+    // }
+    // )
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
 

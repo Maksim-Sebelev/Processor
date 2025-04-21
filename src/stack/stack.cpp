@@ -7,7 +7,7 @@
 #include "lib/colorPrint.hpp"
 
 static const size_t MinCapacity = 1<<3;
-static const size_t MaxCapacity = 1<<21;
+static const size_t MaxCapacity = 1<<30;
 
 static const unsigned int CapPushReallocCoef = 2;
 static const unsigned int CapPopReallocCoef  = 4;
