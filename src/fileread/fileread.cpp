@@ -93,6 +93,7 @@ const char** ReadFile(const char* file, size_t* bufSize)
     for (; buffer_i <= bufferLen + 1; buffer_i++)
     {
         if (!IsPassSymbol(buffer[buffer_i])) continue;
+
         do
         {
             buffer[buffer_i] = '\0';

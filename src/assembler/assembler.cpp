@@ -820,9 +820,9 @@ static AssemblerErr HandleDraw(AsmData* AsmDataInfo)
 
 typedef int RGBATYpe;
 
-static RGBATYpe GetRGBAType(bool IsReg1, bool IsReg2, bool IsReg3, bool IsReg4)
+static RGBATYpe GetRGBAType(bool isReg[4])
 {
-    return (IsReg4 << 24) | (IsReg3 << 16) | (IsReg2 << 8) | IsReg1;
+    return (isReg[3] << 24) | (isReg[2] << 16) | (isReg[1] << 8) | isReg[0];
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -833,65 +833,38 @@ static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    const char* arg1 = GetNextCmd(AsmDataInfo); char* arg1End = nullptr;
-    const char* arg2 = GetNextCmd(AsmDataInfo); char* arg2End = nullptr;
-    const char* arg3 = GetNextCmd(AsmDataInfo); char* arg3End = nullptr;
-    const char* arg4 = GetNextCmd(AsmDataInfo); char* arg4End = nullptr;
+    const char* arg   [4] = {};
+    size_t      argLen[4] = {};
+    char*       argEnd[4] = {};
+    int         argInt[4] = {};
+    bool        isReg [4] = {};
+    bool        isInt [4] = {};
 
-    size_t arg1Len = strlen(arg1);
-    size_t arg2Len = strlen(arg2);
-    size_t arg3Len = strlen(arg3);
-    size_t arg4Len = strlen(arg4);
-
-    int arg1Int = (int) strtol(arg1, &arg1End, 10);
-    int arg2Int = (int) strtol(arg2, &arg2End, 10);
-    int arg3Int = (int) strtol(arg3, &arg3End, 10);
-    int arg4Int = (int) strtol(arg4, &arg4End, 10);
-
-    bool IsReg1 = IsRegister(arg1, arg1Len); 
-    bool IsReg2 = IsRegister(arg2, arg2Len);
-    bool IsReg3 = IsRegister(arg3, arg3Len);
-    bool IsReg4 = IsRegister(arg4, arg4Len);
+    for (size_t i = 0; i < 4; i++) arg   [i] = GetNextCmd(AsmDataInfo);
+    for (size_t i = 0; i < 4; i++) argLen[i] = strlen(arg[i]);
+    for (size_t i = 0; i < 4; i++) argInt[i] = (int) strtol(arg[i], &argEnd[i], 10);
+    for (size_t i = 0; i < 4; i++) isReg [i] = IsRegister(arg[i], argLen[i]);
+    for (size_t i = 0; i < 4; i++) isInt [i] = IsInt(arg[i], argEnd[i], argLen[i]);
 
 
-    bool IsInt1 = IsInt(arg1, arg1End, arg1Len); 
-    bool IsInt2 = IsInt(arg2, arg2End, arg2Len);
-    bool IsInt3 = IsInt(arg3, arg3End, arg3Len);
-    bool IsInt4 = IsInt(arg4, arg4End, arg4Len);
+    SetCmdArrCodeElem(AsmDataInfo, GetRGBAType(isReg));
 
-    SetCmdArrCodeElem(AsmDataInfo, Cmd::rgba);
-    SetCmdArrCodeElem(AsmDataInfo, GetRGBAType       (IsReg1, IsReg2, IsReg3, IsReg4));
-
-    if      (IsReg1) SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg1));
-    else if (IsInt1) SetCmdArrCodeElem(AsmDataInfo, arg1Int);
-    else 
+    for (size_t i = 0; i < 4; i++)
     {
-        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
+        if (isReg[i])
+        {
+            SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg[i]));
+            continue;
+        }
+    
+        else if (isInt[i])
+        {
+            SetCmdArrCodeElem(AsmDataInfo, argInt[i]);
+            continue;
+        }
+        
+        err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
         return ASSEMBLER_VERIF(AsmDataInfo, err);
-    }
-
-    if      (IsReg2) SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg2));
-    else if (IsInt2) SetCmdArrCodeElem(AsmDataInfo, arg2Int);
-    else 
-    {
-        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
-    }
-
-    if      (IsReg3) SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg3));
-    else if (IsInt3) SetCmdArrCodeElem(AsmDataInfo, arg3Int);
-    else 
-    {
-        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
-    }
-
-    if      (IsReg4) SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(arg4));
-    else if (IsInt4) SetCmdArrCodeElem(AsmDataInfo, arg4Int);
-    else 
-    {
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
-        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
     }
 
     return ASSEMBLER_VERIF(AsmDataInfo, err);
