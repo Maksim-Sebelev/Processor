@@ -87,17 +87,26 @@ $(DEPS) : $(OUT_O_DIR)/%.d : %.cpp
 
 #======= run ==========================================
 
-.PHONY: processor compile run
-processor:
+.PHONY: processor compile run makeCodeDir
+
+ifeq ($(CODE_DIR), )
+makeCodeDir:
+else
+makeCodeDir:
 	@mkdir -p $(CODE_DIR)
+endif
+
+processor:
+	@make makeCodeDir
 	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -compile $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE) -run $(CODE_DIR)/$(BIN_FILE)
 
+
 compile:
-	@mkdir -p $(CODE_DIR)
+	@make makeCodeDir
 	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -compile $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE)
 
 run:
-	@mkdir -p $(CODE_DIR)
+	@make makeCodeDir
 	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -run $(CODE_DIR)/$(BIN_FILE)
 
 #======= clean ========================================

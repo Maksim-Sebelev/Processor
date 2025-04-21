@@ -1,5 +1,5 @@
-#ifndef GLOBAL_INCLUDE_H
-#define GLOBAL_INCLUDE_H
+#ifndef GLOBAL_INCLUDE_HPP
+#define GLOBAL_INCLUDE_HPP
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -42,6 +42,7 @@ enum Cmd : int
 struct CmdInfo
 {
     const Cmd    cmd;
+    const char*  name; 
     const size_t argQuant;
     const size_t codeRecordSize;
 };
@@ -50,30 +51,30 @@ struct CmdInfo
 
 static const CmdInfo CmdInfoArr[] = 
 {
-    {Cmd::hlt  , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::push , .argQuant = 1, .codeRecordSize = 4},
-    {Cmd::pop  , .argQuant = 1, .codeRecordSize = 4},
-    {Cmd::add  , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::sub  , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::mul  , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::dive , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::pp   , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::mm   , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::out  , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::outc , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::outr , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::outrc, .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::jmp  , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::ja   , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jae  , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jb   , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jbe  , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::je   , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::jne  , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::call , .argQuant = 1, .codeRecordSize = 2},
-    {Cmd::ret  , .argQuant = 0, .codeRecordSize = 1},
-    {Cmd::draw , .argQuant = 2, .codeRecordSize = 3},
-    {Cmd::rgba , .argQuant = 4, .codeRecordSize = 6},
+    {Cmd::hlt  , .name = "hlt"  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::push , .name = "push" , .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::pop  , .name = "pop"  , .argQuant = 1, .codeRecordSize = 4},
+    {Cmd::add  , .name = "add"  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::sub  , .name = "sub"  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::mul  , .name = "mul"  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::dive , .name = "div"  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::pp   , .name = "pp"   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::mm   , .name = "mm"   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::out  , .name = "out"  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::outc , .name = "outc" , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::outr , .name = "outr" , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::outrc, .name = "outrc", .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::jmp  , .name = "jmp"  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::ja   , .name = "ja"   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jae  , .name = "jae"  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jb   , .name = "jb"   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jbe  , .name = "jbe"  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::je   , .name = "je"   , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::jne  , .name = "jne"  , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::call , .name = "call" , .argQuant = 1, .codeRecordSize = 2},
+    {Cmd::ret  , .name = "ret"  , .argQuant = 0, .codeRecordSize = 1},
+    {Cmd::draw , .name = "draw" , .argQuant = 2, .codeRecordSize = 3},
+    {Cmd::rgba , .name = "rgba" , .argQuant = 4, .codeRecordSize = 6},
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -150,4 +151,4 @@ struct IOfile
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#endif
+#endif //GLOBAL_INCLUDE_HPP

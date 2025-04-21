@@ -146,61 +146,53 @@ static void         PrintError           (AssemblerErr* err);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-struct CmdFunc
-{
-    const char*    CmdName;
-    AssemblerErr (*CmdFunc) (AsmData*);
-    size_t         argQuant;
-    size_t         codeRecordSize;
-};
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static const CmdFunc DefaultCmd[] =
-{
-    {"push" ,  HandlePush , CmdInfoArr[ Cmd::push  ].argQuant, CmdInfoArr[ Cmd::push  ].codeRecordSize},
-    {"pop"  ,  HandlePop  , CmdInfoArr[ Cmd::pop   ].argQuant, CmdInfoArr[ Cmd::pop   ].codeRecordSize},
-    {"jmp"  ,  HandleJmp  , CmdInfoArr[ Cmd::jmp   ].argQuant, CmdInfoArr[ Cmd::jmp   ].codeRecordSize},
-    {"ja"   ,  HandleJa   , CmdInfoArr[ Cmd::ja    ].argQuant, CmdInfoArr[ Cmd::ja    ].codeRecordSize},
-    {"jae"  ,  HandleJae  , CmdInfoArr[ Cmd::jae   ].argQuant, CmdInfoArr[ Cmd::jae   ].codeRecordSize},
-    {"jb"   ,  HandleJb   , CmdInfoArr[ Cmd::jb    ].argQuant, CmdInfoArr[ Cmd::jb    ].codeRecordSize},
-    {"jbe"  ,  HandleJbe  , CmdInfoArr[ Cmd::jbe   ].argQuant, CmdInfoArr[ Cmd::jbe   ].codeRecordSize},
-    {"je"   ,  HandleJe   , CmdInfoArr[ Cmd::je    ].argQuant, CmdInfoArr[ Cmd::je    ].codeRecordSize},
-    {"jne"  ,  HandleJne  , CmdInfoArr[ Cmd::jne   ].argQuant, CmdInfoArr[ Cmd::jne   ].codeRecordSize},
-    {"draw" ,  HandleDraw , CmdInfoArr[ Cmd::draw  ].argQuant, CmdInfoArr[ Cmd::draw  ].codeRecordSize},
-    {"rgba" ,  HandleRGBA , CmdInfoArr[ Cmd::rgba  ].argQuant, CmdInfoArr[ Cmd::rgba  ].codeRecordSize},
-    {"call" ,  HandleCall , CmdInfoArr[ Cmd::call  ].argQuant, CmdInfoArr[ Cmd::call  ].codeRecordSize},
-    {"ret"  ,  HandleRet  , CmdInfoArr[ Cmd::ret   ].argQuant, CmdInfoArr[ Cmd::ret   ].codeRecordSize},
-    {"add"  ,  HandleAdd  , CmdInfoArr[ Cmd::add   ].argQuant, CmdInfoArr[ Cmd::add   ].codeRecordSize},
-    {"sub"  ,  HandleSub  , CmdInfoArr[ Cmd::sub   ].argQuant, CmdInfoArr[ Cmd::sub   ].codeRecordSize},
-    {"mul"  ,  HandleMul  , CmdInfoArr[ Cmd::mul   ].argQuant, CmdInfoArr[ Cmd::mul   ].codeRecordSize},
-    {"div"  ,  HandleDiv  , CmdInfoArr[ Cmd::dive  ].argQuant, CmdInfoArr[ Cmd::dive  ].codeRecordSize},
-    {"pp"   ,  HandlePp   , CmdInfoArr[ Cmd::pp    ].argQuant, CmdInfoArr[ Cmd::pp    ].codeRecordSize},
-    {"mm"   ,  HandleMm   , CmdInfoArr[ Cmd::mm    ].argQuant, CmdInfoArr[ Cmd::mm    ].codeRecordSize},
-    {"out"  ,  HandleOut  , CmdInfoArr[ Cmd::out   ].argQuant, CmdInfoArr[ Cmd::out   ].codeRecordSize},
-    {"outc" ,  HandleOutc , CmdInfoArr[ Cmd::outc  ].argQuant, CmdInfoArr[ Cmd::outc  ].codeRecordSize},
-    {"outr" ,  HandleOutr , CmdInfoArr[ Cmd::outr  ].argQuant, CmdInfoArr[ Cmd::outr  ].codeRecordSize},
-    {"outrc",  HandleOutrc, CmdInfoArr[ Cmd::outrc ].argQuant, CmdInfoArr[ Cmd::outrc ].codeRecordSize},
-    {"hlt"  ,  HandleHlt  , CmdInfoArr[ Cmd::hlt   ].argQuant, CmdInfoArr[ Cmd::hlt   ].codeRecordSize},
-};
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static const size_t DefaultCmdQuant = sizeof(DefaultCmd) / sizeof(DefaultCmd[0]);
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static_assert(DefaultCmdQuant == CmdInfoArrSize, "in include/common/globalIncude.hpp is init array with all cmd. this numbers must be equal, or you forgot about some cmd");
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 #define ASSEMBLER_VERIF(AsmDataInfo, err) Verif(AsmDataInfo, &err, __FILE__, __LINE__, __func__)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static AssemblerErr (*GetCmd(size_t cmdPointer)) (AsmData* AsmDataInfo)
 {
-    return DefaultCmd[cmdPointer].CmdFunc;
+    Cmd cmd = (Cmd) cmdPointer;
+
+    AssemblerErr err = {};
+
+    switch (cmd)
+    {
+        case Cmd::hlt:       return HandleHlt;
+        case Cmd::push:      return HandlePush;
+        case Cmd::pop:       return HandlePop;
+        case Cmd::add:       return HandleAdd;
+        case Cmd::sub:       return HandleSub;
+        case Cmd::mul:       return HandleMul;
+        case Cmd::dive:      return HandleDiv;
+        case Cmd::pp:        return HandlePp;
+        case Cmd::mm:        return HandleMm;
+        case Cmd::out:       return HandleOut;
+        case Cmd::outc:      return HandleOutc;
+        case Cmd::outr:      return HandleOutr;
+        case Cmd::outrc:     return HandleOutrc;
+        case Cmd::jmp:       return HandleJmp;
+        case Cmd::ja:        return HandleJa;
+        case Cmd::jae:       return HandleJae;
+        case Cmd::jb:        return HandleJb;
+        case Cmd::jbe:       return HandleJbe;
+        case Cmd::je:        return HandleJe;
+        case Cmd::jne:       return HandleJne;
+        case Cmd::call:      return HandleCall;
+        case Cmd::ret:       return HandleRet;
+        case Cmd::draw:      return HandleDraw;
+        case Cmd::rgba:      return HandleRGBA;
+        case Cmd::CMD_QUANT:
+        default:
+        {
+            err.err = AssemblerErrorType::UNDEFINED_COMMAND;
+            ASSEMBLER_ASSERT(err);
+            return nullptr;
+        }
+    }
+
+    assert(0 && "we must not be here");
+    return nullptr;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -229,13 +221,11 @@ void RunAssembler(const IOfile* file)
 static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
 {
     assert(AsmDataInfo);
-    assert(file);
-    assert(file->ProgrammFile);
     assert(file->CodeFile);
 
     AssemblerErr err = {};
 
-    AsmDataInfo->cmd.cmd = ReadFile(file->ProgrammFile, &AsmDataInfo->cmd.size);
+    AsmDataInfo->cmd.cmd   = ReadFile(file->ProgrammFile, &AsmDataInfo->cmd.size);
 
     size_t codeArrSize     = CalcCodeSize(&AsmDataInfo->cmd);
     AsmDataInfo->code.size = codeArrSize;
@@ -273,9 +263,20 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
 
     size_t cmdQuant = AsmDataInfo->cmd.size;
 
+    LOG_COLOR(Yellow);
+    for (size_t i = 0; i < cmdQuant; i++)
+    {
+        LOG_ADC_PRINT("cmd[%2lu] = '%s'\n", i, AsmDataInfo->cmd.cmd[i]);
+    }
+
+    LOG_NS();
+    LOG_NS();
+
     while (AsmDataInfo->cmd.pointer < cmdQuant)
     {
         const char* cmd = GetNextCmd(AsmDataInfo);
+
+        LOG_PRINT(Green, "cmd = '%s'\n", cmd);
 
         size_t defaultCmdPointer = 0;
 
@@ -1043,16 +1044,16 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
 
         if (FindDefaultCmd(cmd, &cmdIndex))
         {
-            cmdPointer  += DefaultCmd[cmdIndex].argQuant + 1;
-            codePointer += DefaultCmd[cmdIndex].codeRecordSize;
+            cmdPointer  += CmdInfoArr[cmdIndex].argQuant + 1;
+            codePointer += CmdInfoArr[cmdIndex].codeRecordSize;
             continue;
         }
     
         if (IsLabel(cmd))
         {
-            // ON_DEBUG(
-            // LOG_PRINT(Green, "label: '%s'\n", cmd);
-            // )
+            ON_DEBUG(
+            LOG_PRINT(Green, "label: '%s'\n", cmd);
+            )
             if (!IsLabelAlready(AsmDataInfo, cmd, &cmdIndex))
             {
                 cmdPointer++;
@@ -1060,9 +1061,9 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
                 ASSEMBLER_ASSERT(PushLabel(AsmDataInfo, &label));
                 continue;
             }
-            // ON_DEBUG(
-            // LOG_PRINT(Red, "redefine: '%s'\n", cmd);
-            // )
+            ON_DEBUG(
+            LOG_PRINT(Red, "redefine: '%s'\n", cmd);
+            )
             err.err = AssemblerErrorType::LABEL_REDEFINE;
             return ASSEMBLER_VERIF(AsmDataInfo, err);
         }
@@ -1086,13 +1087,13 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
 
 
 
-    // ON_DEBUG(
-    // size_t size = AsmDataInfo->labels.size;
-    // for (size_t i = 0; i < size; i++)
-    // {
-    //     LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
-    // }
-    // )
+    ON_DEBUG(
+    size_t size = AsmDataInfo->labels.size;
+    for (size_t i = 0; i < size; i++)
+    {
+        LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
+    }
+    )
     return ASSEMBLER_VERIF(AsmDataInfo, err);
 }
 
@@ -1221,17 +1222,16 @@ static size_t CalcCodeSize(const CmdArr* cmd)
 
     for (size_t cmdPointer = 0; cmdPointer < cmd->size; cmdPointer++)
     {
-        const char* temp    = cmd->cmd[cmdPointer];
-        size_t defCmdPoiner = 0;
+        const char* temp         = cmd->cmd[cmdPointer];
+        size_t      defCmdPoiner = 0;
 
         if (FindDefaultCmd(temp, &defCmdPoiner))
         {
-            CmdFunc cmdf           = DefaultCmd[defCmdPoiner];
-            size_t  argQuant       = cmdf.argQuant;
-            size_t  codeRecordSize = cmdf.codeRecordSize;
+            size_t argQuant        = CmdInfoArr[defCmdPoiner].argQuant;
+            size_t codeRecordSize  = CmdInfoArr[defCmdPoiner].codeRecordSize;
 
-            codeSize              += codeRecordSize;
             cmdPointer            += argQuant;
+            codeSize              += codeRecordSize;
         }
     }
     return codeSize;
@@ -1244,14 +1244,14 @@ static bool FindDefaultCmd(const char* cmd, size_t* defaultCmdPointer)
     assert(cmd);
     assert(defaultCmdPointer);
 
-    for (size_t i = 0; i < DefaultCmdQuant; i++)
+    for (size_t i = 0; i < CmdInfoArrSize; i++)
     {
         const char* defCmd = GetCmdName(i);
-        if (strcmp(cmd, defCmd) == 0)
-        {
-            *defaultCmdPointer = i;
-            return true;
-        }
+
+        if (strcmp(cmd, defCmd) != 0) continue;
+
+        *defaultCmdPointer = i;
+        return true;
     }
 
     return false;
@@ -1478,7 +1478,7 @@ static bool IsCommentEnd(const char* str)
 
 static const char* GetCmdName(size_t cmdPointer)
 {
-    return DefaultCmd[cmdPointer].CmdName;
+    return CmdInfoArr[cmdPointer].name;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

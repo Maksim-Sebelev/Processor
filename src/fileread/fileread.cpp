@@ -92,16 +92,15 @@ const char** ReadFile(const char* file, size_t* bufSize)
 
     for (; buffer_i <= bufferLen + 1; buffer_i++)
     {
-        if (IsPassSymbol(buffer[buffer_i]))
+        if (!IsPassSymbol(buffer[buffer_i])) continue;
+        do
         {
-            do
-            {
-                buffer[buffer_i] = '\0';
-                buffer_i++;
-            }
-            while (IsPassSymbol(buffer[buffer_i]) && buffer_i <= bufferLen);
-            SetWord(split_buffer, &word_i, &buffer[buffer_i]);
+            buffer[buffer_i] = '\0';
+            buffer_i++;
         }
+        while (IsPassSymbol(buffer[buffer_i]) && buffer_i <= bufferLen);
+
+        SetWord(split_buffer, &word_i, &buffer[buffer_i]);
     }
 
     *bufSize = word_i - 1;

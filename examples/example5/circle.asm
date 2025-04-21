@@ -117,7 +117,7 @@ calc_dist_to_centre:
 
 
 inCircle:
-    rgba 100 200 100 255
+    rgba 255 255 255 255
     pop [dx]
 
     jmp back_in_cycle:
