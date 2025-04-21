@@ -51,9 +51,7 @@ draw_circle:
 
     pp   dx
     push dx
-    out
     push ex
-    out
     jb cycle:
 
     draw ax bx
