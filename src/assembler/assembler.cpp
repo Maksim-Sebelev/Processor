@@ -263,20 +263,9 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
 
     size_t cmdQuant = AsmDataInfo->cmd.size;
 
-    LOG_COLOR(Yellow);
-    for (size_t i = 0; i < cmdQuant; i++)
-    {
-        LOG_ADC_PRINT("cmd[%2lu] = '%s'\n", i, AsmDataInfo->cmd.cmd[i]);
-    }
-
-    LOG_NS();
-    LOG_NS();
-
     while (AsmDataInfo->cmd.pointer < cmdQuant)
     {
         const char* cmd = GetNextCmd(AsmDataInfo);
-
-        LOG_PRINT(Green, "cmd = '%s'\n", cmd);
 
         size_t defaultCmdPointer = 0;
 
@@ -849,14 +838,6 @@ static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
     const char* arg3 = GetNextCmd(AsmDataInfo); char* arg3End = nullptr;
     const char* arg4 = GetNextCmd(AsmDataInfo); char* arg4End = nullptr;
 
-    LOG_PRINT(Yellow, 
-        "arg1 = '%s'\n"
-        "arg2 = '%s'\n"
-        "arg3 = '%s'\n"
-        "arg4 = '%s'\n",
-        arg1, arg2, arg3, arg4
-    );
-
     size_t arg1Len = strlen(arg1);
     size_t arg2Len = strlen(arg2);
     size_t arg3Len = strlen(arg3);
@@ -877,22 +858,6 @@ static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
     bool IsInt2 = IsInt(arg2, arg2End, arg2Len);
     bool IsInt3 = IsInt(arg3, arg3End, arg3Len);
     bool IsInt4 = IsInt(arg4, arg4End, arg4Len);
-
-    LOG_PRINT(Green,
-        "reg1 = %d\n"
-        "reg2 = %d\n"
-        "reg3 = %d\n"
-        "reg4 = %d\n"
-        "int1 = %d\n"
-        "int2 = %d\n"
-        "int3 = %d\n"
-        "int4 = %d\n",
-        IsReg1, IsReg2, IsReg3, IsReg4, IsInt1, IsInt2, IsInt3, IsInt4
-    );
-
-    LOG_PRINT(Blue, 
-        "rgba type = '%d'\n", GetRGBAType(IsReg1, IsReg2, IsReg3, IsReg4)
-    );
 
     SetCmdArrCodeElem(AsmDataInfo, Cmd::rgba);
     SetCmdArrCodeElem(AsmDataInfo, GetRGBAType       (IsReg1, IsReg2, IsReg3, IsReg4));

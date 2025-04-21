@@ -9,8 +9,8 @@ CFLAGS ?= $(SFML_FLAGS)
 LDFLAGS = $(SFML_FLAGS)
 
 
-BUILD_TYPE ?= debug
-# BUILD_TYPE ?= release
+# BUILD_TYPE ?= debug
+BUILD_TYPE ?= release
 
 
 
