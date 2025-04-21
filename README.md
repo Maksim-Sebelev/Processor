@@ -239,7 +239,7 @@ arg = {int, reg}
 │       ├──  lib
 │       ├──  log
 │       ├──  processor
-│       └── stack
+│       └──  stack
 └── README.md        # Документация
 ```
 
