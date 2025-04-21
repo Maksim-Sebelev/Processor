@@ -847,6 +847,7 @@ static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
     for (size_t i = 0; i < 4; i++) isInt [i] = IsInt(arg[i], argEnd[i], argLen[i]);
 
 
+    SetCmdArrCodeElem(AsmDataInfo, Cmd::rgba);
     SetCmdArrCodeElem(AsmDataInfo, GetRGBAType(isReg));
 
     for (size_t i = 0; i < 4; i++)
