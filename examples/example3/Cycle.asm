@@ -12,7 +12,7 @@ push ax
 out
 push 10
 pp ax
-jbe cycle:
+jb cycle:
 
 #=== print \n ===/
 

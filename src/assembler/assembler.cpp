@@ -1066,13 +1066,13 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
     }
 
 
-    ON_DEBUG(
-    size_t size = AsmDataInfo->labels.size;
-    for (size_t i = 0; i < size; i++)
-    {
-        LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
-    }
-    )
+    // ON_DEBUG(
+    // size_t size = AsmDataInfo->labels.size;
+    // for (size_t i = 0; i < size; i++)
+    // {
+    //     LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
+    // }
+    // )
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 

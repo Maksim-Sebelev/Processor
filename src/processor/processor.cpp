@@ -211,9 +211,9 @@ static ProcessorErr ExecuteCommands(SPU* spu)
     assert(spu);
 
     ProcessorErr  err = {};
-    ON_DEBUG(
-    LOG_PRINT(Green, "We are in processor\n");
-    )
+    // ON_DEBUG(
+    // LOG_PRINT(Green, "We are in processor\n");
+    // )
 
     while (GetIp(spu) < GetCodeSize(spu))
     {
@@ -246,9 +246,9 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return HandleHalt(spu);
             default:
             {
-                ON_DEBUG(
-                LOG_PRINT(Red, "udef cmd = '%d'\n", GetCodeElem(spu));
-                )
+                // ON_DEBUG(
+                // LOG_PRINT(Red, "udef cmd = '%d'\n", GetCodeElem(spu));
+                // )
                 err.err = ProcessorErrorType::INVALID_CMD;
                 return PROCESSOR_VERIF(spu, err);
             }

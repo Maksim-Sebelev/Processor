@@ -5,7 +5,7 @@ endif
 
 SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 
-CFLAGS ?= $(SFML_FLAGS)
+CFLAGS ?= 
 LDFLAGS = $(SFML_FLAGS)
 
 # BUILD_TYPE ?= debug
