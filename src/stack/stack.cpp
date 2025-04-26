@@ -3,8 +3,9 @@
 #include <stdint.h>
 #include <assert.h>
 #include "lib/lib.hpp"
-#include "stack/stack.hpp"
 #include "lib/colorPrint.hpp"
+#include "stack/stack.hpp"
+#include "stack/hash.hpp"
 
 static const size_t MinCapacity = 1<<3;
 static const size_t MaxCapacity = 1<<30;
@@ -33,7 +34,7 @@ static const uint64_t DefaultStackHash = 538176576;
 )
 ON_STACK_DATA_POISON
 (
-static const StackElem_t Poison = 0xDEEEEEAD;
+static const StackElem_t Poison = 0xDEEEEAD;
 )
 
 static size_t GetNewCapacity      (size_t capacity); 
@@ -66,11 +67,7 @@ static uint64_t CalcStackHash (Stack_t* stack);
 )
 
 static StackErrorType Verif       (Stack_t* stack, StackErrorType* Error ON_STACK_DEBUG(, const char* file, int line, const char* func));
-static void      PrintError  (StackErrorType Error);
-ON_STACK_DEBUG
-(
-static void      ErrPlaceCtor (StackErrorType* err, const char* file, int line, const char* func);
-)
+static void           PrintError  (StackErrorType Error);
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -80,7 +77,7 @@ static void      ErrPlaceCtor (StackErrorType* err, const char* file, int line, 
 
 #define RETURN_IF_ERR_OR_WARN(StackPtr, err) do                             \
 {                                                                            \
-    StackErrorType ErrCopy = err;                                                  \
+    StackErrorType ErrCopy = err;                                             \
     Verif(stack, &ErrCopy ON_STACK_DEBUG(, __FILE__, __LINE__, __func__));     \
     if (ErrCopy.IsFatalError == 1 || ErrCopy.IsWarning == 1)                    \
     {                                                                            \
@@ -248,7 +245,7 @@ StackElem_t GetLastStackElem(const Stack_t* stack)
         StackErrorType err = {};
         err.IsWarning = 1;
         err.Warning.TryToGetElemInEmptyStack = 1;
-        ErrPlaceCtor(&err, __FILE__, __LINE__, __func__);
+        ON_STACK_DEBUG(CodePlaceCtor(&err.place, __FILE__, __LINE__, __func__);)
         STACK_ASSERT(err);
     }
 
@@ -536,7 +533,7 @@ static StackErrorType Verif(Stack_t* stack, StackErrorType* Error ON_STACK_DEBUG
 
     ON_STACK_DEBUG
     (
-    ErrPlaceCtor(Error, file, line, func);
+    CodePlaceCtor(&Error->place, file, line, func);
     )
 
     if (stack == nullptr)
@@ -842,8 +839,8 @@ static void PrintError(StackErrorType Error)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-ON_STACK_DEBUG
-(
+// ON_STACK_DEBUG
+// (
 // void StackDump(const Stack_t* stack, const char* file, int line, const char* func)
 // {   
 //     COLOR_PRINT(GREEN, "\nDump BEGIN\n\n");
@@ -936,21 +933,7 @@ ON_STACK_DEBUG
 //     COLOR_PRINT(GREEN, "\n\nDump END\n\n");
 //     return;
 // }
-
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void ErrPlaceCtor (StackErrorType* err, const char* file, int line, const char* func)
-{
-    assert(err);
-    assert(file);
-    assert(func);
-
-    err->file = file;
-    err->line = line;
-    err->func = func;
-    return;
-}
-)
+// )
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -963,7 +946,7 @@ void AssertPrint(StackErrorType err, const char* file, int line, const char* fun
         PrintError(err);
         ON_STACK_DEBUG
         (
-        PrintPlace(err.file, err.line, err.func);
+        PrintPlace(err.place.file, err.place.line, err.place.func);
         )
         printf("\n");
     }

@@ -53,9 +53,10 @@ EXAMPLE_DIR = examples
 
 override CFLAGS += $(COMMONINC)
 
-CSRC =  main.cpp 					 \
-		src/lib/lib.cpp  			  \
-		src/stack/stack.cpp 		   \
+CSRC =  main.cpp 					\
+		src/lib/lib.cpp  			 \
+		src/stack/stack.cpp 		  \
+		src/stack/hash.cpp   		   \
 		src/fileread/fileread.cpp       \
 		src/console/consoleCmd.cpp       \
 		src/assembler/assembler.cpp       \
