@@ -13,6 +13,38 @@
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+enum class AssemblerErrorType
+{
+    NO_ERR                       ,
+    INVALID_INPUT_AFTER_PUSH     ,
+    INVALID_INPUT_AFTER_POP      ,
+    FAILED_OPEN_INPUT_STREAM     ,
+    FAILED_OPEN_OUTPUT_STREAM    ,
+    FWRITE_BAD_RETURN            ,
+    UNDEFINED_COMMAND            ,
+    UNDEFINED_ENUM_COMMAND       ,
+    BAD_CODE_ARR_REALLOC         ,
+    LABEL_REDEFINE               ,
+    BAD_LABELS_CALLOC            ,
+    BAD_LABELS_REALLOC           ,
+    INCORRECT_SUM_FIRST_OPERAND  ,
+    INCORRECT_SUM_SECOND_OPERAND ,
+    INCORRECT_PP_ARG             ,
+    INCORRECT_MM_ARG             ,
+};
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+struct AssemblerErr
+{
+    CodePlace          place;
+    AssemblerErrorType err;
+    Word               cmd;
+    IOfile             file;
+};
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 struct CodeArr
 {
     size_t size;
@@ -134,16 +166,28 @@ static AssemblerErr HandleComment        (AsmData* AsmDataInfo);
 static AssemblerErr HandleRGBA           (AsmData* AsmDataInfo);
 
 
-
-static AssemblerErr Verif                      (const AsmData* AsmDataInfo, AssemblerErr* err, const char* file, int line, const char* func);
+static AssemblerErr Verif                      (const AsmData* AsmDataInfo, AssemblerErr* err, Word cmd, const char* file, int line, const char* func);
 static void         PrintError                 (const AssemblerErr* err);
-static void         PrintIncorrectCmd          (const char* msg, const AsmData* ASmDataInfo, const Word* cmd);
-static void         PrintIncorrectCmdName      (const Word* cmd);
-static void         PrintIncorrectCmdFilePlace (const AsmData* AsmDataInfo, const Word* cmd);
+static void         PrintIncorrectCmd          (const char* msg, const char* file, Word cmd);
+static void         PrintIncorrectCmdFilePlace (const char* file , Word cmd);
+static void         AssemblerAssertPrint       (const AssemblerErr* err, const char* file, int line, const char* func);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define ASSEMBLER_VERIF(AsmDataInfo, err) Verif(AsmDataInfo, &err, __FILE__, __LINE__, __func__)
+#define ASSEMBLER_VERIF(AsmDataInfo, err, cmd) Verif(AsmDataInfo, &err, cmd, __FILE__, __LINE__, __func__)
+
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define ASSEMBLER_ASSERT(Err) do                                                   \
+{                                                                                   \
+    AssemblerErr errCopy = Err;                                                      \
+    if (errCopy.err != AssemblerErrorType::NO_ERR)                                    \
+    {                                                                                  \
+        AssemblerAssertPrint(&errCopy, __FILE__, __LINE__, __func__);                   \
+        exit(1);                                                                         \
+    }                                                                                     \
+} while (0)                                                                                \
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -182,7 +226,7 @@ static AssemblerErr (*GetCmd(size_t cmdPointer)) (AsmData* AsmDataInfo)
         case Cmd::CMD_QUANT:
         default:
         {
-            err.err = AssemblerErrorType::UNDEFINED_COMMAND;
+            err.err = AssemblerErrorType::UNDEFINED_ENUM_COMMAND;
             ASSEMBLER_ASSERT(err);
             return nullptr;
         }
@@ -203,10 +247,10 @@ void RunAssembler(const IOfile* file)
     AsmData AsmDataInfo = {};
 
     ASSEMBLER_ASSERT(AsmDataCtor         (&AsmDataInfo, file));
-    ASSEMBLER_ASSERT(InitAllLabels       (&AsmDataInfo));
-    ASSEMBLER_ASSERT(WriteCmdInCodeArr   (&AsmDataInfo));
-    ASSEMBLER_ASSERT(WriteCodeArrInFile  (&AsmDataInfo));
-    ASSEMBLER_ASSERT(AsmDataDtor         (&AsmDataInfo));
+    ASSEMBLER_ASSERT(InitAllLabels       (&AsmDataInfo)      );
+    ASSEMBLER_ASSERT(WriteCmdInCodeArr   (&AsmDataInfo)      );
+    ASSEMBLER_ASSERT(WriteCodeArrInFile  (&AsmDataInfo)      );
+    ASSEMBLER_ASSERT(AsmDataDtor         (&AsmDataInfo)      );
 
     return;
 }
@@ -220,7 +264,7 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
 
     AssemblerErr err = {};
 
-    AsmDataInfo->cmd = (CmdArr) ReadBufferFromFile(file->ProgrammFile);
+    AsmDataInfo->cmd = ReadBufferFromFile(file->ProgrammFile);
 
     size_t codeArrSize     = CalcCodeSize(&AsmDataInfo->cmd);
     AsmDataInfo->code.size = codeArrSize;
@@ -230,7 +274,7 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
     
     assert(AsmDataInfo->code.code);
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -262,7 +306,7 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
 
     while (AsmDataInfo->cmd.pointer < cmdQuant)
     {
-        const Word cmd = GetNextCmd(AsmDataInfo);
+        Word cmd = GetNextCmd(AsmDataInfo);
 
         size_t defaultCmdPointer = 0;
 
@@ -285,13 +329,12 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
         }
 
         err.err = AssemblerErrorType::UNDEFINED_COMMAND;
-        PrintIncorrectCmd("undefined reference to:", AsmDataInfo, &cmd);
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, cmd);
     }
 
     AsmDataInfo->code.size = AsmDataInfo->code.pointer;
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -310,7 +353,7 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo)
     if (!codeFile)
     {
         err.err = AssemblerErrorType::FAILED_OPEN_OUTPUT_STREAM;
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
     size_t codeArrSize = AsmDataInfo->code.size;
@@ -332,7 +375,7 @@ static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo)
 
     fclose(codeFile);
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -344,22 +387,21 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
     AssemblerErr err = {};
 
     Word        buffer    = GetNextCmd(AsmDataInfo);
-    size_t      BufferLen = buffer.len;
-    char*       EndBuffer = nullptr;
+    char*       endBuffer = nullptr;
 
-    StackElem_t PushElem = (StackElem_t) strtol(buffer.word, &EndBuffer, 10);
+    StackElem_t PushElem = (StackElem_t) strtol(buffer.word, &endBuffer, 10);
     PushType    Push     = {};
     int         SetElem  = 0;
     int         Sum      = 0;
 
-    if (IsInt(&buffer, EndBuffer))
+    if (IsInt(&buffer, endBuffer))
     {
         PushTypeCtor(&Push, 1, 0, 0, 0);
         SetElem = PushElem;
         Sum = 0;
     }
 
-    else if (IsChar(&buffer, EndBuffer))
+    else if (IsChar(&buffer, endBuffer))
     {
         PushTypeCtor(&Push, 1, 0, 0, 0);
         SetElem = GetChar(&buffer);
@@ -377,9 +419,9 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
     {
         UpdateBufferForMemory(&buffer);
 
-        StackElem_t PushElemMemIndex = (StackElem_t) strtol(buffer.word, &EndBuffer, 10);
+        StackElem_t PushElemMemIndex = (StackElem_t) strtol(buffer.word, &endBuffer, 10);
 
-        if (IsInt(&buffer, EndBuffer))
+        if (IsInt(&buffer, endBuffer))
         {
             PushTypeCtor(&Push, 0, 0, 1, 0);
             SetElem = PushElemMemIndex;
@@ -398,15 +440,14 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
             PushTypeCtor(&Push, 0, 0, 1, 1);
             SetElem      = GetRegisterPointer(&buffer);
             buffer.word += Registers::REGISTERS_NAME_LEN + 1;
-            Sum          = (int) strtol(buffer.word, &EndBuffer, 10);
+            Sum          = (int) strtol(buffer.word, &endBuffer, 10);
         }
     }
 
     else
     {
         err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
-        PrintIncorrectCmd("incorrect 'push' arg:", AsmDataInfo, &buffer);
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, buffer);
     }
 
     SetCmdArrCodeElem(AsmDataInfo, push);
@@ -414,8 +455,7 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
     SetCmdArrCodeElem(AsmDataInfo, SetElem);
     SetCmdArrCodeElem(AsmDataInfo, Sum);
 
-
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -471,10 +511,10 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
     {
         UpdateBufferForMemory(&buffer);
 
-        char*       EndBuffer       = nullptr;
-        StackElem_t PopElemMemIndex = (StackElem_t) strtol(buffer.word, &EndBuffer,  10);
+        char*       endBuffer       = nullptr;
+        StackElem_t PopElemMemIndex = (StackElem_t) strtol(buffer.word, &endBuffer,  10);
 
-        if (IsInt(&buffer, EndBuffer))
+        if (IsInt(&buffer, endBuffer))
         {
             PopTypeCtor(&Pop, 0, 1, 0);
             SetElem = PopElemMemIndex;
@@ -493,15 +533,14 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
             PopTypeCtor(&Pop, 0, 1, 1);
             SetElem      = GetRegisterPointer(&buffer);
             buffer.word += Registers::REGISTERS_NAME_LEN + 1;
-            Sum          = (int) strtol(buffer.word, &EndBuffer, 10);
+            Sum          = (int) strtol(buffer.word, &endBuffer, 10);
         }
     }
 
     else
     {
         err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
-        PrintIncorrectCmd("incorrect 'pop' argument:", AsmDataInfo, &buffer);
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, buffer);
     }
 
     SetCmdArrCodeElem(AsmDataInfo, pop);
@@ -510,7 +549,7 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
     SetCmdArrCodeElem(AsmDataInfo, Sum);
 
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -600,24 +639,21 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
 
         else
         {
-            // COLOR_PRINT(RED, "Call arg = '%s'\n", callArg);
-            PrintIncorrectCmd("redefine label:", AsmDataInfo, &callArg);
             err.err = AssemblerErrorType::LABEL_REDEFINE;
-            return ASSEMBLER_VERIF(AsmDataInfo, err);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, callArg);
         }
     }
 
     else
     {
         err.err = AssemblerErrorType::LABEL_REDEFINE;
-        PrintIncorrectCmd("redefine label:", AsmDataInfo, &callArg);
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, callArg);
     }
 
     SetCmdArrCodeElem(AsmDataInfo, Cmd::call);
     SetCmdArrCodeElem(AsmDataInfo, SetElem);
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, callArg);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -638,8 +674,6 @@ static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd cmd)
     AssemblerErr err = {};
         
     Word        ppArg    = GetNextCmd(AsmDataInfo);
-    size_t      ppArgLen = ppArg.len;
-
     int         SetElem  = 0;
 
     if (IsRegister(&ppArg))
@@ -652,27 +686,23 @@ static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd cmd)
         if (cmd == Cmd::pp)
         {
             err.err = AssemblerErrorType::INCORRECT_PP_ARG;
-            PrintIncorrectCmd("incorrect 'pp' arg:", AsmDataInfo, &ppArg);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, ppArg);
         }
 
         else if (cmd == Cmd::mm)
         {
             err.err = AssemblerErrorType::INCORRECT_MM_ARG;
-            PrintIncorrectCmd("incorrect 'mm' arg:", AsmDataInfo, &ppArg);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, ppArg);
         }
 
-        else
-        {
-            assert(0 && "undef situation: must be 'pp' or 'mm' cmd");
-        }
-
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        assert(0 && "undef situation: must be 'pp' or 'mm' cmd");
+        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
     SetCmdArrCodeElem(AsmDataInfo, cmd);
     SetCmdArrCodeElem(AsmDataInfo, SetElem);
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -784,7 +814,7 @@ static AssemblerErr HandleLabel(AsmData* AsmDataInfo)
 
     AsmDataInfo->labels.pointer++;
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -804,20 +834,33 @@ static AssemblerErr HandleDraw(AsmData* AsmDataInfo)
     // strtol(firstArg.word,  &firstArgEndPtr,  10);
     // strtol(secondArg.word, &secondArgEndPtr, 10);
     
-    if (IsRegister(&firstArg) && IsRegister(&secondArg))
+    bool IsReg1 = IsRegister(&firstArg);
+    bool IsReg2 = IsRegister(&secondArg);
+
+    
+    if (IsReg1 && IsReg2)
     {
         SetCmdArrCodeElem(AsmDataInfo, Cmd::draw                     );
         SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(&firstArg ));
         SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(&secondArg));
 
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+    }
+
+    else if (!IsReg1)
+    {
+        err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
+        return ASSEMBLER_VERIF(AsmDataInfo, err, firstArg);
+    }
+
+    else if (!IsReg2)
+    {
+        err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
+        return ASSEMBLER_VERIF(AsmDataInfo, err, secondArg);
     }
 
     err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
-    PrintIncorrectCmd("incorrect 'draw' args:", AsmDataInfo, &firstArg );
-    PrintIncorrectCmd("incorrect 'draw' args:", AsmDataInfo, &secondArg);
-
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, firstArg);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -838,16 +881,15 @@ static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
     AssemblerErr err = {};
 
     Word   arg   [4] = {};
-    size_t argLen[4] = {};
     char*  argEnd[4] = {};
     int    argInt[4] = {};
     bool   isReg [4] = {};
     bool   isInt [4] = {};
 
-    for (size_t i = 0; i < 4; i++) arg   [i] = GetNextCmd(AsmDataInfo);
-    for (size_t i = 0; i < 4; i++) argInt[i] = (int) strtol(arg[i].word, &argEnd[i], 10);
-    for (size_t i = 0; i < 4; i++) isReg [i] = IsRegister(&arg[i]);
-    for (size_t i = 0; i < 4; i++) isInt [i] = IsInt(&arg[i], argEnd[i]);
+    for (size_t i = 0; i < 4; i++) arg   [i] =       GetNextCmd (AsmDataInfo                 );
+    for (size_t i = 0; i < 4; i++) argInt[i] = (int) strtol     ( arg[i].word, &argEnd[i], 10);
+    for (size_t i = 0; i < 4; i++) isReg [i] =       IsRegister (&arg[i]                     );
+    for (size_t i = 0; i < 4; i++) isInt [i] =       IsInt      (&arg[i],       argEnd[i]    );
 
 
     SetCmdArrCodeElem(AsmDataInfo, Cmd::rgba);
@@ -868,13 +910,10 @@ static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
         }
         
         err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
-        COLOR_PRINT(RED, "incorrect rgba '%lu' argument:", i + 1);
-        PrintIncorrectCmdName(&arg[i]);
-        PrintIncorrectCmdFilePlace(AsmDataInfo, &arg[i]);
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, arg[i]);
     }
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -903,7 +942,7 @@ static AssemblerErr HandleComment(AsmData* AsmDataInfo)
 
     AsmDataInfo->cmd.pointer = pointer;
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -915,7 +954,7 @@ static AssemblerErr NullArgCmdPattern(AsmData* AsmDataInfo, Cmd cmd)
     AssemblerErr err = {};
     SetCmdArrCodeElem(AsmDataInfo, cmd);
     AsmDataInfo->code.size++;
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -943,8 +982,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
         else
         {
             err.err = AssemblerErrorType::LABEL_REDEFINE;
-            PrintIncorrectCmd("undefined label:", AsmDataInfo, &JumpArg);
-            return ASSEMBLER_VERIF(AsmDataInfo, err);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, JumpArg);
         }
     }
 
@@ -956,14 +994,13 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
     else
     {
         err.err = AssemblerErrorType::LABEL_REDEFINE;
-        PrintIncorrectCmd("incorrect jump's arg:", AsmDataInfo, &JumpArg);
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, JumpArg);
     }
 
     SetCmdArrCodeElem(AsmDataInfo, JumpType);
     SetCmdArrCodeElem(AsmDataInfo, SetElem);
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1007,8 +1044,7 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
             }
 
             err.err = AssemblerErrorType::LABEL_REDEFINE;
-            PrintIncorrectCmd("redefine label:", AsmDataInfo, &cmd);
-            return ASSEMBLER_VERIF(AsmDataInfo, err);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, cmd);
         }
 
         if (IsCommentBegin(&cmd))
@@ -1024,11 +1060,10 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
             continue;
         }
 
+        // COLOR_PRINT(CYAN, "cmd.name = '%s'\ncmd.line = %lu\ncmd.inline = %lu\n\n", cmd.word, cmd.line, cmd.inLine);
         err.err = AssemblerErrorType::UNDEFINED_COMMAND;
-        PrintIncorrectCmd("undefined reference to:", AsmDataInfo, &cmd);
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, cmd);
     }
-
 
 
     ON_DEBUG(
@@ -1038,7 +1073,7 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
         LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
     }
     )
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1056,12 +1091,12 @@ static AssemblerErr LabelsCtor(AsmData* AsmDataInfo)
     if (!AsmDataInfo->labels.labels)
     {
         err.err = AssemblerErrorType::BAD_LABELS_CALLOC;
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
     AsmDataInfo->labels.capacity = DefaultLabelsQuant;
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1075,7 +1110,7 @@ static AssemblerErr LabelsDtor(AsmData* AsmDataInfo)
     FREE(AsmDataInfo->labels.labels);
     AsmDataInfo->labels = {};
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1114,7 +1149,7 @@ static AssemblerErr PushLabel(AsmData* AsmDataInfo, const Label* label)
     if (size <= capacity)
     {
         Labels->labels[Labels->size - 1] = *label;
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
     size_t new_capacity = 2 * capacity;
@@ -1123,13 +1158,13 @@ static AssemblerErr PushLabel(AsmData* AsmDataInfo, const Label* label)
     if (!Labels->labels)
     {
         err.err = AssemblerErrorType::BAD_CODE_ARR_REALLOC;
-        return ASSEMBLER_VERIF(AsmDataInfo, err);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
     Labels->labels[Labels->size - 1] = *label;
     
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1253,14 +1288,6 @@ static int GetRegisterPointer(const Word* buffer)
     assert(buffer);
 
     const char fisrtBuf  = buffer->word[0];
-    const char secondBuf = buffer->word[1];
-
-    if ((fisrtBuf < 'a') || (fisrtBuf >= Registers::REGISTERS_QUANT + 'a') || (secondBuf != 'x'))
-    {
-        AssemblerErr err = {};
-        err.err = AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND;
-        ASSEMBLER_ASSERT(ASSEMBLER_VERIF(nullptr, err));
-    }
 
     return fisrtBuf - 'a';
 }
@@ -1479,29 +1506,43 @@ static Word GetNextCmd(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void AssemblerAssertPrint(AssemblerErr* err, const char* file, int line, const char* func)
+void AssemblerAssertPrint(const AssemblerErr* err, const char* file, int line, const char* func)
 {
-    
     assert(file);
     assert(func);
+    
+    PrintError(err);
 
+    ON_DEBUG(
+    printf("\n");
     COLOR_PRINT(RED, "Assert made in:\n");
     PrintPlace(file, line, func);
-    PrintError(err);
-    PrintPlace(err->place.file, err->place.line, err->place.func);
-    COLOR_PRINT(CYAN, "\nabort() in 3, 2, 1...");
+    printf("\n");
 
+    COLOR_PRINT(RED, "Error detected in:\n");
+    PrintPlace(err->place.file, err->place.line, err->place.func);
+    )
+
+    COLOR_PRINT(CYAN, "\nexit() in 3, 2, 1...\n");
+    
     return;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr Verif(const AsmData* AsmDataInfo, AssemblerErr* err, const char* file, int line, const char* func)
+static AssemblerErr Verif(const AsmData* AsmDataInfo, AssemblerErr* err, Word cmd, const char* file, int line, const char* func)
 {    
     assert(file);
     assert(func);
+    assert(err);
 
     CodePlaceCtor(&err->place, file, line, func);
+
+    err->cmd = cmd;
+
+    if (AsmDataInfo)
+        err->file = AsmDataInfo->file;
+
 
     if (!AsmDataInfo)
     {
@@ -1513,42 +1554,30 @@ static AssemblerErr Verif(const AsmData* AsmDataInfo, AssemblerErr* err, const c
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void PrintIncorrectCmd(const char* msg, const AsmData* AsmDataInfo, const Word* cmd)
+static void PrintIncorrectCmd(const char* msg, const char* file, Word cmd)
 {
-    assert(AsmDataInfo);
-    assert(cmd);
+    assert(msg);
+    assert(file);
 
     COLOR_PRINT(RED, 
-        "%s: '%s' in:\n",
-        msg, cmd->word);
+        "%s '%s'\n",
+        msg, cmd.word);
 
-    PrintIncorrectCmdFilePlace(AsmDataInfo, cmd);
-
-    return;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void PrintIncorrectCmdName(const Word* cmd)
-{ 
-    assert(cmd);
-
-    COLOR_PRINT(RED, " '%s' in :\n", cmd->word);
+    PrintIncorrectCmdFilePlace(file, cmd);
 
     return;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void PrintIncorrectCmdFilePlace(const AsmData* AsmDataInfo, const Word* cmd)
+static void PrintIncorrectCmdFilePlace(const char* file, Word cmd)
 {
-    assert(AsmDataInfo);
-    assert(cmd);
+    assert(file);
 
     COLOR_PRINT(
         WHITE,
         "%s:%lu:%lu\n",
-        AsmDataInfo->file.ProgrammFile, cmd->line, cmd->inLine
+        file, cmd.line, cmd.inLine
     );
 
     return;
@@ -1560,31 +1589,46 @@ static void PrintError(const AssemblerErr* err)
 {
     assert(err);
 
+    const char* inputStream  = err->file.ProgrammFile;
+    const char* outputStream = err->file.CodeFile;
+    const char* cmdName      = nullptr;
+    
+    if (err->cmd.len)
+    {
+        cmdName   = err->cmd.word;
+    }
+
     switch (err->err)
     {
         case AssemblerErrorType::NO_ERR:
             return;
 
         case AssemblerErrorType::FAILED_OPEN_INPUT_STREAM:
-            COLOR_PRINT(RED, "Error: failed open input file.\n");
+            COLOR_PRINT(RED, "Error: failed open input file: '%s'.\n", inputStream);
             break;
 
         case AssemblerErrorType::FAILED_OPEN_OUTPUT_STREAM:
-            COLOR_PRINT(RED, "Error: failed open output file.\n");
+            COLOR_PRINT(RED, "Error: failed open output file: '%s'.\n", outputStream);
             break;
-        
+
         case AssemblerErrorType::INVALID_INPUT_AFTER_PUSH:
-            COLOR_PRINT(RED, "Error: invalid input after push.\n");
+            COLOR_PRINT(RED, "Error: invalid input after push: '%s'.\n", cmdName);
+            PrintIncorrectCmdFilePlace(inputStream, err->cmd);
             break;
-        
+
         case AssemblerErrorType::INVALID_INPUT_AFTER_POP:
-            COLOR_PRINT(RED, "Error: invalid input after pop.\n");
+            COLOR_PRINT(RED, "Error: invalid input after pop: '%s'.\n", cmdName);
+            PrintIncorrectCmdFilePlace(inputStream, err->cmd);
             break;
 
         case AssemblerErrorType::UNDEFINED_COMMAND:
-            COLOR_PRINT(RED, "Error: undefined command.\n");
+            PrintIncorrectCmd("undefined reference to:", inputStream, err->cmd);
             break;
-    
+
+        case AssemblerErrorType::UNDEFINED_ENUM_COMMAND:
+            COLOR_PRINT(RED, "Error: undefined enum command\n");
+            break;
+
         case AssemblerErrorType::BAD_CODE_ARR_REALLOC:
             COLOR_PRINT(RED, "Error: realloc in write cmd in code return nullptr.\n");
             break;
@@ -1594,31 +1638,32 @@ static void PrintError(const AssemblerErr* err)
             break;
 
         case AssemblerErrorType::LABEL_REDEFINE:
-            COLOR_PRINT(RED, "Error: redefined label.\n");
+            PrintIncorrectCmd("label redefine:", inputStream, err->cmd);
             break;
 
         case AssemblerErrorType::BAD_LABELS_CALLOC:
             COLOR_PRINT(RED, "Error: failed to allocate memory for labels.\n");
             break;
-        
+
         case AssemblerErrorType::BAD_LABELS_REALLOC:
             COLOR_PRINT(RED, "Error: failer to reallocate memory for labels.\n");
             break;
 
         case AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND:
-            COLOR_PRINT(RED, "Error: inccorrect first opearand in sum in push/pop.\n");
+            PrintIncorrectCmd("incorrect first sum argument in push/pop:", inputStream, err->cmd);
             break;
 
         case AssemblerErrorType::INCORRECT_SUM_SECOND_OPERAND:
-            COLOR_PRINT(RED, "Error: incorrect second operand in sum in push/pop\n");
+            PrintIncorrectCmd("incorrect second sum argument in push/pop:", inputStream, err->cmd);
             break;
 
         case AssemblerErrorType::INCORRECT_PP_ARG:
             COLOR_PRINT(RED, "Error: incorrect pp arg\n");
+            PrintIncorrectCmd("incorrect 'pp' arg:", inputStream, err->cmd);
             break;
 
-        case AssemblerErrorType::INCORRECT_MM_ARG:
-            COLOR_PRINT(RED, "Error: incorrect mm arg\n");
+        case AssemblerErrorType::INCORRECT_MM_ARG:            
+            PrintIncorrectCmd("incorrect 'mm' arg:", inputStream, err->cmd);
             break;
 
         default: 
