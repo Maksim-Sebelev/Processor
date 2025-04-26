@@ -15,7 +15,7 @@ BUILD_TYPE ?= release
 
 
 ifeq ($(BUILD_TYPE), release)
-	CFLAGS += -D _NDEBUG -O2
+	CFLAGS += -D _NDEBUG -O3
 endif 
 
 ifeq ($(BUILD_TYPE), debug)

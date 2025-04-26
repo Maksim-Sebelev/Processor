@@ -1,137 +1,204 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <assert.h>
 #include <string.h>
-#include <stdlib.h>
 #include "fileread/fileread.hpp"
 #include "lib/colorPrint.hpp"
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void   SetWord          (const char** split_buffer, size_t* word_i, const char* SetWord);
-static bool   IsPassSymbol     (const char c);
-static void   FindFirstNotPass (char* buffer, size_t* buffer_i);
-static void   Fread            (char* buffer, size_t bufferLen, FILE* filePtr);
-static void   ReadBufRealloc   (const char*** split_buffer, size_t splitBufSize);
-static bool   IsInt            (const char* str, const char* strEnd);
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-#define FREE(ptr) free((char*)(ptr)); ptr = nullptr;
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-int strintToInt(const char* const str)
+struct Pointer
 {
-    assert(str);
+    size_t wp; // word pointer
+    size_t lp; // line pointer
+    size_t sp; // str pointer (char pos in line)
+    size_t bp; // buffer pointer
+    size_t wbp; // previous word begin pointer
+};
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static size_t CalcFileLen            (const char* const fileName);
+static size_t GetPreviousWordLen     (const Pointer* pointer);
+
+static void   Fread                  (char* buffer, size_t bufferLen, FILE* filePtr);
+static void   ReadBufRealloc         (WordArray* wordArray);
+
+static void   SetNullWord            (Word** split_buffer, const char* buffer);
+static void   SetPreviousWordLen     (Word* split_buffer, const Pointer* pointer, size_t wordLen);
+static void   SetWordAndFilePosition (Word* split_buffer, const char* word, Pointer* pointer);
+
+
+static bool   IsPassSymbolAndChangePointer           (const char c, Pointer* pointer);
+static bool   IsPassSymbol           (const char c);
+static bool   IsSpace                (const char c);
+static bool   IsSlashN               (const char c);
+static bool   IsSlashR               (const char c);
+static bool   IsSlashT               (const char c);
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+int WordToInt(const Word* word)
+{
+    assert(word);
 
     long res = 0;
-    char* strEnd = NULL;
+
+
+    const char* str    = word->word;
+    char*       strEnd = nullptr;
+    size_t      len    = word->len;
+
     res = strtol(str, &strEnd, 10);
 
-    if (!IsInt(str, strEnd))
+    if (size_t (strEnd - str) != len)
     {
-        printf("\n\n'%s' - IS NOT A NUMBER.\n\n", str);
-        assert(0 && "try to convert not int str to int.");
+        COLOR_PRINT(RED, 
+            "Trying to convert not 'int' str to 'int'\n"
+            "str (word) = '%s'\n"
+            "file: %lu:%lu\n",
+            str, word->line, word->inLine
+        );
+        exit(1);
     }
 
     return (int) res;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsInt(const char* str, const char* strEnd)
+double WordToDouble(const Word* word)
 {
-    assert(str);
-    assert(strEnd);
+    assert(word);
 
-    return (int) strlen(str) == (strEnd - str);
+    double res = 0;
+
+    const char* str    = word->word;
+    char*       strEnd = nullptr;
+    size_t      len    = word->len;
+
+    res = strtod(str, &strEnd);
+
+    if (size_t (strEnd - str) != len)
+    {
+        COLOR_PRINT(RED, 
+            "Trying to convert not 'double` str to 'double'\n"
+            "str (word) = '%s'\n"
+            "file: %lu:%lu\n",
+            str, word->line, word->inLine
+        );
+        exit(1);
+    }
+
+    return res;
 }
 
-//============================ Read File Char ==========================================================================================================================================================================================================================================================================================================================================
+//============================ Read File ==============================================================================================================
 
-const char** ReadFile(const char* file, size_t* bufSize)
+WordArray ReadBufferFromFile(const char* file)
 {
     assert(file);
-    assert(bufSize);
 
-    FILE* filePtr = fopen(file, "r");
+    FILE* filePtr = fopen(file, "rb");
 
     if (!filePtr)
     {
-        COLOR_PRINT(RED, "Failed open input file '%s'.\nPossible reason: this file doesn`t exist.\n", file);
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "failed open '%s'.\n", file);
+        return {};
     }
 
-    size_t bufferLen = CalcFileLen(file);
+    size_t bufferLen     = CalcFileLen(file);
+    size_t realBufferLen = bufferLen + 2;
 
-    char*  buffer             = (char*)        calloc(bufferLen + 2, sizeof(*buffer));
-    const char** split_buffer = (const char**) calloc(bufferLen + 2, sizeof(*split_buffer));
+    char* buffer = (char*) calloc (realBufferLen, sizeof(*buffer));
+    Word* words  = (Word*) calloc (realBufferLen, sizeof(*words));
 
-    if (!buffer || !split_buffer)
-    {
-        COLOR_PRINT(RED, "Failed to allocate memory to read all input file '%s'\n.", file);
-        exit(EXIT_FAILURE);
-    }
+    assert(buffer);
+    assert(words);
 
     Fread(buffer, bufferLen, filePtr);
     fclose(filePtr);
 
-    buffer[bufferLen]     = ' ';
+    buffer[bufferLen    ] = ' ';
     buffer[bufferLen + 1] = '\0';
 
-    size_t word_i = 0;
-    SetWord(split_buffer, &word_i, &buffer[0]);
-    split_buffer++;
 
-    size_t buffer_i = 0;
-    FindFirstNotPass(buffer, &buffer_i);
+    SetNullWord(&words, buffer);
 
-    word_i = 0;
-    SetWord(split_buffer, &word_i, &buffer[buffer_i]);
-
-    for (; buffer_i <= bufferLen + 1; buffer_i++)
+    Pointer pointer = 
     {
-        if (!IsPassSymbol(buffer[buffer_i])) continue;
+        .wp  = 0,
+        .lp  = 1,
+        .sp  = 1,
+        .bp  = 0,
+        .wbp = 0,
+    };
+
+
+    if (!IsPassSymbol(buffer[0]))
+        SetWordAndFilePosition(words, &buffer[0], &pointer);
+
+    for (; pointer.bp < realBufferLen; pointer.bp++)
+    {
+        if (!IsPassSymbolAndChangePointer(buffer[pointer.bp], &pointer))
+        {
+            pointer.sp++;
+            continue;
+        }
+
+        size_t previousWordLen = GetPreviousWordLen(&pointer);
 
         do
         {
-            buffer[buffer_i] = '\0';
-            buffer_i++;
-        }
-        while (IsPassSymbol(buffer[buffer_i]) && buffer_i <= bufferLen);
+            buffer[pointer.bp] = '\0';  
+            pointer.bp++;
+        } while (IsPassSymbolAndChangePointer(buffer[pointer.bp], &pointer));
+        
+        SetPreviousWordLen(words, &pointer, previousWordLen);
+        SetWordAndFilePosition(words, &buffer[pointer.bp], &pointer);
 
-        SetWord(split_buffer, &word_i, &buffer[buffer_i]);
+        pointer.sp++;
+        pointer.wbp = pointer.bp;
     }
 
-    *bufSize = word_i - 1;
+    size_t wordsQuant = pointer.wp - 1;
 
-    ReadBufRealloc(&split_buffer, *bufSize);
+    WordArray wordArray = {words, wordsQuant ON_WORD_POINTER_POINTER(, .pointer = 0)};
 
-    assert(split_buffer);
-    assert(*split_buffer);
+    ReadBufRealloc(&wordArray);
 
-    return split_buffer;
+    return wordArray;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void BufferDtor(const char** buffer)
+static size_t GetPreviousWordLen(const Pointer* pointer)
 {
-    assert(buffer);
-    assert(*buffer);
+    assert(pointer);
 
-    buffer--;
-    assert(buffer);
-    assert(*buffer);
+    return pointer->bp - pointer->wbp;
+}
 
-    FREE(*buffer);
-    FREE(buffer);
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void BufferDtor(WordArray* wordArray)
+{
+    assert(wordArray);
+    assert(wordArray->words);
+
+    wordArray->size = 0;
+
+    wordArray->words--;
+    assert(wordArray->words);
+
+    FREE(wordArray->words[0].word);
+    FREE(wordArray->words);
 
     return;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static void Fread(char* buffer, size_t bufferLen, FILE* filePtr)
 {   
@@ -143,30 +210,31 @@ static void Fread(char* buffer, size_t bufferLen, FILE* filePtr)
     return;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void ReadBufRealloc(const char*** split_buffer, size_t splitBufSize)
+static void ReadBufRealloc(WordArray* wordArray)
 {
-    assert(split_buffer);
-    assert(*split_buffer);
-    assert(**split_buffer);
+    assert(wordArray);
+    assert(wordArray->words);
 
-    (*split_buffer)--;
-    assert(split_buffer);
+    wordArray->words--;
+    assert(wordArray->words);
 
-    *split_buffer = (const char**) realloc(*split_buffer, (splitBufSize + 1) * sizeof(char*));
+    Word*  words = wordArray->words;
+    size_t size  = wordArray->size + 1;
 
-    assert(split_buffer);
-    (*split_buffer)++;
+    wordArray->words = (Word*) realloc(words, size * sizeof(*words));
+    assert(wordArray->words);
 
-    assert(split_buffer);
-    assert(*split_buffer);
+    wordArray->words++;
+
+    assert(wordArray->words);
     return;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-size_t CalcFileLen(const char* fileName)
+static size_t CalcFileLen(const char* const fileName)
 {
     assert(fileName);
     struct stat buf = {};
@@ -174,46 +242,122 @@ size_t CalcFileLen(const char* fileName)
     return (size_t) buf.st_size;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void SetWord(const char** split_buffer, size_t* word_i, const char* SetWord)
+static void SetWordAndFilePosition(Word* split_buffer, const char* word, Pointer* pointer)
 {
     assert(split_buffer);
-    assert(SetWord);
-    assert(word_i);
+    assert(pointer);
 
-    split_buffer[*word_i] = SetWord;
+    size_t wordPointer = pointer->wp;
 
-    assert(*(split_buffer + *word_i));
+    split_buffer[wordPointer].word   = word;
+    split_buffer[wordPointer].line   = pointer->lp;
+    split_buffer[wordPointer].inLine = pointer->sp;
 
-    (*word_i)++;
+    pointer->wp++;
 
     return;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetPreviousWordLen(Word* split_buffer, const Pointer* pointer, size_t wordLen)
+{
+    assert(split_buffer);
+    assert(pointer);
+
+    size_t wordPointer = pointer->wp;
+
+    wordPointer = (wordPointer == 0) ? 0 : wordPointer - 1;
+
+    split_buffer[wordPointer].len = wordLen;
+
+    return;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetNullWord(Word** split_buffer, const char* buffer)
+{
+    assert(split_buffer);
+
+    split_buffer[0]->word = buffer;
+    (*split_buffer)++; //
+
+    return;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static bool IsPassSymbol(const char c)
 {
-    return (c == ' ') || (c == '\n') || (c == '\r');
+    return (IsSpace (c) ||
+            IsSlashN(c) ||
+            IsSlashR(c) ||
+            IsSlashT(c)
+           );
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void FindFirstNotPass(char* buffer, size_t* buffer_i)
+static bool IsPassSymbolAndChangePointer(const char c, Pointer* pointer)
 {
-    assert(buffer);
-    assert(buffer_i);
+    assert(pointer);
 
-    while(IsPassSymbol(buffer[*buffer_i]))
+    if (IsSpace (c))
     {
-        buffer[*buffer_i] = '\0';
-        (*buffer_i)++;
+        pointer->sp++;
+        return true;
     }
 
-    return;
+    if (IsSlashN(c)) 
+    {
+        pointer->lp++;
+        pointer->sp = 1;
+        return true;
+    }
+
+    if (IsSlashT(c))
+    {
+        pointer->sp += 4;
+        return true;
+    }
+
+    if (IsSlashR(c))
+    {
+        return true;
+    }
+
+    return false;
 }
 
-//============================ Read File End ==========================================================================================================================================================================================================================================================================================================================================
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#undef FREE
+static bool IsSpace(const char c)
+{
+    return (c == ' ');
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsSlashN(const char c)
+{
+    return (c == '\n');
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsSlashR(const char c)
+{
+    return (c == '\r');
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsSlashT(const char c)
+{
+    return (c == '\t');
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
