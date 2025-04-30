@@ -5,14 +5,16 @@
 int main(const int argc, const char** argv)
 {
 
-    ON_DEBUG(
+    ON_DEBUG
+    (
     OPEN_LOG();
     LOG_PRINT(Green, "Start\n\n");
     )
 
     CallCmd(argc, argv);
 
-    ON_DEBUG(
+    ON_DEBUG
+    (
     LOG_PRINT(Green, "\nEnd");
     CLOSE_LOG();
     )
