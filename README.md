@@ -75,7 +75,7 @@ make ASM_DIR=<your_rep> BIN_DIR=<your_rep> ASM_FILE=<your_file> BIN_FILE=<your_f
 ```
 
 
-## С чем может рабоать ассемблер?
+## С чем может работать ассемблер?
 1) Стек на целых числах
 2) ОЗУ
 3) 6 регистров по 4 байта (ax, bx, cx, dx, ex, fx)
