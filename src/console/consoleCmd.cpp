@@ -5,7 +5,6 @@
 #include "assembler/assembler.hpp"
 #include "processor/processor.hpp"
 #include "common/globalInclude.hpp"
-#include "lib/colorPrint.hpp"
 #include "lib/lib.hpp"
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -38,6 +37,7 @@ void CallCmd(const int argc, const char** argv)
             CONSOLE_ASSERT(err);
         }
     }
+
     return;
 }
 
@@ -50,7 +50,7 @@ ConsoleCmdErr CompileCmd(const int argc, const char** argv, size_t argv_i)
 
     ConsoleCmdErr err = {};
 
-    if (strcmp(argv[argv_i], "-compile") == 0)
+    if (strcmp(argv[argv_i], "--assemble") == 0 || strcmp(argv[argv_i], "-asm") == 0)
     {
         if (argc - 1 < (int) argv_i + 2)
         {
@@ -77,7 +77,7 @@ ConsoleCmdErr RunCodeCmd(const int argc, const char** argv, size_t argv_i)
     assert(*argv);
 
     ConsoleCmdErr err = {};
-    if (strcmp(argv[argv_i], "-run") == 0)
+    if (strcmp(argv[argv_i], "--execute") == 0 || strcmp(argv[argv_i], "-exe") == 0)
     {
         if  (argc - 1 < (int) argv_i + 1)
         {

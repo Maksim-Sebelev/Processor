@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <assert.h>
 #include "lib/lib.hpp"
-#include "lib/colorPrint.hpp"
 #include "stack/stack.hpp"
 #include "stack/hash.hpp"
 

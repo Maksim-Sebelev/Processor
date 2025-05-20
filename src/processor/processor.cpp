@@ -6,7 +6,6 @@
 #include "processor/processor.hpp"
 #include "stack/stack.hpp"
 #include "common/globalInclude.hpp"
-#include "lib/colorPrint.hpp"
 #include "lib/lib.hpp"
 #include "log/log.hpp"
 
@@ -507,7 +506,7 @@ static ProcessorErr HandleOut(SPU* spu)
 
     StackElem_t elem = GetLastStackElem(&spu->stack);
 
-    COLOR_PRINT(VIOLET, "Programm out: %d\n", elem);
+    COLOR_PRINT(VIOLET, "%d", elem);
 
     spu->ip += CmdInfoArr[out].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);
@@ -576,7 +575,7 @@ static ProcessorErr HandleOutr(SPU* spu)
 
     STACK_ASSERT(StackPop(&spu->stack, &elem));
 
-    COLOR_PRINT(VIOLET, "Programm out: %d\n", elem);
+    COLOR_PRINT(VIOLET, "%d", elem);
 
     spu->ip += CmdInfoArr[outr].codeRecordSize;
     return PROCESSOR_VERIF(spu, err);

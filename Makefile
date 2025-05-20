@@ -97,18 +97,18 @@ makeCodeDir:
 	@mkdir -p $(CODE_DIR)
 endif
 
-processor:
-	@make makeCodeDir
-	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -compile $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE) -run $(CODE_DIR)/$(BIN_FILE)
-
-
-compile:
-	@make makeCodeDir
-	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -compile $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE)
-
 run:
 	@make makeCodeDir
-	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) -run $(CODE_DIR)/$(BIN_FILE)
+	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) --assemble $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE) --execute $(CODE_DIR)/$(BIN_FILE)
+
+
+assemble:
+	@make makeCodeDir
+	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) --assemble $(ASM_DIR)/$(ASM_FILE) $(CODE_DIR)/$(BIN_FILE)
+
+exe:
+	@make makeCodeDir
+	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) --execute $(CODE_DIR)/$(BIN_FILE)
 
 rebuild:
 	make clean && make
@@ -148,7 +148,7 @@ example2:
 	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE2_DIR)  \
 	ASM_FILE=$(EXAMPLE2_FILE).asm             \
 	BIN_FILE=$(EXAMPLE2_FILE).bin              \
-	processor                                   \
+	run                                         \
 
 
 EXAMPLE3_DIR  = example3
@@ -160,7 +160,7 @@ example3:
 	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE3_DIR)  \
 	ASM_FILE=$(EXAMPLE3_FILE).asm        	  \
 	BIN_FILE=$(EXAMPLE3_FILE).bin              \
-	processor                                   \
+	run                                         \
 
 
 
@@ -173,7 +173,7 @@ example4:
 	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE4_DIR)  \
 	ASM_FILE=$(EXAMPLE4_FILE).asm         	  \
 	BIN_FILE=$(EXAMPLE4_FILE).bin              \
-	processor                                   \
+	run                                         \
 
 
 EXAMPLE5_DIR  = example5
@@ -185,11 +185,27 @@ example5:
 	CODE_DIR=$(EXAMPLE_DIR)/$(EXAMPLE5_DIR)  \
 	ASM_FILE=$(EXAMPLE5_FILE).asm         	  \
 	BIN_FILE=$(EXAMPLE5_FILE).bin              \
-	processor                                   \
+	run                                         \
 
-#======================================================
+#============ git =========================================
 
-NODEPS = clean
+commit ?= "ZoV"
+
+git:
+	git add --all
+	git commit -m $(commit)
+	git push --all
+
+git_clean:
+	git push --force origin main
+
+git_mega_clean: # to dangearous
+	git reset --hard origin/main
+
+
+#=======================================================
+
+NODEPS = clean 
 
 ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
 include $(DEPS)

@@ -8,8 +8,10 @@
 #include "common/globalInclude.hpp"
 #include "lib/lib.hpp"
 #include "stack/stack.hpp"
-#include "lib/colorPrint.hpp"
+
+#ifdef _DEBUG
 #include "log/log.hpp"
+#endif // _DEBUG
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -86,84 +88,87 @@ struct AsmData
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr AsmDataCtor           (AsmData* AsmDataInfo, const IOfile* file);
-static AssemblerErr AsmDataDtor           (AsmData* AsmDataInfo);
-static AssemblerErr WriteCmdInCodeArr     (AsmData* AsmDataInfo);
-static AssemblerErr WriteCodeArrInFile    (AsmData* AsmDataInfo);
-
-
-static void         SetCmdArrCodeElem     (AsmData* AsmDataInfo, int SetElem);
-static Word         GetNextCmd            (AsmData* AsmDataInfo);
-static void         UpdateBufferForMemory (Word* buffer);
-
-static const char*  GetCmdName            (size_t cmdPointer);
-
-static AssemblerErr NullArgCmdPattern     (AsmData* AsmDataInfo, Cmd cmd);
-
-static AssemblerErr PpMmPattern           (AsmData* AsmDataInfo, Cmd cmd);
-
-
-static int          GetPushArg           (PushType* Push);
-static int          GetPopArg            (PopType*  Pop );
-static void         PushTypeCtor         (PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t Sum);
-static void         PopTypeCtor          (PopType*  Pop , uint8_t Reg, uint8_t Mem, uint8_t Sum);
-
-static int          GetRegisterPointer   (const Word* word);
-static char         GetChar              (const Word* word);
-
-static bool         IsCharNum            (char c);
-static bool         IsStrInt             (const Word* word);
-static bool         IsInt                (const Word* word, char* wordEndPtr);
-static bool         IsChar               (const Word* word, char* wordEndPtr);
-static bool         IsRegister           (const Word* word);
-static bool         IsMemory             (const Word* word);
-static bool         IsSum                (const Word* word);
-static bool         IsLabel              (const Word* word);
-static bool         IsCommentBegin       (const Word* word);
-static bool         IsCommentEnd         (const Word* word);
-
-
-static AssemblerErr InitAllLabels         (AsmData* AsmDataInfo);
-static AssemblerErr LabelsCtor            (AsmData* AsmDataInfo);
-static AssemblerErr LabelsDtor            (AsmData* AsmDataInfo);
-
-static Label        LabelCtor            (const char* name, size_t pointer, bool alreadyDefined);
-static AssemblerErr PushLabel            (AsmData* AsmDataInfo, const Label* label);
-static bool         IsLabelAlready       (const AsmData* AsmDataInfo, const Word* label, size_t* labelPlace);
-
-
-static bool         FindDefaultCmd       (const Word* cmd, size_t* defaultCmdPointer);
-static size_t       CalcCodeSize         (const CmdArr* cmd);
-
-static AssemblerErr JmpCmdPattern        (AsmData* AsmDataInfo, Cmd JumpType);
-
-
-static AssemblerErr HandlePush           (AsmData* AsmDataInfo);
-static AssemblerErr HandlePop            (AsmData* AsmDataInfo);
-static AssemblerErr HandleJmp            (AsmData* AsmDataInfo);
-static AssemblerErr HandleJa             (AsmData* AsmDataInfo);
-static AssemblerErr HandleJae            (AsmData* AsmDataInfo);
-static AssemblerErr HandleJb             (AsmData* AsmDataInfo);
-static AssemblerErr HandleJbe            (AsmData* AsmDataInfo);
-static AssemblerErr HandleJe             (AsmData* AsmDataInfo);
-static AssemblerErr HandleJne            (AsmData* AsmDataInfo);
-static AssemblerErr HandleCall           (AsmData* AsmDataInfo);
-static AssemblerErr HandleRet            (AsmData* AsmdataInfo);
-static AssemblerErr HandleAdd            (AsmData* AsmDataInfo);
-static AssemblerErr HandleSub            (AsmData* AsmDataInfo);
-static AssemblerErr HandleMul            (AsmData* AsmDataInfo);
-static AssemblerErr HandleDiv            (AsmData* AsmDataInfo);
-static AssemblerErr HandlePp             (AsmData* AsmDataInfo);
-static AssemblerErr HandleMm             (AsmData* AsmDataInfo);
-static AssemblerErr HandleOut            (AsmData* AsmDataInfo);
-static AssemblerErr HandleOutc           (AsmData* AsmDataInfo);
-static AssemblerErr HandleOutr           (AsmData* AsmDataInfo);
-static AssemblerErr HandleOutrc          (AsmData* AsmDataInfo);
-static AssemblerErr HandleDraw           (AsmData* AsmDataInfo);
-static AssemblerErr HandleHlt            (AsmData* AsmDataInfo);
-static AssemblerErr HandleLabel          (AsmData* AsmDataInfo);
-static AssemblerErr HandleComment        (AsmData* AsmDataInfo);
-static AssemblerErr HandleRGBA           (AsmData* AsmDataInfo);
+static AssemblerErr AsmDataCtor              (AsmData* AsmDataInfo, const IOfile* file);
+static AssemblerErr AsmDataDtor              (AsmData* AsmDataInfo);
+static AssemblerErr WriteCmdInCodeArr        (AsmData* AsmDataInfo);
+static AssemblerErr WriteCodeArrInFile       (AsmData* AsmDataInfo);
+   
+   
+static void         SetCmdArrCodeElem        (AsmData* AsmDataInfo, int SetElem);
+static Word         GetNextCmd               (AsmData* AsmDataInfo);
+static void         UpdateBufferForMemory    (Word* buffer);
+   
+static const char*  GetCmdName               (size_t cmdPointer);
+   
+static AssemblerErr NullArgCmdPattern        (AsmData* AsmDataInfo, Cmd cmd);
+   
+static AssemblerErr PpMmPattern              (AsmData* AsmDataInfo, Cmd cmd);
+   
+   
+static int          GetPushArg              (PushType* Push);
+static int          GetPopArg               (PopType*  Pop );
+static void         PushTypeCtor            (PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t Sum);
+static void         PopTypeCtor             (PopType*  Pop , uint8_t Reg, uint8_t Mem, uint8_t Sum);
+   
+static int          GetRegisterPointer      (const Word* word);
+static char         GetChar                 (const Word* word);
+   
+static bool         IsCharNum               (char c);
+static bool         IsStrInt                (const Word* word);
+static bool         IsInt                   (const Word* word, char* wordEndPtr);
+static bool         IsChar                  (const Word* word, char* wordEndPtr);
+static bool         IsRegister              (const Word* word);
+static bool         IsMemory                (const Word* word);
+static bool         IsSum                   (const Word* word);
+static bool         IsLabel                 (const Word* word);
+static bool         IsOneLineComment        (const Word* cmd);
+   
+static bool         IsTwoSymbolCommentBegin (const Word* word);
+static bool         IsTwoSymbolCommentEnd   (const Word* word);
+   
+   
+static AssemblerErr InitAllLabels           (AsmData* AsmDataInfo);
+static AssemblerErr LabelsCtor              (AsmData* AsmDataInfo);
+static AssemblerErr LabelsDtor              (AsmData* AsmDataInfo);
+   
+static Label        LabelCtor               (const char* name, size_t pointer, bool alreadyDefined);
+static AssemblerErr PushLabel               (AsmData* AsmDataInfo, const Label* label);
+static bool         IsLabelAlready          (const AsmData* AsmDataInfo, const Word* label, size_t* labelPlace);
+   
+   
+static bool         FindDefaultCmd          (const Word* cmd, size_t* defaultCmdPointer);
+static size_t       CalcCodeSize            (const CmdArr* cmd);
+   
+static AssemblerErr JmpCmdPattern           (AsmData* AsmDataInfo, Cmd JumpType);
+   
+   
+static AssemblerErr HandlePush              (AsmData* AsmDataInfo);
+static AssemblerErr HandlePop               (AsmData* AsmDataInfo);
+static AssemblerErr HandleJmp               (AsmData* AsmDataInfo);
+static AssemblerErr HandleJa                (AsmData* AsmDataInfo);
+static AssemblerErr HandleJae               (AsmData* AsmDataInfo);
+static AssemblerErr HandleJb                (AsmData* AsmDataInfo);
+static AssemblerErr HandleJbe               (AsmData* AsmDataInfo);
+static AssemblerErr HandleJe                (AsmData* AsmDataInfo);
+static AssemblerErr HandleJne               (AsmData* AsmDataInfo);
+static AssemblerErr HandleCall              (AsmData* AsmDataInfo);
+static AssemblerErr HandleRet               (AsmData* AsmdataInfo);
+static AssemblerErr HandleAdd               (AsmData* AsmDataInfo);
+static AssemblerErr HandleSub               (AsmData* AsmDataInfo);
+static AssemblerErr HandleMul               (AsmData* AsmDataInfo);
+static AssemblerErr HandleDiv               (AsmData* AsmDataInfo);
+static AssemblerErr HandlePp                (AsmData* AsmDataInfo);
+static AssemblerErr HandleMm                (AsmData* AsmDataInfo);
+static AssemblerErr HandleOut               (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutc              (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutr              (AsmData* AsmDataInfo);
+static AssemblerErr HandleOutrc             (AsmData* AsmDataInfo);
+static AssemblerErr HandleDraw              (AsmData* AsmDataInfo);
+static AssemblerErr HandleHlt               (AsmData* AsmDataInfo);
+static AssemblerErr HandleLabel             (AsmData* AsmDataInfo);
+static AssemblerErr HandleOneLineComment    (AsmData* AsmDataInfo);
+static AssemblerErr HandleTwoSymbolComment  (AsmData* AsmDataInfo);
+static AssemblerErr HandleRGBA              (AsmData* AsmDataInfo);
 
 
 static AssemblerErr Verif                      (const AsmData* AsmDataInfo, AssemblerErr* err, Word cmd, const char* file, int line, const char* func);
@@ -185,7 +190,7 @@ static void         AssemblerAssertPrint       (const AssemblerErr* err, const c
     if (errCopy.err != AssemblerErrorType::NO_ERR)                                    \
     {                                                                                  \
         AssemblerAssertPrint(&errCopy, __FILE__, __LINE__, __func__);                   \
-        exit(1);                                                                         \
+        exit(EXIT_FAILURE);                                                              \
     }                                                                                     \
 } while (0)                                                                                \
 
@@ -322,9 +327,15 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
             continue;
         }
 
-        if (IsCommentBegin(&cmd))
+        if (IsOneLineComment(&cmd))
         {
-            ASSEMBLER_ASSERT(HandleComment(AsmDataInfo));
+            ASSEMBLER_ASSERT(HandleOneLineComment(AsmDataInfo));
+            continue;
+        }
+
+        if (IsTwoSymbolCommentBegin(&cmd))
+        {
+            ASSEMBLER_ASSERT(HandleTwoSymbolComment(AsmDataInfo));
             continue;
         }
 
@@ -918,7 +929,38 @@ static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr HandleComment(AsmData* AsmDataInfo)
+static AssemblerErr HandleOneLineComment(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+    assert(AsmDataInfo->cmd.words);
+    assert(AsmDataInfo->cmd.pointer >= 1);
+
+    AssemblerErr err = {};
+
+    size_t       cmdQuant = AsmDataInfo->cmd.size;
+
+    CmdArr       cmdArr   = AsmDataInfo->cmd;
+    size_t       pointer  = AsmDataInfo->cmd.pointer - 1;
+    Word         cmd      = cmdArr.words[pointer];
+    const size_t line     = cmd.line;
+
+    
+    while (cmd.line == line && pointer < cmdQuant)
+    {
+        pointer++;
+        cmd = cmdArr.words[pointer];
+    }
+
+    // pointer++;
+
+    AsmDataInfo->cmd.pointer = pointer;
+
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static AssemblerErr HandleTwoSymbolComment(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
     assert(AsmDataInfo->cmd.words);
@@ -932,7 +974,7 @@ static AssemblerErr HandleComment(AsmData* AsmDataInfo)
     size_t       pointer  = AsmDataInfo->cmd.pointer - 1;
     Word         cmd      = cmdArr.words[pointer];
 
-    while (!IsCommentEnd(&cmd) && pointer < cmdQuant)
+    while (!IsTwoSymbolCommentEnd(&cmd) && pointer < cmdQuant)
     {
         pointer++;
         cmd = cmdArr.words[pointer];
@@ -1047,9 +1089,23 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
             return ASSEMBLER_VERIF(AsmDataInfo, err, cmd);
         }
 
-        if (IsCommentBegin(&cmd))
+        if (IsOneLineComment(&cmd))
         {
-            while (!IsCommentEnd(&cmd) && cmdPointer < cmdQuant)
+            const size_t now_line = cmd.line;
+            while (cmd.line == now_line && cmdPointer < cmdQuant)
+            {
+                cmdPointer++;
+                cmd = cmdArr.words[cmdPointer];
+            }
+
+            // cmdPointer++;
+    
+            continue;
+        }
+
+        if (IsTwoSymbolCommentBegin(&cmd))
+        {
+            while (!IsTwoSymbolCommentEnd(&cmd) && cmdPointer < cmdQuant)
             {
                 cmdPointer++;
                 cmd = cmdArr.words[cmdPointer];
@@ -1454,7 +1510,16 @@ static bool IsLabel(const Word* cmd)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsCommentBegin(const Word* cmd)
+static bool IsOneLineComment(const Word* cmd)
+{
+    assert(cmd);
+
+    return cmd->word[0] == ';';
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsTwoSymbolCommentBegin(const Word* cmd)
 {
     assert(cmd);
 
@@ -1463,7 +1528,7 @@ static bool IsCommentBegin(const Word* cmd)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsCommentEnd(const Word* cmd)
+static bool IsTwoSymbolCommentEnd(const Word* cmd)
 {
     assert(cmd);
 

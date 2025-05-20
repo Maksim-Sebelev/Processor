@@ -13,6 +13,12 @@ pop cx
 # call function to draw a circle with args high (ax) = 600, width (bx) = 800, radius (cx) = 100 /
 call draw_circle:
 
+push 0
+outr
+
+push '\n'
+outrc
+
 hlt
 
 
