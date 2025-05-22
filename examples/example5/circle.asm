@@ -1,4 +1,4 @@
-# init args for draw_circle /
+; init args for draw_circle 
 
 push 600
 pop ax
@@ -10,7 +10,7 @@ pop bx
 push 100
 pop cx
 
-# call function to draw a circle with args high (ax) = 600, width (bx) = 800, radius (cx) = 100 /
+; call function to draw a circle with args high (ax)  600, width (bx)  800, radius (cx)  100 
 call draw_circle:
 
 push 0
@@ -22,20 +22,20 @@ outrc
 hlt
 
 
-# ===============================
-function: draw_circle - drawing a circle in the sfml window 
-in: ax - high
-    bx - width
-    cx - radius
-out: none
-destr: ax, bx, cx, dx
-================================== /
- 
+; ============================================================
+; function: draw_circle - drawing a circle in the sfml window 
+; in: ax - high
+;     bx - width
+;     cx - radius
+; out: none
+; destr: ax, bx, cx, dx'
+; ============================================================
+
 draw_circle:
     push cx
     push cx
     mul
-    pop  cx   # in cx square of radius /
+    pop  cx   ; in cx square of radius 
 
     push ax
     push bx
@@ -50,7 +50,7 @@ draw_circle:
     call calc_dist_to_centre:
     push fx
     push cx
-    ja notINCircle:
+    ja notInCircle:
     jmp inCircle:
 
     back_in_cycle:
@@ -64,17 +64,18 @@ draw_circle:
 
     ret
 
-#========================/
+;============================================================
 
 
 
-# ===============
-in:    ax - high
-       bx - width
-       dx - index of array elem
-out:   fx
-destr: fx
-================= / 
+
+;============================================================
+; in:    ax - high
+;        bx - width
+;        dx - index of array elem
+; out:   fx
+; destr: fx
+;============================================================
 
 calc_dist_to_centre:
     push dx 
@@ -83,51 +84,57 @@ calc_dist_to_centre:
     div
     push bx
     mul
-    sub  # x-coordinat of aray elem (y = i%ax = i - (i:ax)*ax) /
+    sub  ; x-coordinat of aray elem (y = i%ax  i - (i / ax) * ax)
 
     push bx
     push 2
-    div    # x-coordinat of center /
+    div    ; x-coordinat of center
 
     sub 
     pop  fx
     push fx
     push fx
-    mul     # (x - x_center)^2 /
+    mul     ; (x - x_center)^2
 
 
     push dx
     push bx
-    div      # y-coordinat of array elem (x = i:ax) /
+    div      ; y-coordinat of array elem (x = i / ax)
 
     push ax
     push 2
-    div     # y-coordinat of center /
+    div     ; y-coordinat of center
 
     sub
     pop  fx
     push fx
     push fx 
-    mul     # (y - y_center)^2 /
+    mul     ; (y - y_center)^2
 
 
-    add   # (x - x_center)^2 + (y - y_center)^2  /
+    add   ; (x - x_center)^2 + (y - y_center)^2
 
     pop  fx
 
     ret
 
-# =========== /
+;============================================================
 
 
 inCircle:
+    ;if point is in circle, we paint it in white
+
     rgba 255 255 255 255
     pop [dx]
 
     jmp back_in_cycle:
 
+;============================================================
 
-notINCircle:
+notInCircle:
+    ; if point is not in circle, we paint it in gradiendt
+
+    ; saving ax, bx, cx
     push ax
     push bx
     push cx
@@ -138,16 +145,16 @@ notINCircle:
     div
     push bx
     mul
-    sub  # x-coordinat of aray elem (y = i%ax = i - (i:ax)*ax) /
+    sub  ; x-coordinat of aray elem (y = i%ax  i - (i / ax) * ax)
 
-    pop ax # in ax - x coordinat /
+    pop ax ; in ax - x coordinat
 
 
     push dx
     push bx
-    div      # y-coordinat of array elem (x = i:ax) /
+    div      ; y-coordinat of array elem (x = i / ax)
 
-    pop bx # in bx - y coordaninat /
+    pop bx ; in bx - y coordaninat 
 
 
     push ax
@@ -156,9 +163,12 @@ notINCircle:
 
     pop cx
 
+    ; painting pixel
     rgba cx ax bx 255
     pop [dx]
 
+
+    ; get saved ax, bx, cx
     pop cx
     pop bx
     pop ax

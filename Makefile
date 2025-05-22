@@ -8,8 +8,8 @@ SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 CFLAGS ?= 
 LDFLAGS = $(SFML_FLAGS)
 
-BUILD_TYPE ?= debug
-# BUILD_TYPE ?= release
+# BUILD_TYPE ?= debug
+BUILD_TYPE ?= release
 
 
 ifeq ($(BUILD_TYPE), release)

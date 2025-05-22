@@ -16,7 +16,7 @@ push 10
 pp ax
 jb cycle:
 
-#=== print \n ===/
+#=== print '\n' (new line) ===/
 
 push '\n'
 outrc
@@ -37,6 +37,11 @@ outrc
 push 0
 ja back_cycle:
 
+
+#==== print '\n' (new line) ===/
+
+push '\n'
+outrc
 
 #=== end of programm ===/
 hlt

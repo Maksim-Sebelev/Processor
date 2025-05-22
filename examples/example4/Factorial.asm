@@ -8,25 +8,26 @@ call factorial:
 ; print result
 out
 
+; print '\n' for new line
 push '\n'
 outrc
 
 ; end of programm
-
 hlt
 
-;
+
+; ===============================
 ; function: factorial
 ; args: ax - num for factorial
 ; entry: last stack element (factorial of ax)
 ; destr: ax, bx
-
+;================================
 
 factorial:
     ; check ax > 1. if ax > 1, than recursive call. else return
     push ax 
     push 1
-    jbe recursive_end:
+    jbe end_of_recursive_factorial_call:
 
     ; this push for mul in 41 line
     push ax
@@ -50,7 +51,7 @@ factorial:
     push bx 
     ret
     
-recursive_end:
+end_of_recursive_factorial_call:
     ; save result in bx
     pop bx
 
