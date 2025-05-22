@@ -112,7 +112,7 @@ calc_dist_to_centre:
     mul     ; (y - y_center)^2
 
 
-    add   ; (x - x_center)^2 + (y - y_center)^2
+    add      ; (x - x_center)^2 + (y - y_center)^2
 
     pop  fx
 
@@ -122,7 +122,7 @@ calc_dist_to_centre:
 
 
 inCircle:
-    ;if point is in circle, we paint it in white
+    ; if point is in circle, we paint it in white
 
     rgba 255 255 255 255
     pop [dx]

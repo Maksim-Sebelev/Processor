@@ -13,7 +13,7 @@ BUILD_TYPE ?= release
 
 
 ifeq ($(BUILD_TYPE), release)
-	CFLAGS += -D _NDEBUG -O3
+	CFLAGS += -DNDEBUG -Ofast -g0 -fvisibility=hidden -march=native -s
 endif 
 
 ifeq ($(BUILD_TYPE), debug)
