@@ -10,14 +10,16 @@ pop ax
 cycle:
 push ax
 out
+push '\_'
+outrc
 push 10
 pp ax
 jb cycle:
 
 #=== print \n ===/
 
-push 10
-outc
+push '\n'
+outrc
 
 #=== init ax for second (back) cycle (ax = 11) ===/
 
@@ -30,6 +32,8 @@ back_cycle:
 mm ax
 push ax
 out
+push '\_'
+outrc
 push 0
 ja back_cycle:
 

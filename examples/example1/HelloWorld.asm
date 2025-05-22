@@ -1,4 +1,7 @@
+; the first variant
+
 #=== hello world ===/
+
 
 
 #=== pushing chars for "Hello, World!" string in reverse order (because it's stack) ===/
@@ -30,6 +33,40 @@ push ax
 push cx
 
 jb cycle:
+
+
+
+; the second variant
+
+push 'H'
+outrc
+push 'e'
+outrc
+push 'l'
+outrc
+push 'l'
+outrc
+push 'o'
+outrc
+push ','
+outrc
+push '\_'
+outrc
+push 'W'
+outrc
+push 'o'
+outrc
+push 'r'
+outrc
+push 'l'
+outrc
+push 'd'
+outrc
+push '!'
+outrc
+push '\n'
+outrc
+
 
 #==== end of programm ====/
 

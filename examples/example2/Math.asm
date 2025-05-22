@@ -16,4 +16,7 @@ sub     #=== - 4 ===/
 
 out
 
+push '\n'
+outrc
+
 hlt     #=== end of programm ===/
