@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h> // for LogTitle only
 #include <assert.h>
+#include <stddef.h>
 #include <time.h>
 #include "logger/log.hpp"
 #include "lib/lib.hpp"

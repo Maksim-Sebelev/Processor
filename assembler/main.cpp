@@ -8,12 +8,13 @@
 #include "logger/log.hpp"
 #endif
 
+
 int main(int argc, char* argv[])
 {
     ON_DEBUG(
     COLOR_PRINT(GREEN, "\nASSEMBLER START\n");
     LOG_OPEN();
-    );
+    )
 
     IOfile files = CallFlags(argc, argv);
 

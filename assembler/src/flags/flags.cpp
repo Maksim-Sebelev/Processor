@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <getopt.h>
 #include <assert.h>
 #include "global/global_include.hpp"
@@ -70,7 +71,7 @@ static void HandleBinFlag(IOfile* files)
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void HandleUndefFlag()
+__attribute__((__noreturn__)) static void HandleUndefFlag()
 {
     if (optarg)
         EXIT(EXIT_FAILURE, "asm:fatal err:undef option - '%s'\n", optarg);

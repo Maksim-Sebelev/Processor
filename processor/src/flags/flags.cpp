@@ -55,7 +55,7 @@ static void HandleExeFlag(const char** file)
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void HandleUndefFlag()
+__attribute__((__noreturn__)) static void HandleUndefFlag()
 {
     if (optarg)
         EXIT(EXIT_FAILURE, "asm:fatal err:undef option - '%s'\n", optarg);

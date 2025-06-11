@@ -70,8 +70,6 @@ DEPS = $(COBJ:.o=.d)
 
 .PHONY: all
 all: $(EXECUTABLE_DIR)/$(EXECUTABLE)
-	echo ${BIN_DIR}
-
 
 $(EXECUTABLE_DIR)/$(EXECUTABLE): $(COBJ)
 	@mkdir -p $(@D)
@@ -99,9 +97,6 @@ endif
 
 run:
 	@make -f $(MAKEFILE_NAME) makeCodeDir
-	echo ""
-	echo ${BIN_DIR}
-	echo ""
 	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) --src $(ASM_DIR)/$(ASM_FILE) --bin $(BIN_DIR)/$(BIN_FILE)
 
 rebuild:
