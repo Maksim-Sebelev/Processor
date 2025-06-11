@@ -1,7 +1,40 @@
 # Processor
 В данном проекте реализован простейший виртуальный процессор на языке С с элементами С++. Для данного процессора был реализован собственный ассемблер стандарта DED32.
 
-![Processor Logo](assets/asm_code_example.png)
+```asm
+draw_circle:
+    push cx
+    push cx
+    mul
+    pop  cx   ; in cx square of radius 
+
+    push ax
+    push bx
+    mul
+    pop ex
+
+    push 0
+    pop dx
+
+    cycle:
+
+    call calc_dist_to_centre:
+    push fx
+    push cx
+    ja notInCircle:
+    jmp inCircle:
+
+    back_in_cycle:
+
+    pp   dx
+    push dx
+    push ex
+    jb cycle:
+
+    draw ax bx
+
+    ret
+```
 
 **Пример кода на виртуальном ассемблере**
 
@@ -21,59 +54,73 @@ cd Processor
 ```bash
 make
 ```
-Будут созданы папки bin и build. Так же будет создан и помещен в папку build исполняемый файл processor.
+Будут созданы папки bin и build. Так же будут созданы и помещены в папку build исполняемые файлы `asm` и `.exe`.
 
 ## Использование
 ## Без make
 1. Создайте рабочий файл с раширением .asm: <your_file_name>.asm
 2. Скомпилируйте ваш файл:
 ```bash
-./build/processor -compile <your_asm_file_name>.asm <your_bin_file_name>.bin
+./build/asm --src <your_asm_file_name>.asm --bin <your_bin_file_name>.bin
 ```
 <your_bin_file_name>.bin - файл куда будет помещен машинный код (файл будет создан автоматически).
 
 3. Запустите бинарник:
 ```bash
-./buid/processor -run <your_bin_file_name>.binсобирается 
+./buid/.exe - <your_bin_file_name>.binсобирается 
 ```
 ## С помощью make
 Также имеется возможность работать с проектом с помощью предложенного в проекте Makefile:
 
-## С изменением Makefile
-Для удобства предлагается изменить некоторые переменные в Makefile:
 
-`ASM_DIR` - папка для ваших .asm файлов. Присвойте ей желаемое имя.
-
-`CODE_DIR` - папка для ваших бинарных файлов (созданных автоматически в ходе работы программы).
-
-Если вы планируете работать с **одним** ассемблерным файлом, то рекомендуетс присвоить желаемые значения переменным `ASM_FILE` и `BIN_FILE`, для ваших ассемблерного и бинарного файла.
-
-![Processor Logo](assets/makefile_variables.png)
-
-
-В таком случае работа с процессором сводится к 3 командам:
-  
-```bash
-make processor
-```
-- компилириует ассемблерный файл и запускает полученный бинарник.
+Создайте папку для работы с ассемблерными и бинарными файлами (по умолчанию файлы будут браться из корней папки проекта). В файлах `make/make-asm.mk` и `make/make-proc.mk` присвойте переменным `ASM_DIR` и `BIN_DIR`соотвествующие значения.\
+По умолчанию имена файлов это `programm.asm` и `programm.bin`. Если хотите свои имена, то поменяйте значени переменных `ASM_FILE` и `BIN_FILE` в файлах `make/make-asm.mk` и `make/make-proc.mk`.\
+Когда проделаете эти шаги, работа с проектом сведется к простым командам:
 
 ```bash
-make compile
+make asm 
 ```
-- компилирует ассембленый файл, но не запускает бинарник.
+- компилирует ассемблерный файл и создает на его основ бинарный.
+
+```bash
+make proc
+```
+- запускает бинарник.
 
 ```bash
 make run
 ```
-- запускает бинарник.
+- объединяет 2 предыдущие команды.
 
-## Без изменения Makefile
-Так же используйте 3 прошлые команды, но если вам нужны ваши собственная имена директорий и файлов при вызове make укажите конкретные значения для соотвествующих переменных:
-```bash
-make ASM_DIR=<your_rep> BIN_DIR=<your_rep> ASM_FILE=<your_file> BIN_FILE=<your_file> proc
+<br>
+Так же есть удобные команды для работы с кодом проекта:
+
+```Makefile
+make rerun
+make rebuild
+make clean
+
+make run_asm
+make rerun_asm
+make rebuild_asm
+make clean_asm
+
+make run_proc
+make rerun_proc
+make rebuild_proc
+make clean_proc
+```
+Команды `rerun` выполняют 
+```Makefile
+make
+make rerun
 ```
 
+Команды `rebuild` выполняют
+```Makefile
+make clean
+make
+```
 
 ## С чем может работать ассемблер?
 1) Стек на целых числах
@@ -208,39 +255,107 @@ arg = {int, reg}
 
 ## draw
 
-`draw <arg1> <arg2>` - создает окно рамером arg1 x arg2, в котором i-ый пиксель красится в цвет по RGBA, где RGBA-кодировка задана i-ым числом в виртуальной памяти процессора.
+`draw <arg1> <arg2>` - создает окно рамером arg1 x arg2, в котором i-ый пиксель красится в цвет по RGBA, где RGBA-кодировка задана i-ым числом в виртуальной памяти процессора. Чтобы закрыть окно, нажмите `Space`.
 
-arg = {int, reg}
+arg = {int, reg},
 
 <br>
 
 
 # Структура проекта
 ```bash
-./
-├── Processor          # Корневая папка проекта 
-│   ├── main.cpp       # точка входа в программу
-│   ├── Makefile       # файл для сборки и запуска проекта
-│   ├── assets         # Картинки для README
-│   ├── examples       # Примеры простейших программ на виртуальном ассемблере
-│   ├── src            # все .cpp файлы проекта
-│       ├──  assembler    # перевод ассемблера в массив кода
-│       ├──  console      # работа с флагами компиляции проекта
-│       ├──  fileread     # обработка .asm файлов и разбиение их на отдельные слова 
-│       ├──  lib          # общие основные дебажные функции
-│       ├──  log          # лог-файл (используется только при дебажной сборке)
-│       ├──  processor    # работа с массивом кода и выполнение команд
-│       └──  stack        # реализация стека на целых числах 
-│   └── include        # все .hpp файлы проекта. (все, что не комментируется соотвествует аналогичной папке из src)
-│       ├──  assembler
-│       ├──  common       # файл с общей информацией для ассемблера и процессора
-│       ├──  console
-│       ├──  fileread
-│       ├──  lib
-│       ├──  log
-│       ├──  processor
-│       └──  stack
-└── README.md        # Документация
+.
+├── assembler
+│   ├── include
+│   │   ├── assembler
+│   │   │   └── assembler.hpp
+│   │   ├── fileread
+│   │   │   └── fileread.hpp
+│   │   └── flags
+│   │       └── flags.hpp
+│   ├── main.cpp
+│   └── src
+│       ├── assembler
+│       │   └── assembler.cpp
+│       ├── fileread
+│       │   └── fileread.cpp
+│       └── flags
+│           └── flags.cpp
+│
+├── processor
+│   ├── include
+│   │   ├── flags
+│   │   │   └── flags.hpp
+│   │   └── processor
+│   │       └── processor.hpp
+│   ├── main.cpp
+│   └── src
+│       ├── flags
+│       │   └── flags.cpp
+│       └── processor
+│           └── processor.cpp
+│
+├── common
+│   ├── include
+│   │   ├── global
+│   │   │   └── global_include.hpp
+│   │   ├── lib
+│   │   │   └── lib.hpp
+│   │   ├── logger
+│   │   │   └── log.hpp
+│   │   └── stack
+│   │       ├── hash.hpp
+│   │       └── stack.hpp
+│   └── src
+│       ├── global
+│       │   └── global.cpp
+│       ├── lib
+│       │   └── lib.cpp
+│       ├── logger
+│       │   ├── backgrounds
+│       │   │   ├── anime_tyan_1.webp
+│       │   │   ├── anime_tyan_2.webp
+│       │   │   ├── anime_tyan_3.png
+│       │   │   └── anime_tyan_main.jpg
+│       │   └── log.cpp
+│       └── stack
+│           ├── hash.cpp
+│           └── stack.cpp
+│
+├── make
+│   ├── make-asm.mk
+│   └── make-proc.mk
+├── Makefile
+│
+├── examples
+│   ├── example1
+│   │   ├── HelloWorld.asm
+│   │   └── HelloWorld.bin
+│   ├── example2
+│   │   ├── Math.asm
+│   │   └── Math.bin
+│   ├── example3
+│   │   ├── Cycle.asm
+│   │   └── Cycle.bin
+│   ├── example4
+│   │   ├── Factorial.asm
+│   │   └── Factorial.bin
+│   ├── example5
+│   │   ├── circle.asm
+│   │   └── circle.bin
+│   └── Readme.md
+│
+├── assets
+│   ├── example1_result.png
+│   ├── example2_result.png
+│   ├── example3_result.png
+│   ├── example4_result.png
+│   └── example5_result.png
+│
+└── README.md
+
+37 directories, 46 files
+
 ```
 
 <br>

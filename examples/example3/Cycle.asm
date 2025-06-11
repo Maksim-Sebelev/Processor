@@ -4,7 +4,6 @@
 push 0
 pop ax
 
-
 #=== print 0 1 2 3 ... 10 ===/
 
 cycle:

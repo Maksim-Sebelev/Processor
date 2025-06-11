@@ -1,0 +1,26 @@
+# my makefile config file
+local.mk
+
+# my vscode settings
+.vscode/
+
+# my asm files
+asm/
+
+# obj (.o) and dep (.d) files
+bin/
+
+# dir for executable
+build/
+
+# my bin files
+code/
+
+# my bash files for work with project
+bash/
+
+# struct of project. needs for readme
+project_struct/
+
+# dir with log-file
+log/
