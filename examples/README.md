@@ -81,7 +81,7 @@ Hello, World!
 
 **вывод в консоль:**
 ```bash
-Programm out: 5040
+5040
 ```
 <br>
 
@@ -90,9 +90,11 @@ Programm out: 5040
 **Создастся окно размером 600x800 и будет выведена картинка:**
 
 ![Example1 result](../assets/example5_result1.png)
+<br>
 
 **После нажатия на `Space` окно закроется и в консоль будет выведен `0`, как знак успешного завершения программы.**
 
+<br>
 ![Example1 result](../assets/example5_result2.png)
 
 **вывод в консоль:**
