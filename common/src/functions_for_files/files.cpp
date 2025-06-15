@@ -37,22 +37,27 @@ size_t CalcFileLen(const char* file)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-const char* ReadFileInBuffer(const char* file)
+const char* ReadFileInBuffer(const char* file, size_t* len)
 {
     assert(file);
+    assert(len);
 
     size_t file_len = CalcFileLen(file      );
     FILE*  file_ptr = SafeFopen  (file, "rb");
 
-    char* buffer = (char*) calloc(file_len, sizeof(*buffer));
+    char* buffer = (char*) calloc(file_len + 1, sizeof(*buffer));
 
     if (!buffer)
-        EXIT(EXIT_FAILURE, "failed open '%s' for reading.");
+        EXIT(EXIT_FAILURE, "failed open '%s' for reading.", file);
 
+    buffer[file_len] = '\0';
+        
     size_t fread_return = fread(buffer, sizeof(char), file_len, file_ptr);
 
     if (fread_return != file_len)
         EXIT(EXIT_FAILURE, "failed reading '%s'.", file);
+        
+    *len = file_len;
 
     return (const char*) buffer;
 }

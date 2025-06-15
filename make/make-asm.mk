@@ -59,8 +59,7 @@ CSRC =  assembler/main.cpp                        \
 		assembler/src/fileread/fileread.cpp         \
 		assembler/src/assembler/assembler.cpp        \
 		common/src/lib/lib.cpp                        \
-		common/src/global/global.cpp                   \
-		common/src/functions_for_files/files.cpp        \
+		common/src/functions_for_files/files.cpp       \
 
 ifeq ($(BUILD_TYPE), debug)
 	CSRC += common/src/logger/log.cpp
