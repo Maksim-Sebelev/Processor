@@ -50,8 +50,8 @@ struct CodePlace
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void PrintPlace     (                  const char* const file, const int line, const char* const func);
-void CodePlaceCtor  (CodePlace* place, const char* const file, const int line, const char* const func);
+void  PrintPlace     (                  const char* const file, const int line, const char* const func);
+void  CodePlaceCtor  (CodePlace* place, const char* const file, const int line, const char* const func);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

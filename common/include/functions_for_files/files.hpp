@@ -1,35 +1,19 @@
+#ifndef _FILES_HPP_
+#define _FILES_HPP_
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 #include <stdio.h>
-#include <assert.h>
-#include "lib/lib.hpp"
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void PrintPlace(const char* file, int line , const char* func)
-{
-    assert(file);
-    assert(func);
+FILE*       SafeFopen       (const char* file, const char* modes);
+size_t      CalcFileLen     (const char* file);
+const char* ReadFileInBuffer(const char* file);
+void        BufferDtor      (const char* buffer);
+const char* GetFileExtension(const char* file_name);
 
-    COLOR_PRINT(WHITE, "%s:%d\n", file, line);
-    printf("in '");
-    COLOR_PRINT(GREEN, "%s", func);
-    printf("'\n");
-    return;
-}
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void CodePlaceCtor(CodePlace* place, const char* file, int line, const char* func)
-{
-    assert(place);
-    assert(file);
-    assert(func);
-
-    place->file = file;
-    place->line = line;
-    place->func = func;
-
-    return;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+#endif // _FILES_HPP_
