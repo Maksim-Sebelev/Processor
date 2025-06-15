@@ -291,6 +291,9 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
 
     AsmDataInfo->tokens_array = GetTokensArray(file->asm_file);
 
+    ON_DEBUG(
+    TokensLoG(AsmDataInfo->tokens_array);
+    )
 
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
@@ -464,7 +467,7 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
         {
             PushTypeCtor(&Push, 0, 0, 1, 1);
             SetElem      = GetRegisterPointer(&buffer);
-            buffer.word += Registers::REGISTERS_NAME_LEN + 1;
+            buffer.word += REGISTERS_NAME_LEN + 1;
             Sum          = (int) strtol(buffer.word, &endBuffer, 10);
         }
     }
@@ -557,7 +560,7 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
         {
             PopTypeCtor(&Pop, 0, 1, 1);
             SetElem      = GetRegisterPointer(&buffer);
-            buffer.word += Registers::REGISTERS_NAME_LEN + 1;
+            buffer.word += REGISTERS_NAME_LEN + 1;
             Sum          = (int) strtol(buffer.word, &endBuffer, 10);
         }
     }
@@ -1285,7 +1288,7 @@ static size_t CalcCodeSize(const CmdArr* cmd)
     }
 
 
-    
+
     return codeSize;
 }
 

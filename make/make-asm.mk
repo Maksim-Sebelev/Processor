@@ -58,8 +58,10 @@ CSRC =  assembler/main.cpp                        \
 		assembler/src/flags/flags.cpp              \
 		assembler/src/fileread/fileread.cpp         \
 		assembler/src/assembler/assembler.cpp        \
-		common/src/lib/lib.cpp                        \
-		common/src/functions_for_files/files.cpp       \
+		assembler/src/tokenizer/tokenizer.cpp         \
+		common/src/lib/lib.cpp                         \
+		common/src/functions_for_files/files.cpp        \
+
 
 ifeq ($(BUILD_TYPE), debug)
 	CSRC += common/src/logger/log.cpp
