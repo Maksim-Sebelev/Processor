@@ -277,22 +277,22 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
 
     AssemblerErr err = {};
 
-    AsmDataInfo->cmd = ReadBufferFromFile(file->asm_file);
+    // AsmDataInfo->cmd = ReadBufferFromFile(file->asm_file);
 
-    size_t codeArrSize     = CalcCodeSize(&AsmDataInfo->cmd);
-    AsmDataInfo->code.size = codeArrSize;
-    AsmDataInfo->code.code = (int*) calloc(codeArrSize, sizeof(int));
-    AsmDataInfo->file.asm_file = file->asm_file;
-    AsmDataInfo->file.bin_file = file->bin_file;
+    // size_t codeArrSize     = CalcCodeSize(&AsmDataInfo->cmd);
+    // AsmDataInfo->code.size = codeArrSize;
+    // AsmDataInfo->code.code = (int*) calloc(codeArrSize, sizeof(int));
+    // AsmDataInfo->file.asm_file = file->asm_file;
+    // AsmDataInfo->file.bin_file = file->bin_file;
     
-    assert(AsmDataInfo->code.code);
+    // assert(AsmDataInfo->code.code);
 
 
 
     AsmDataInfo->tokens_array = GetTokensArray(file->asm_file);
 
     ON_DEBUG(
-    TokensLoG(AsmDataInfo->tokens_array);
+    TokensLog(&AsmDataInfo->tokens_array, file->asm_file);
     )
 
 

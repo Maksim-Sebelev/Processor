@@ -7,6 +7,7 @@
 #include "functions_for_files/files.hpp"
 #include "lib/lib.hpp"
 
+#define _DEBUG
 
 #ifdef _DEBUG
 #include "logger/log.hpp"
@@ -43,8 +44,8 @@ static void           HandleRegister       (Token* tokens_arr, Pointers* pointer
 static void           HandleBracket        (Token* tokens_arr, Pointers* pointer, Bracket        bracket      , size_t word_len);
 static void           HandleSeparator      (Token* tokens_arr, Pointers* pointer, Separator      separator    , size_t word_len);
 static void           HandleMathOperator   (Token* tokens_arr, Pointers* pointer, MathOperator   math_operator, size_t word_len);
-static void           HandleLabel          (Token* tokens_arr, Pointers* pointer, TokenizerLabel label        , size_t word_len);
-static void           HandleNumber         (Token* tokens_arr, Pointers* pointer, Number         number       , size_t word_len);
+static void           HandleLabel          (Token* tokens_arr, Pointers* pointer, TokenizerLabel label                         );
+static void           HandleNumber         (Token* tokens_arr, Pointers* pointer, Number         number                        );
 
 static bool           IsNumSymbol                       (char c);
 static bool           IsPointSymbol                     (char c);
@@ -130,25 +131,26 @@ TokensArray GetTokensArray(const char* asm_file)
             continue;
         }
 
-        TokenizerLabel label = GetLabel(word);
-        if (label.label_len != 0)
-        {
-            HandleLabel(tokens_array, &pointer, label, word_len);
-            continue;
-        }
-
         Number number = GetNumber(word);
         if (number.number_len != 0)
         {
-            HandleNumber(tokens_array, &pointer, number, word_len);
+            HandleNumber(tokens_array, &pointer, number);
             continue;
         }
         
+        TokenizerLabel label = GetLabel(word);
+        if (label.label_len != 0)
+        {
+            HandleLabel(tokens_array, &pointer, label);
+            continue;
+        }
+
         EXIT(EXIT_FAILURE, 
-            "undefined word in:"
+            "undefined word in:\n"
             WHITE
-            "%s:%lu:%lu",
-            asm_file, pointer.lp, pointer.tp
+            "%s:%lu:%lu\n"
+            "\ndetected in:",
+            asm_file, pointer.lp, pointer.sp
             );
     }
 
@@ -192,19 +194,6 @@ static void TokensRealloc(Token** tokens_array, size_t tokens_quant)
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-// enum class TokenType
-// {
-//     token_command       ,
-//     token_register      ,
-//     token_number        ,
-//     token_bracket       ,
-//     token_separator     ,
-//     token_math_operation,
-// };
-
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -214,7 +203,7 @@ static bool GetCmdFlag(const char* word, const char* command, size_t command_len
     assert(command);
 
     return  (strncmp(word, command, command_len) == 0) &&
-            (word[command_len + 1] == ' ');
+            (IsPassSymbol(word[command_len]) || IsSlash0(word[command_len]));
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -223,15 +212,23 @@ static Cmd GetCmd(const char* word, size_t* word_len)
 {
     assert(word);
 
+    
     for (size_t i = 0; i < CmdInfoArrSize; i++)
     {
         CmdInfo cmd = CmdInfoArr[i];
-    
+
+        // COLOR_PRINT(VIOLET, "'%.*s'\n", 3, word);
+        // COLOR_PRINT(CYAN, "'%s'\n", cmd.name);
+
         if (GetCmdFlag(word, cmd.name, cmd.nameLen))
         {
+            // COLOR_PRINT(GREEN, "yes\n\n");
             *word_len = cmd.nameLen;
             return cmd.cmd;
         }
+
+        // COLOR_PRINT(RED, "no\n\n");
+
     }
 
     return Cmd::undef_cmd;
@@ -246,13 +243,13 @@ static Registers GetRegister(const char* word, size_t* word_len)
     const char w0 = word[0];
     const char w1 = word[1];
 
-    bool flag = (word[1] == 'x') &&
-                ('a' <= word[0] && word[0] <= 'a' + REGISTERS_QUANT);
+    bool flag = (w1 == 'x') &&
+                ('a' <= w0 && w0 <= 'a' + REGISTERS_QUANT);
 
     *word_len = REGISTERS_NAME_LEN;
 
     if (flag)
-        return  (Registers) (w1 - 'a');
+        return  (Registers) (w0 - 'a');
 
     return Registers::undef_register;
 }
@@ -267,7 +264,16 @@ static Number GetNumber(const char* word)
 
     for (number_len = 0; isdigit(word[number_len]); number_len++);
 
-    Number number = {.number = word, .number_len = number_len};
+    
+    if (number_len == 0)
+    {
+        if      (word[0] == '\'' && word[2] == '\'') number_len = 3;
+        else if (word[0] == '\'' && word[1] == '\\' && word[3] == '\'' && (word[2] == 'n' || word[2] == ' ')) number_len = 4;
+    }
+    
+    Number number     = {};
+    number.number     = word;
+    number.number_len = number_len;
 
     return number;
 };
@@ -347,10 +353,12 @@ static TokenizerLabel GetLabel(const char* word)
 
     for (; IsLetterOrNumberOrUnderLineSymbol(word[i]) && word[i] != (char) Separator::colon; i++);
 
-    if (!IsColon(word[i]))
+    name_len = i;
+
+    if (!IsColon(word[name_len]))
         return {};
 
-    name_len = i;
+    name_len++;
 
     TokenizerLabel label = {.label = word, .label_len = name_len};
 
@@ -374,7 +382,7 @@ static bool HandleComment(const char* word, Pointers* pointer)
 
     size_t comment_len = 1;
 
-    while (!IsSlashNOrSlashN(word[pointer->ip]))
+    while (!IsSlashNOrSlashN(word[comment_len]))
         comment_len++;
 
     pointer->ip += comment_len;
@@ -489,7 +497,7 @@ static void HandleMathOperator(Token* tokens_arr, Pointers* pointer, MathOperato
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void HandleLabel(Token* tokens_arr, Pointers* pointer, TokenizerLabel label, size_t word_len)
+static void HandleLabel(Token* tokens_arr, Pointers* pointer, TokenizerLabel label)
 {
     assert(tokens_arr);
     assert(pointer);
@@ -499,24 +507,24 @@ static void HandleLabel(Token* tokens_arr, Pointers* pointer, TokenizerLabel lab
     tokens_arr[token_pointer].type        = TokenType::token_label;
     tokens_arr[token_pointer].value.label = label;
    
-    HandleGeneralPattern(tokens_arr, pointer, word_len);
+    HandleGeneralPattern(tokens_arr, pointer, label.label_len);
 
     return;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void HandleNumber(Token* tokens_arr, Pointers* pointer, Number number, size_t word_len)
+static void HandleNumber(Token* tokens_arr, Pointers* pointer, Number number)
 {
     assert(tokens_arr);
     assert(pointer);
 
     size_t token_pointer = pointer->tp;
 
-    tokens_arr[token_pointer].type         = TokenType::token_label;
+    tokens_arr[token_pointer].type         = TokenType::token_number;
     tokens_arr[token_pointer].value.number = number;
    
-    HandleGeneralPattern(tokens_arr, pointer, word_len);
+    HandleGeneralPattern(tokens_arr, pointer, number.number_len);
 
     return;
 }
@@ -650,6 +658,7 @@ static void        LogValue            (Token          token        );
 static const char* GetTypeInStr        (TokenType      type         );
 static const char* GetValueInStr       (Token          token        );
 static const char* GetBracketInStr     (Bracket        bracket      );
+static const char* GetSeparatorInStr   (Separator      separator    );
 static const char* GetMathOperatorInStr(MathOperator   math_operator);
 static const char* GetCmdInStr         (Cmd            cmd          );
 static const char* GetRegisterInStr    (Registers      reg          );
@@ -674,9 +683,9 @@ void TokensLog(const TokensArray* tokens_array, const char* asm_file)
         Token token = tokens_array->array[i];
 
         LOG_PRINT(Yellow, "token[%lu] =\n{\n", i);
-        LOG_PRINT(Green , "type = %s\n", GetTypeInStr(token.type));
+        LOG_PRINT(Green , "\ttype = %s\n", GetTypeInStr(token.type));
         LogValue(token);
-        LOG_PRINT(Green , "%s:%lu:%lu\n", asm_file, token.place.line, token.place.pos_in_line);
+        LOG_PRINT(Green , "\t%s:%lu:%lu\n", asm_file, token.place.line, token.place.pos_in_line);
         LOG_PRINT(Yellow, "}\n\n");
     }
 
@@ -709,11 +718,11 @@ static const char* GetTypeInStr(TokenType type)
 static void LogValue(Token token)
 {
     const char* str_value = GetValueInStr(token);
+
     if (str_value)
-        LOG_PRINT(Green, "value = '%s'\n", str_value);
+        LOG_PRINT(Green, "\tvalue = '%s'\n", str_value);
 
 
-    LOG_PRINT(White, "\n");
     return;
 }
 
@@ -723,12 +732,13 @@ static const char* GetValueInStr(Token token)
 {
     switch (token.type)
     {
-        case TokenType::token_bracket:        GetBracketInStr     (token.value.bracket  ); break;
-        case TokenType::token_command:        GetCmdInStr         (token.value.command  ); break;
-        case TokenType::token_math_operation: GetMathOperatorInStr(token.value.operation); break;;
-        case TokenType::token_register:       GetRegisterInStr    (token.value.reg      ); break;
-        case TokenType::token_label:          LogLabel            (token.value.label    ); return nullptr;
-        case TokenType::token_number:         LogNumber           (token.value.number   ); return nullptr;
+        case TokenType::token_label:                 LogLabel            (token.value.label    ); return nullptr;
+        case TokenType::token_number:                LogNumber           (token.value.number   ); return nullptr;
+        case TokenType::token_bracket:        return GetBracketInStr     (token.value.bracket  );
+        case TokenType::token_command:        return GetCmdInStr         (token.value.command  );
+        case TokenType::token_math_operation: return GetMathOperatorInStr(token.value.operation);
+        case TokenType::token_register:       return GetRegisterInStr    (token.value.reg      );
+        case TokenType::token_separator:      return GetSeparatorInStr   (token.value.seprator );
         case TokenType::undef_token_type:
         default:                                                                           return "undef register value";
     }
@@ -747,6 +757,22 @@ static const char* GetBracketInStr(Bracket bracket)
         case Bracket::right_bracket: return "]";
         case Bracket::undef_bracket:
         default:                     return "undef bracket";
+    }
+
+    assert(0);
+    return nullptr;
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static const char* GetSeparatorInStr(Separator separator)
+{
+    switch (separator)
+    {
+        case Separator::colon: return ":";
+        case Separator::comma: return ",";
+        case Separator::undef_separator:
+        default:               return "undef separator";
     }
 
     assert(0);
@@ -809,15 +835,10 @@ static const char* GetRegisterInStr(Registers reg)
 
 static void LogLabel(TokenizerLabel label)
 {
-    LOG_COLOR(Green);
+    const size_t len   = label.label_len;
+    const char*  value = label.label;
 
-    const size_t len  = label.label_len;
-    const char*  name = label.label;
-
-    for (size_t i = 0; i < len; i++)
-    {
-        LOG_ADC_PRINT("%c", name[i]);        
-    }
+    LOG_PRINT(Green, "\tvalue = '%.*s'\n", len, value);
 
     return;
 }
@@ -826,15 +847,10 @@ static void LogLabel(TokenizerLabel label)
 
 static void LogNumber(Number number)
 {
-    LOG_COLOR(Green);
-
     const size_t len   = number.number_len;
     const char*  value = number.number;
 
-    for (size_t i = 0; i < len; i++)
-    {
-        LOG_ADC_PRINT("%c", value[i]);
-    }
+    LOG_PRINT(Green, "\tvalue = '%.*s'\n", len, value);
 
     return;
 }

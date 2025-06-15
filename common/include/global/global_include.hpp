@@ -60,7 +60,7 @@ struct CmdInfo
 #define ADD   "add"
 #define SUB   "sub"
 #define MUL   "mul"
-#define DIV   "dive"
+#define DIV   "div"
 #define PP    "pp"
 #define MM    "mm"
 #define OUT   "out"
@@ -93,7 +93,7 @@ static const CmdInfo CmdInfoArr[] =
     {.cmd = Cmd::pp       , .name = PP   , .argQuant = 1, .codeRecordSize = 2, .nameLen = STRLEN(PP   )},
     {.cmd = Cmd::mm       , .name = MM   , .argQuant = 1, .codeRecordSize = 2, .nameLen = STRLEN(MM   )},
     {.cmd = Cmd::out      , .name = OUT  , .argQuant = 0, .codeRecordSize = 1, .nameLen = STRLEN(OUT  )},
-    {.cmd = Cmd::outc     , .name = OUTC , .argQuant = 0, .codeRecordSize = 1, .nameLen = STRLEN(OUTR )},
+    {.cmd = Cmd::outc     , .name = OUTC , .argQuant = 0, .codeRecordSize = 1, .nameLen = STRLEN(OUTC )},
     {.cmd = Cmd::outr     , .name = OUTR , .argQuant = 0, .codeRecordSize = 1, .nameLen = STRLEN(OUTR )},
     {.cmd = Cmd::outrc    , .name = OUTRC, .argQuant = 0, .codeRecordSize = 1, .nameLen = STRLEN(OUTRC)},
     {.cmd = Cmd::jmp      , .name = JMP  , .argQuant = 1, .codeRecordSize = 2, .nameLen = STRLEN(JMP  )},
