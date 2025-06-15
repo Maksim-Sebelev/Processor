@@ -83,10 +83,11 @@ typedef WordArray CmdArr;
 
 struct AsmData
 {
-    CmdArr  cmd;
-    CodeArr code;
-    Labels  labels;
-    IOfile  file;
+    TokensArray tokens_array;
+    CmdArr cmd;
+    CodeArr    code         ;
+    Labels     labels       ;
+    IOfile     file         ;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -270,6 +271,8 @@ void RunAssembler(const IOfile* file)
 static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
 {
     assert(AsmDataInfo);
+    assert(file);
+    assert(file->asm_file);
     assert(file->bin_file);
 
     AssemblerErr err = {};
@@ -283,6 +286,12 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
     AsmDataInfo->file.bin_file = file->bin_file;
     
     assert(AsmDataInfo->code.code);
+
+
+
+    AsmDataInfo->tokens_array = GetTokensArray(file->asm_file);
+
+
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
@@ -1274,6 +1283,9 @@ static size_t CalcCodeSize(const CmdArr* cmd)
             codeSize              += codeRecordSize;
         }
     }
+
+
+    
     return codeSize;
 }
 

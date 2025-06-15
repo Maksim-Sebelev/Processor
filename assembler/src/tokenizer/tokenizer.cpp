@@ -9,20 +9,6 @@
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-static Token*       TokensCalloc      (size_t buffer_len);
-
-static bool         GetCmdFlag        (const char* word, const char* command, size_t command_len);
-
-static Cmd          HandleCmd         (const char* word);
-static Registers    HandleRegister    (const char* word);
-static Number       HandleNumber      (const char* word);
-static Bracket      HandleBracket     (const char* word);
-static Separator    HandleSeparator   (const char* word);
-static MathOperator HandleMathOperator(const char* word);
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 struct Pointers
 {
     size_t ip; // input pointer
@@ -30,6 +16,45 @@ struct Pointers
     size_t lp; // line pointer (line in input file)
     size_t sp; // str pointer (pos in line)
 };
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static Token*         TokensCalloc         (size_t buffer_len);
+static void           TokensRealloc        (Token** tokens_array, size_t tokens_quant);
+
+static bool           GetCmdFlag           (const char* word, const char* command, size_t command_len);
+static Cmd            GetCmd               (const char* word, size_t* word_len);
+static Registers      GetRegister          (const char* word, size_t* word_len);
+static Bracket        GetBracket           (const char* word, size_t* word_len);
+static Separator      GetSeparator         (const char* word, size_t* word_len);
+static MathOperator   GetMathOperator      (const char* word, size_t* word_len);
+static TokenizerLabel GetLabel             (const char* word                  );
+static Number         GetNumber            (const char* word                  );
+
+static bool           HandleComment        (const char* word , Pointers* pointer                                               );
+static void           HandleGeneralPattern (Token* tokens_arr, Pointers* pointer,                               size_t word_len);
+static void           HandleCmd            (Token* tokens_arr, Pointers* pointer, Cmd            cmd          , size_t word_len);
+static void           HandleRegister       (Token* tokens_arr, Pointers* pointer, Registers      reg          , size_t word_len);
+static void           HandleBracket        (Token* tokens_arr, Pointers* pointer, Bracket        bracket      , size_t word_len);
+static void           HandleSeparator      (Token* tokens_arr, Pointers* pointer, Separator      separator    , size_t word_len);
+static void           HandleMathOperator   (Token* tokens_arr, Pointers* pointer, MathOperator   math_operator, size_t word_len);
+static void           HandleLabel          (Token* tokens_arr, Pointers* pointer, TokenizerLabel label        , size_t word_len);
+static void           HandleNumber         (Token* tokens_arr, Pointers* pointer, Number         number       , size_t word_len);
+
+static bool           IsNumSymbol                       (char c);
+static bool           IsPointSymbol                     (char c);
+static bool           IsColon                           (char c);
+static bool           IsLetterSymbol                    (char c);
+static bool           IsUnderLineSymbol                 (char c);
+static bool           IsLetterOrUnderLineSymbol         (char c);
+static bool           IsLetterOrNumberOrUnderLineSymbol (char c);
+static bool           IsSpace                           (char c);
+static bool           IsSlashN                          (char c);
+static bool           IsSlash0                          (char c);
+static bool           IsSlashNOrSlashN                  (char c);
+static bool           IsPassSymbol                      (char c);
+static void           UpdatePointersAfterSpace          (Pointers* pointer);
+static void           UpdatePointersAfterSlashN         (Pointers* pointer);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -57,13 +82,82 @@ TokensArray GetTokensArray(const char* asm_file)
         }
 
         const char* word     = buffer + pointer.ip;
-        size_t      wordSize = 0;
+        size_t      word_len = 0;
 
         if (IsSlash0(word[0])) break;
 
         if (HandleComment(word, &pointer))
             continue;
+
+
+        Cmd cmd = GetCmd(word, &word_len);
+        if (cmd != Cmd::undef_cmd)
+        {
+            HandleCmd(tokens_array, &pointer, cmd, word_len);
+            continue;
+        }
+
+        Registers reg = GetRegister(word, &word_len);
+        if (reg != Registers::undef_register)
+        {
+            HandleRegister(tokens_array, &pointer, reg, word_len);
+            continue;
+        }
+
+        Bracket bracket = GetBracket(word, &word_len);
+        if (bracket != Bracket::undef_bracket)
+        {
+            HandleBracket(tokens_array, &pointer, bracket, word_len);
+            continue;
+        }
+    
+        Separator separator = GetSeparator(word, &word_len);
+        if (separator != Separator::undef_separator)
+        {
+            HandleSeparator(tokens_array, &pointer, separator, word_len);
+            continue;
+        }
+
+        MathOperator math_operator = GetMathOperator(word, &word_len);
+        if (math_operator != MathOperator::undef_operator)
+        {
+            HandleMathOperator(tokens_array, &pointer, math_operator, word_len);
+            continue;
+        }
+
+        TokenizerLabel label = GetLabel(word);
+        if (label.label_len != 0)
+        {
+            HandleLabel(tokens_array, &pointer, label, word_len);
+            continue;
+        }
+
+        Number number = GetNumber(word);
+        if (number.number_len != 0)
+        {
+            HandleNumber(tokens_array, &pointer, number, word_len);
+            continue;
+        }
+        
+        EXIT(EXIT_FAILURE, 
+            "undefined word in:"
+            WHITE
+            "%s:%lu:%lu",
+            asm_file, pointer.lp, pointer.tp
+            );
     }
+
+    size_t tokens_array_size = pointer.tp;
+
+    TokensRealloc(&tokens_array, tokens_array_size);
+
+    TokensArray final_tokens_array = 
+    {
+        .array = tokens_array     ,
+        .size  = tokens_array_size,
+    };
+
+    return final_tokens_array;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -80,6 +174,20 @@ static Token* TokensCalloc(size_t buffer_len)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static void TokensRealloc(Token** tokens_array, size_t tokens_quant)
+{
+    assert(tokens_array);
+
+    *tokens_array = (Token*) realloc(*tokens_array, tokens_quant * sizeof(**tokens_array));
+
+    if (!(*tokens_array))
+        EXIT(EXIT_FAILURE, "failed reallocate memory for tokens array.");
+
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 // enum class TokenType
 // {
 //     token_command       ,
@@ -91,6 +199,8 @@ static Token* TokensCalloc(size_t buffer_len)
 // };
 
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static bool GetCmdFlag(const char* word, const char* command, size_t command_len)
@@ -104,7 +214,7 @@ static bool GetCmdFlag(const char* word, const char* command, size_t command_len
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static Cmd HandleCmd(const char* word)
+static Cmd GetCmd(const char* word, size_t* word_len)
 {
     assert(word);
 
@@ -113,7 +223,10 @@ static Cmd HandleCmd(const char* word)
         CmdInfo cmd = CmdInfoArr[i];
     
         if (GetCmdFlag(word, cmd.name, cmd.nameLen))
+        {
+            *word_len = cmd.nameLen;
             return cmd.cmd;
+        }
     }
 
     return Cmd::undef_cmd;
@@ -121,7 +234,7 @@ static Cmd HandleCmd(const char* word)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static Registers HandleRegister(const char* word)
+static Registers GetRegister(const char* word, size_t* word_len)
 {
     assert(word);
 
@@ -131,6 +244,8 @@ static Registers HandleRegister(const char* word)
     bool flag = (word[1] == 'x') &&
                 ('a' <= word[0] && word[0] <= 'a' + REGISTERS_QUANT);
 
+    *word_len = Registers::REGISTERS_NAME_LEN;
+
     if (flag)
         return  (Registers) (w1 - 'a');
 
@@ -139,7 +254,7 @@ static Registers HandleRegister(const char* word)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static Number HandleNumber(const char* word)
+static Number GetNumber(const char* word)
 {
     assert(word);
 
@@ -154,9 +269,11 @@ static Number HandleNumber(const char* word)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static Bracket HandleBracket(const char* word)
+static Bracket GetBracket(const char* word, size_t* word_len)
 {
     assert(word);
+
+    *word_len = 1;
 
     const char w0 = word[0];
 
@@ -171,9 +288,11 @@ static Bracket HandleBracket(const char* word)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static Separator HandleSeparator(const char* word)
+static Separator GetSeparator(const char* word, size_t* word_len)
 {
     assert(word);
+
+    *word_len = 1;
 
     const char w0 = word[0];
 
@@ -188,9 +307,11 @@ static Separator HandleSeparator(const char* word)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static MathOperator HandleMathOperator(const char* word)
+static MathOperator GetMathOperator(const char* word, size_t* word_len)
 {
     assert(word);
+
+    *word_len = 1;
 
     const char w0 = word[0];
 
@@ -202,7 +323,10 @@ static MathOperator HandleMathOperator(const char* word)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static TokenizerLabel HandleLabel(const char* word)
+// returning label len is 0/ if that not label
+// else: it's label
+
+static TokenizerLabel GetLabel(const char* word)
 {
     assert(word);
 
@@ -218,6 +342,9 @@ static TokenizerLabel HandleLabel(const char* word)
 
     for (; IsLetterOrNumberOrUnderLineSymbol(word[i]) && word[i] != (char) Separator::colon; i++);
 
+    if (!IsColon(word[i]))
+        return {};
+
     name_len = i;
 
     TokenizerLabel label = {.label = word, .label_len = name_len};
@@ -226,9 +353,171 @@ static TokenizerLabel HandleLabel(const char* word)
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool HandleComment(const char* word, )
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool HandleComment(const char* word, Pointers* pointer)
+{
+    assert(word);
+    assert(pointer);
+
+    if (word[0] != ';')
+        return false;
+
+    size_t comment_len = 1;
+
+    while (!IsSlashNOrSlashN(word[pointer->ip]))
+        comment_len++;
+
+    pointer->ip += comment_len;
+    pointer->sp += comment_len;
+    
+    return true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandleGeneralPattern(Token* tokens_arr, Pointers* pointer, size_t word_len)
+{
+    assert(tokens_arr);
+    assert(pointer);
+
+    const size_t token_pointer = pointer->tp; 
+
+    tokens_arr[token_pointer].place.line        = pointer->lp;
+    tokens_arr[token_pointer].place.pos_in_line = pointer->sp;
+
+    pointer->ip += word_len;
+    pointer->sp += word_len;
+    pointer->tp++;
+
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandleCmd(Token* tokens_arr, Pointers* pointer, Cmd cmd, size_t word_len)
+{
+    assert(tokens_arr);
+    assert(pointer);
+
+    size_t token_pointer = pointer->tp;
+
+    tokens_arr[token_pointer].type          = TokenType::token_command;
+    tokens_arr[token_pointer].value.command = cmd;
+    
+    HandleGeneralPattern(tokens_arr, pointer, word_len);
+
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandleRegister(Token* tokens_arr, Pointers* pointer, Registers reg, size_t word_len)
+{
+    assert(tokens_arr);
+    assert(pointer);
+
+    size_t token_pointer = pointer->tp;
+
+    tokens_arr[token_pointer].type      = TokenType::token_register;
+    tokens_arr[token_pointer].value.reg = reg;
+   
+    HandleGeneralPattern(tokens_arr, pointer, word_len);
+   
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandleBracket(Token* tokens_arr, Pointers* pointer, Bracket bracket, size_t word_len)
+{
+    assert(tokens_arr);
+    assert(pointer);
+
+    size_t token_pointer = pointer->tp;
+
+    tokens_arr[token_pointer].type          = TokenType::token_bracket;
+    tokens_arr[token_pointer].value.bracket = bracket;
+   
+    HandleGeneralPattern(tokens_arr, pointer, word_len);
+   
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandleSeparator(Token* tokens_arr, Pointers* pointer, Separator separator, size_t word_len)
+{
+    assert(tokens_arr);
+    assert(pointer);
+
+    size_t token_pointer = pointer->tp;
+
+    tokens_arr[token_pointer].type           = TokenType::token_separator;
+    tokens_arr[token_pointer].value.seprator = separator;
+   
+    HandleGeneralPattern(tokens_arr, pointer, word_len);
+   
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandleMathOperator(Token* tokens_arr, Pointers* pointer, MathOperator math_operator, size_t word_len)
+{
+    assert(tokens_arr);
+    assert(pointer);
+
+    size_t token_pointer = pointer->tp;
+
+    tokens_arr[token_pointer].type            = TokenType::token_math_operation;
+    tokens_arr[token_pointer].value.operation = math_operator;
+   
+    HandleGeneralPattern(tokens_arr, pointer, word_len);
+
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandleLabel(Token* tokens_arr, Pointers* pointer, TokenizerLabel label, size_t word_len)
+{
+    assert(tokens_arr);
+    assert(pointer);
+
+    size_t token_pointer = pointer->tp;
+
+    tokens_arr[token_pointer].type        = TokenType::token_label;
+    tokens_arr[token_pointer].value.label = label;
+   
+    HandleGeneralPattern(tokens_arr, pointer, word_len);
+
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandleNumber(Token* tokens_arr, Pointers* pointer, Number number, size_t word_len)
+{
+    assert(tokens_arr);
+    assert(pointer);
+
+    size_t token_pointer = pointer->tp;
+
+    tokens_arr[token_pointer].type         = TokenType::token_label;
+    tokens_arr[token_pointer].value.number = number;
+   
+    HandleGeneralPattern(tokens_arr, pointer, word_len);
+
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static bool IsNumSymbol(char c)
@@ -242,6 +531,13 @@ static bool IsNumSymbol(char c)
 static bool IsPointSymbol(char c)
 {
     return (c == '.');
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsColon(char c)
+{
+    return (c == ':');
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
