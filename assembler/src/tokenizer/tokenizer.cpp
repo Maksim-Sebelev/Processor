@@ -7,8 +7,6 @@
 #include "functions_for_files/files.hpp"
 #include "lib/lib.hpp"
 
-#define _DEBUG
-
 #ifdef _DEBUG
 #include "logger/log.hpp"
 #endif // _DEBUG
@@ -146,6 +144,7 @@ TokensArray GetTokensArray(const char* asm_file)
         }
 
         EXIT(EXIT_FAILURE, 
+            "syntax error.\n"
             "undefined word in:\n"
             WHITE
             "%s:%lu:%lu\n"
@@ -165,6 +164,18 @@ TokensArray GetTokensArray(const char* asm_file)
     };
 
     return final_tokens_array;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void TokensArrayDtor(TokensArray* tokens_array)
+{
+    assert(tokens_array);
+
+    FREE(tokens_array->array);
+    tokens_array->size = 0;
+
+    return;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -244,7 +255,7 @@ static Registers GetRegister(const char* word, size_t* word_len)
     const char w1 = word[1];
 
     bool flag = (w1 == 'x') &&
-                ('a' <= w0 && w0 <= 'a' + REGISTERS_QUANT);
+                ('a' <= w0  && w0 <= 'a' + REGISTERS_QUANT);
 
     *word_len = REGISTERS_NAME_LEN;
 
@@ -265,10 +276,10 @@ static Number GetNumber(const char* word)
     for (number_len = 0; isdigit(word[number_len]); number_len++);
 
     
-    if (number_len == 0)
+    if (number_len == 0) // for chars aka 'a', ' ', or '\n' 
     {
         if      (word[0] == '\'' && word[2] == '\'') number_len = 3;
-        else if (word[0] == '\'' && word[1] == '\\' && word[3] == '\'' && (word[2] == 'n' || word[2] == ' ')) number_len = 4;
+        else if (word[0] == '\'' && word[1] == '\\' && word[3] == '\'' && (word[2] == 'n')) number_len = 4;
     }
     
     Number number     = {};

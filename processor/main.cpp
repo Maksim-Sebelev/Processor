@@ -1,23 +1,21 @@
 #include <stdlib.h>
 #include "processor/processor.hpp"
-#include "flags/flags.hpp"
 #include "lib/lib.hpp"
 
 #ifdef _DEBUG
 #include "logger/log.hpp"
 #endif // _DEBUG
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
     ON_DEBUG(
     COLOR_PRINT(GREEN, "\nPROCESSOR START\n");
     LOG_OPEN();
     )
 
-    const char* bin_file = CallFlags(argc, argv);
+    const ProcessorInput input = GetProcessorInput(argc, argv);
+    RunProcessor(&input);
 
-    RunProcessor(bin_file);
-    
     ON_DEBUG(
     LOG_CLOSE();
     COLOR_PRINT(GREEN, "PROCESSOR END\n");

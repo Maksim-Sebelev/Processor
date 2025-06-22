@@ -10,8 +10,8 @@ SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 CFLAGS ?= 
 LDFLAGS = $(SFML_FLAGS)
 
-# BUILD_TYPE ?= debug
-BUILD_TYPE ?= release
+BUILD_TYPE ?= debug
+# BUILD_TYPE ?= release
 
 
 ifeq ($(BUILD_TYPE), release)
@@ -50,7 +50,6 @@ ASM_FILE       ?= programm.asm
 BIN_FILE       ?= programm.bin
 
 -include make/local.mk
-
 
 override CFLAGS += $(COMMONINC)
 

@@ -10,8 +10,8 @@ SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 CFLAGS ?= 
 LDFLAGS = $(SFML_FLAGS)
 
-# BUILD_TYPE ?= debug
-BUILD_TYPE ?= release
+BUILD_TYPE ?= debug
+# BUILD_TYPE ?= release
 
 
 ifeq ($(BUILD_TYPE), release)
@@ -28,7 +28,7 @@ ifeq ($(BUILD_TYPE), debug)
 			  -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -Wstack-usage=8192                	   \
 			  -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel              \
 			  -Wstrict-overflow=2 -Wsuggest-attribute=noreturn -Wsuggest-final-methods -Wsuggest-final-types             \
-			  -Wsuggest-override -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunreachable-code -Wunused           \
+			  -Wsuggest-override -Wswitch-default -Wsync-nand -Wundef -Wunreachable-code -Wunused           \
 			  -Wuseless-cast -Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing          \
 			  -Wno-old-style-cast -Wno-varargs -Wstack-protector -fcheck-new -fsized-deallocation -fstack-protector         \
 			  -pie -fPIE -Werror=vla 																		                  \
@@ -43,7 +43,7 @@ OUT_O_DIR      ?= bin
 EXECUTABLE_DIR ?= build
 COMMONINC       = -I./processor/include -I./common/include
 SRC             = ./src
-EXECUTABLE     ?= .exe
+EXECUTABLE     ?= exe
 BIN_DIR        ?=
 BIN_FILE       ?= programm.bin
 
@@ -52,11 +52,11 @@ BIN_FILE       ?= programm.bin
 override CFLAGS += $(COMMONINC)
 
 CSRC =  processor/main.cpp                        \
-		processor/src/flags/flags.cpp              \
-		processor/src/processor/processor.cpp       \
-		common/src/lib/lib.cpp                       \
-		common/src/stack/hash.cpp                     \
-		common/src/stack/stack.cpp                     \
+		processor/src/processor/processor.cpp      \
+		common/src/lib/lib.cpp                      \
+		common/src/stack/hash.cpp                    \
+		common/src/stack/stack.cpp                    \
+		common/src/functions_for_files/files.cpp       \
 
 ifeq ($(BUILD_TYPE), debug)
 	CSRC += common/src/logger/log.cpp
@@ -78,7 +78,7 @@ $(COBJ) : $(OUT_O_DIR)/%.o : %.cpp
 
 $(DEPS) : $(OUT_O_DIR)/%.d : %.cpp
 	@mkdir -p $(@D)
-	@$(CC) -E $(CFLAGS) $< -MM -MT $(@:.d=.o) > $@
+	$(CC) -E $(CFLAGS) $< -MM -MT $(@:.d=.o) > $@
 
 
 #======= run ==========================================
@@ -94,7 +94,7 @@ endif
 
 run:
 	@make -f $(MAKEFILE_NAME) makeCodeDir
-	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) --execute $(BIN_DIR)/$(BIN_FILE)
+	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) $(BIN_DIR)/$(BIN_FILE)
 
 rebuild:
 	make -f $(MAKEFILE_NAME) clean

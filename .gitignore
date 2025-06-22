@@ -24,3 +24,8 @@ project_struct/
 
 # dir with log-file
 log/
+
+
+exp.cpp
+exp
+tmp.txt

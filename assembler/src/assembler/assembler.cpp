@@ -27,7 +27,7 @@ enum class AssemblerErrorType
     FWRITE_BAD_RETURN            ,
     UNDEFINED_COMMAND            ,
     UNDEFINED_ENUM_COMMAND       ,
-    BAD_CODE_ARR_REALLOC         ,
+    BAD_CODE_ARRAY_CALLOC        ,
     LABEL_REDEFINE               ,
     BAD_LABELS_CALLOC            ,
     BAD_LABELS_REALLOC           ,
@@ -104,7 +104,7 @@ static void         SetCmdArrCodeElem        (AsmData* AsmDataInfo, int SetElem)
 static Word         GetNextCmd               (AsmData* AsmDataInfo);
 static void         UpdateBufferForMemory    (Word* buffer);
    
-static const char*  GetCmdName               (size_t cmdPointer);
+static const char*  GetCmdName               (size_t cmd_pointer);
    
 static AssemblerErr NullArgCmdPattern        (AsmData* AsmDataInfo, Cmd cmd);
    
@@ -137,13 +137,14 @@ static AssemblerErr InitAllLabels           (AsmData* AsmDataInfo);
 static AssemblerErr LabelsCtor              (AsmData* AsmDataInfo);
 static AssemblerErr LabelsDtor              (AsmData* AsmDataInfo);
    
-static Label        LabelCtor               (const char* name, size_t pointer, bool alreadyDefined);
+static Label        LabelCtor               (const TokenizerLabel* token_label, size_t pointer, bool alreadyDefined);
 static AssemblerErr PushLabel               (AsmData* AsmDataInfo, const Label* label);
 static bool         IsLabelAlready          (const AsmData* AsmDataInfo, const Word* label, size_t* labelPlace);
    
    
+static CmdInfo      GetCmdInfo              (const Token* token);
 static bool         FindDefaultCmd          (const Word* cmd, size_t* defaultCmdPointer);
-static size_t       CalcCodeSize            (const CmdArr* cmd);
+static size_t       CalcCodeSize            (const TokensArray* tokens_array);
    
 static AssemblerErr JmpCmdPattern           (AsmData* AsmDataInfo, Cmd JumpType);
    
@@ -187,7 +188,6 @@ static void         AssemblerAssertPrint       (const AssemblerErr* err, const c
 
 #define ASSEMBLER_VERIF(AsmDataInfo, err, cmd) Verif(AsmDataInfo, &err, cmd, __FILE__, __LINE__, __func__)
 
-
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define ASSEMBLER_ASSERT(Err) do                                                   \
@@ -202,9 +202,9 @@ static void         AssemblerAssertPrint       (const AssemblerErr* err, const c
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr (*GetCmd(size_t cmdPointer)) (AsmData* AsmDataInfo)
+static AssemblerErr (*GetCmd(size_t cmd_pointer)) (AsmData* AsmDataInfo)
 {
-    Cmd cmd = (Cmd) cmdPointer;
+    Cmd cmd = (Cmd) cmd_pointer;
 
     AssemblerErr err = {};
 
@@ -277,24 +277,31 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
 
     AssemblerErr err = {};
 
-    // AsmDataInfo->cmd = ReadBufferFromFile(file->asm_file);
+    // IOfile
 
-    // size_t codeArrSize     = CalcCodeSize(&AsmDataInfo->cmd);
-    // AsmDataInfo->code.size = codeArrSize;
-    // AsmDataInfo->code.code = (int*) calloc(codeArrSize, sizeof(int));
-    // AsmDataInfo->file.asm_file = file->asm_file;
-    // AsmDataInfo->file.bin_file = file->bin_file;
+    AsmDataInfo->file.asm_file = file->asm_file;
+    AsmDataInfo->file.bin_file = file->bin_file;
     
-    // assert(AsmDataInfo->code.code);
-
-
+    // code array
 
     AsmDataInfo->tokens_array = GetTokensArray(file->asm_file);
+    const size_t code_size    = CalcCodeSize(&AsmDataInfo->tokens_array);
+    int*         code_array   = (int*) calloc(code_size, sizeof(*code_array));
+
+    if (!code_array)
+    {
+        err.err = AssemblerErrorType::BAD_CODE_ARRAY_CALLOC;
+        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+    }
+
+    AsmDataInfo->code.code = code_array;
+
+    // log of tokens array
 
     ON_DEBUG(
+    LOG_PRINT(Blue, "code size = %lu\n\n", AsmDataInfo->code.size);
     TokensLog(&AsmDataInfo->tokens_array, file->asm_file);
     )
-
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
@@ -308,7 +315,8 @@ static AssemblerErr AsmDataDtor(AsmData* AsmDataInfo)
     AssemblerErr err = {};
 
     FREE(AsmDataInfo->code.code);
-    BufferDtor(&AsmDataInfo->cmd);
+    // BufferDtor(&AsmDataInfo->cmd);
+    TokensArrayDtor(&AsmDataInfo->tokens_array);
     LabelsDtor(AsmDataInfo);
 
     *AsmDataInfo = {};
@@ -1071,23 +1079,26 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    CmdArr cmdArr    = AsmDataInfo->cmd;
-    size_t cmdQuant  = AsmDataInfo->cmd.size;
+    // CmdArr cmdArr    = AsmDataInfo->cmd;
+    // size_t cmdQuant  = AsmDataInfo->cmd.size;
+
+    const Token* tokens_array = AsmDataInfo->tokens_array.array;
+    const size_t tokens_quant = AsmDataInfo->tokens_array.size;
 
     ASSEMBLER_ASSERT(LabelsCtor(AsmDataInfo));
 
-    size_t cmdPointer  = 0;
+    size_t cmd_pointer = 0;
     size_t codePointer = 0;
 
-    while(cmdPointer < AsmDataInfo->cmd.size)
+    while(cmd_pointer < AsmDataInfo->cmd.size)
     {
-        Word   cmd      = AsmDataInfo->cmd.words[cmdPointer];
+        Word   cmd      = AsmDataInfo->cmd.words[cmd_pointer];
         bool   defined  = true;
-        size_t cmdIndex = cmdPointer;
+        size_t cmdIndex = cmd_pointer;
 
         if (FindDefaultCmd(&cmd, &cmdIndex))
         {
-            cmdPointer  += CmdInfoArr[cmdIndex].argQuant + 1;
+            cmd_pointer += CmdInfoArr[cmdIndex].argQuant + 1;
             codePointer += CmdInfoArr[cmdIndex].codeRecordSize;
             continue;
         }
@@ -1096,7 +1107,7 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
         {
             if (!IsLabelAlready(AsmDataInfo, &cmd, &cmdIndex))
             {
-                cmdPointer++;
+                cmd_pointer++;
                 Label label = LabelCtor(cmd.word, codePointer, defined);
                 ASSEMBLER_ASSERT(PushLabel(AsmDataInfo, &label));
                 continue;
@@ -1109,26 +1120,26 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
         if (IsOneLineComment(&cmd))
         {
             const size_t now_line = cmd.line;
-            while (cmd.line == now_line && cmdPointer < cmdQuant)
+            while (cmd.line == now_line && cmd_pointer < cmdQuant)
             {
-                cmdPointer++;
-                cmd = cmdArr.words[cmdPointer];
+                cmd_pointer++;
+                cmd = cmdArr.words[cmd_pointer];
             }
 
-            // cmdPointer++;
+            // cmd_pointer++;
     
             continue;
         }
 
         if (IsTwoSymbolCommentBegin(&cmd))
         {
-            while (!IsTwoSymbolCommentEnd(&cmd) && cmdPointer < cmdQuant)
+            while (!IsTwoSymbolCommentEnd(&cmd) && cmd_pointer < cmdQuant)
             {
-                cmdPointer++;
-                cmd = cmdArr.words[cmdPointer];
+                cmd_pointer++;
+                cmd = cmdArr.words[cmd_pointer];
             }
 
-            cmdPointer++;
+            cmd_pointer++;
 
             continue;
         }
@@ -1188,13 +1199,13 @@ static AssemblerErr LabelsDtor(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static Label LabelCtor(const char* name, size_t pointer, bool alreadyDefined)
+static Label LabelCtor(const TokenizerLabel* token_label, size_t pointer, bool alreadyDefined)
 {
-    assert(name);
+    assert(token_label);
 
     Label label = {};
 
-    label.name          = name;
+    label.name          = token_label->label;
     label.codePlace     = pointer;
     label.alradyDefined = alreadyDefined;
 
@@ -1215,7 +1226,6 @@ static AssemblerErr PushLabel(AsmData* AsmDataInfo, const Label* label)
 
     Labels->size++;
 
-
     size_t size = Labels->size;
     size_t capacity = Labels->capacity;
 
@@ -1230,12 +1240,11 @@ static AssemblerErr PushLabel(AsmData* AsmDataInfo, const Label* label)
 
     if (!Labels->labels)
     {
-        err.err = AssemblerErrorType::BAD_CODE_ARR_REALLOC;
+        err.err = AssemblerErrorType::BAD_LABELS_REALLOC;
         return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
     Labels->labels[Labels->size - 1] = *label;
-    
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
@@ -1266,48 +1275,61 @@ static bool IsLabelAlready(const AsmData* AsmDataInfo, const Word* label, size_t
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static size_t CalcCodeSize(const CmdArr* cmd)
+static size_t CalcCodeSize(const TokensArray* tokens_array)
 {
-    assert(cmd);
+    assert(tokens_array);
 
-    size_t codeSize = 0;
+    const size_t tokens_array_size = tokens_array->size;
+    const Token* tokens            = tokens_array->array;
+    
+    size_t code_array_size = 0;
 
-    for (size_t cmdPointer = 0; cmdPointer < cmd->size; cmdPointer++)
+    for (size_t cmd_pointer = 0; cmd_pointer < tokens_array_size; cmd_pointer++)
     {
-        Word   temp         = cmd->words[cmdPointer];
-        size_t defCmdPoiner = 0;
+        const Token token = tokens[cmd_pointer];
 
-        if (FindDefaultCmd(&temp, &defCmdPoiner))
+        const CmdInfo cmd_info = GetCmdInfo(&token);
+
+        if (cmd_info.cmd != Cmd::undef_cmd)
         {
-            size_t argQuant        = CmdInfoArr[defCmdPoiner].argQuant;
-            size_t codeRecordSize  = CmdInfoArr[defCmdPoiner].codeRecordSize;
-
-            cmdPointer            += argQuant;
-            codeSize              += codeRecordSize;
+            cmd_pointer            += cmd_info.argQuant;
+            code_array_size        += cmd_info.codeRecordSize;
         }
     }
 
-
-
-    return codeSize;
+    return code_array_size;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool FindDefaultCmd(const Word* cmd, size_t* defaultCmdPointer)
+static CmdInfo GetCmdInfo(const Token* token)
 {
-    assert(cmd);
-    assert(defaultCmdPointer);
+    assert(token);
+
+    if (token->type != TokenType::token_command)
+        return {};
+
+    Cmd token_cmd = token->value.command;
 
     for (size_t i = 0; i < CmdInfoArrSize; i++)
     {
-        const char* defCmd = GetCmdName(i);
-
-        if (strcmp(cmd->word, defCmd) != 0) continue;
-
-        *defaultCmdPointer = i;
-        return true;
+        CmdInfo cmd = CmdInfoArr[i];
+    
+        if (token_cmd == cmd.cmd)
+            return cmd;
     }
+
+    assert(0 && "we must find cmd and return in cycle");
+    return {};
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool FindDefaultCmd(const Token* token, size_t* defaultCmdPointer)
+{
+    assert(token);
+    assert(defaultCmdPointer);
+
 
     return false;
 }
@@ -1560,9 +1582,9 @@ static bool IsTwoSymbolCommentEnd(const Word* cmd)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static const char* GetCmdName(size_t cmdPointer)
+static const char* GetCmdName(size_t cmd_pointer)
 {
-    return CmdInfoArr[cmdPointer].name;
+    return CmdInfoArr[cmd_pointer].name;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1706,9 +1728,7 @@ static void PrintError(const AssemblerErr* err)
     const char* cmdName      = nullptr;
     
     if (err->cmd.len)
-    {
         cmdName   = err->cmd.word;
-    }
 
     switch (err->err)
     {
@@ -1741,8 +1761,8 @@ static void PrintError(const AssemblerErr* err)
             COLOR_PRINT(RED, "Error: undefined enum command\n");
             break;
 
-        case AssemblerErrorType::BAD_CODE_ARR_REALLOC:
-            COLOR_PRINT(RED, "Error: realloc in write cmd in code return nullptr.\n");
+        case AssemblerErrorType::BAD_CODE_ARRAY_CALLOC:
+            COLOR_PRINT(RED, "Errod: failed calloc for code array.\n");
             break;
 
         case AssemblerErrorType::FWRITE_BAD_RETURN:
@@ -1755,10 +1775,6 @@ static void PrintError(const AssemblerErr* err)
 
         case AssemblerErrorType::BAD_LABELS_CALLOC:
             COLOR_PRINT(RED, "Error: failed to allocate memory for labels.\n");
-            break;
-
-        case AssemblerErrorType::BAD_LABELS_REALLOC:
-            COLOR_PRINT(RED, "Error: failer to reallocate memory for labels.\n");
             break;
 
         case AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND:

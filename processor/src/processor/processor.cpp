@@ -8,6 +8,7 @@
 #include "stack/stack.hpp"
 #include "global/global_include.hpp"
 #include "lib/lib.hpp"
+#include "functions_for_files/files.hpp"
 
 #ifdef _DEBUG
 #include "logger/log.hpp"
@@ -15,7 +16,7 @@
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// #define _PROCESSOR_DEBUG
+#define _PROCESSOR_DEBUG
 
 #ifdef _PROCESSOR_DEBUG
     #define ON_PROCESSOR_DEBUG(...) __VA_ARGS__ 
@@ -85,7 +86,7 @@ static ProcessorErr   Verif                      (SPU* spu, ProcessorErr* err,  
 static void           PrintError                 (          ProcessorErr* err);
 static void           ProcessorAssertPrint       (          ProcessorErr* Err, const char* File, int Line, const char* Func);
 
-static ProcessorErr   SpuCtor                    (SPU* spu, const char* file);
+static ProcessorErr   SpuCtor                    (SPU* spu, const ProcessorInput* input);
 static ProcessorErr   SpuDtor                    (SPU* spu);
 static ProcessorErr   ExecuteCommands            (SPU* spu);
 
@@ -196,12 +197,32 @@ static void WhereProcessorIs (const char* cmd);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void RunProcessor(const char* file)
+ProcessorInput GetProcessorInput(int argc, const char* argv[])
 {
-    CheckFileExtension(file);
+    assert(argv);
+    ProcessorInput input = {};
+    if (argc <= 1)
+        EXIT(EXIT_FAILURE, "No name of executable file.");
+
+    input.executable_file = argv[1];
+    
+    if (argc == 1)
+        input.console_args = nullptr;
+
+    else
+        input.console_args = &argv[1];
+    
+    return input;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void RunProcessor(const ProcessorInput* input)
+{
+    CheckFileExtension(input->executable_file);
 
     SPU spu = {};
-    PROCESSOR_ASSERT(SpuCtor(&spu, file));
+    PROCESSOR_ASSERT(SpuCtor(&spu, input));
     PROCESSOR_ASSERT(ExecuteCommands(&spu));
 
     PROCESSOR_ASSERT(SpuDtor(&spu));
@@ -211,14 +232,14 @@ void RunProcessor(const char* file)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static ProcessorErr SpuCtor(SPU* spu, const char* file)
+static ProcessorErr SpuCtor(SPU* spu, const ProcessorInput* input)
 {
     assert(spu);
-    assert(file);
+    assert(input);
 
     ProcessorErr  err = {};
 
-    PROCESSOR_ASSERT(CodeCtor(spu, file));
+    PROCESSOR_ASSERT(CodeCtor(spu, input->executable_file));
 
     spu->ip = 0;
 
@@ -267,10 +288,7 @@ static ProcessorErr ExecuteCommands(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr  err = {};
-    // ON_DEBUG(
-    // LOG_PRINT(Green, "We are in processor\n");
-    // )
+    ProcessorErr err = {};
 
     while (GetIp(spu) < GetCodeSize(spu))
     {
@@ -739,11 +757,12 @@ static ProcessorErr HandleDraw(SPU* spu)
         {
             if (event.type == sf::Event::KeyPressed)
             {
-                if (event.key.code == sf::Keyboard::Space)
-                    window.close();
-    
-                else if (event.key.code == sf::Keyboard::Escape)
-                    window.close();    
+                switch (event.key.code)
+                {
+                    case sf::Keyboard::Space :
+                    case sf::Keyboard::Escape: window.close(); break;
+                    default:                                   break; 
+                }
             }   
 
             if (event.type == sf::Event::Closed)
@@ -861,12 +880,9 @@ static ProcessorErr PpMmPattern(SPU* spu, Cmd cmd)
         spu->ip += CmdInfoArr[mm].codeRecordSize; 
     }
 
-    else 
-    {
+    else
         assert(0 && "undef situation: msut be 'pp' or 'mm' cmd.");
-    }
 
-    
     return PROCESSOR_VERIF(spu, err);
 }
 
@@ -1149,7 +1165,7 @@ static ProcessorErr CodeCtor(SPU* spu, const char* file)
 
     ProcessorErr err = {};
 
-    FILE* CodeFilePtr = fopen(file, "rb");
+    FILE* CodeFilePtr = SafeFopen(file, "rb");
 
     if (!CodeFilePtr)
     {
