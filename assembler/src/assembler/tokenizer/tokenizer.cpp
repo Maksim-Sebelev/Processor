@@ -22,44 +22,46 @@ struct Pointers
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 __attribute__ ((noreturn))
-static void           BadSyntaxErr         (const char* asm_file, size_t line, size_t pos_in_line);
+static void           BadSyntaxErr                      (const char* asm_file, size_t line, size_t pos_in_line);
 
-static Token*         TokensCalloc         (size_t buffer_len);
-static void           TokensRealloc        (Token** tokens_array, size_t tokens_quant);
-static TokensArray    TokensArrayCtor      (Token*  tokens_array, size_t size);
+static Token*         TokensCalloc                      (size_t buffer_len);
+static void           TokensRealloc                     (Token** tokens_array, size_t tokens_quant);
+static TokensArray    TokensArrayCtor                   (Token*  tokens_array, size_t size);
 
-static bool           GetCmdFlag           (const char* word, const char* command, size_t command_len);
-static Cmd            GetCmd               (const char* word, size_t* word_len);
-static Registers      GetRegister          (const char* word, size_t* word_len);
-static Bracket        GetBracket           (const char* word, size_t* word_len);
-static Separator      GetSeparator         (const char* word, size_t* word_len);
-static MathOperator   GetMathOperator      (const char* word, size_t* word_len);
-static TokenizerLabel GetLabel             (const char* word                  );
-static Number         GetNumber            (const char* word                  );
+static bool           GetCmdFlag                        (const char* word, const char* command, size_t command_len);
 
-static bool           HandleComment        (const char* word , Pointers* pointer                                               );
-static void           HandleGeneralPattern (Token* tokens_arr, Pointers* pointer,                               size_t word_len);
-static void           HandleCmd            (Token* tokens_arr, Pointers* pointer, Cmd            cmd          , size_t word_len);
-static void           HandleRegister       (Token* tokens_arr, Pointers* pointer, Registers      reg          , size_t word_len);
-static void           HandleBracket        (Token* tokens_arr, Pointers* pointer, Bracket        bracket      , size_t word_len);
-static void           HandleSeparator      (Token* tokens_arr, Pointers* pointer, Separator      separator    , size_t word_len);
-static void           HandleMathOperator   (Token* tokens_arr, Pointers* pointer, MathOperator   math_operator, size_t word_len);
-static void           HandleLabel          (Token* tokens_arr, Pointers* pointer, TokenizerLabel label                         );
-static void           HandleNumber         (Token* tokens_arr, Pointers* pointer, Number         number                        );
+static Cmd            GetCmd                            (const char* word, size_t* word_len);
+static Registers      GetRegister                       (const char* word, size_t* word_len);
+static Bracket        GetBracket                        (const char* word, size_t* word_len);
+static Separator      GetSeparator                      (const char* word, size_t* word_len);
+static MathOperator   GetMathOperator                   (const char* word, size_t* word_len);
+static TokenizerLabel GetLabel                          (const char* word                  );
+static Number         GetNumber                         (const char* word                  );
+
+static bool           HandleComment                     (const char* word , Pointers* pointer                                               );
+static void           HandleGeneralPattern              (Token* tokens_arr, Pointers* pointer,                               size_t word_len);
+static void           HandleCmd                         (Token* tokens_arr, Pointers* pointer, Cmd            cmd          , size_t word_len);
+static void           HandleRegister                    (Token* tokens_arr, Pointers* pointer, Registers      reg          , size_t word_len);
+static void           HandleBracket                     (Token* tokens_arr, Pointers* pointer, Bracket        bracket      , size_t word_len);
+static void           HandleSeparator                   (Token* tokens_arr, Pointers* pointer, Separator      separator    , size_t word_len);
+static void           HandleMathOperator                (Token* tokens_arr, Pointers* pointer, MathOperator   math_operator, size_t word_len);
+static void           HandleLabel                       (Token* tokens_arr, Pointers* pointer, TokenizerLabel label                         );
+static void           HandleNumber                      (Token* tokens_arr, Pointers* pointer, Number         number                        );
 
 static bool           IsNumSymbol                       (char c);
 static bool           IsPointSymbol                     (char c);
 static bool           IsColon                           (char c);
 static bool           IsLetterSymbol                    (char c);
 static bool           IsUnderLineSymbol                 (char c);
-static bool           IsLetterOrUnderLineSymbol         (char c);
 static bool           IsLetterOrNumberOrUnderLineSymbol (char c);
 static bool           IsSpace                           (char c);
 static bool           IsSlashN                          (char c);
 static bool           IsSlash0                          (char c);
 static bool           IsSlashNOrSlashN                  (char c);
 static bool           IsPassSymbol                      (char c);
+
 static void           UpdatePointersAfterSpace          (Pointers* pointer);
 static void           UpdatePointersAfterSlashN         (Pointers* pointer);
 
@@ -69,8 +71,8 @@ TokensArray GetTokensArray(const char* asm_file)
 {
     assert(asm_file);
 
-    size_t      buffer_size = 0;
-    const char* buffer      = ReadFileInBuffer(asm_file, &buffer_size);
+    size_t buffer_size = 0;
+    char*  buffer      = ReadFileInBuffer(asm_file, &buffer_size);
 
     Token* tokens_array = TokensCalloc(buffer_size);
 
@@ -603,14 +605,6 @@ static bool IsUnderLineSymbol(char c)
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsLetterOrUnderLineSymbol(char c)
-{
-    return  IsLetterSymbol   (c) ||
-            IsUnderLineSymbol(c);
-}
-
-//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 static bool IsLetterOrNumberOrUnderLineSymbol(char c)
 {
     return  IsLetterSymbol    (c) ||
@@ -868,8 +862,8 @@ static const char* GetRegisterInStr(Registers reg)
 
 static void LogLabel(TokenizerLabel label)
 {
-    const size_t len   = label.label_len;
-    const char*  value = label.label;
+    const size_t len   = label.name_len;
+    const char*  value = label.name;
 
     LOG_PRINT(Green, "\tvalue = '%.*s'\n", len, value);
 

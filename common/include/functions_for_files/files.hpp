@@ -9,7 +9,7 @@
 
 FILE*       SafeFopen       (const char* file, const char* modes);
 size_t      CalcFileLen     (const char* file);
-const char* ReadFileInBuffer(const char* file, size_t* len);
+char*       ReadFileInBuffer(const char* file, size_t* len);
 void        BufferDtor      (const char* buffer);
 const char* GetFileExtension(const char* file_name);
 

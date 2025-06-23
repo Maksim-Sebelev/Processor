@@ -37,7 +37,7 @@ size_t CalcFileLen(const char* file)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-const char* ReadFileInBuffer(const char* file, size_t* len)
+char* ReadFileInBuffer(const char* file, size_t* len)
 {
     assert(file);
     assert(len);
@@ -56,10 +56,11 @@ const char* ReadFileInBuffer(const char* file, size_t* len)
 
     if (fread_return != file_len)
         EXIT(EXIT_FAILURE, "failed reading '%s'.", file);
-        
+
+
     *len = file_len;
 
-    return (const char*) buffer;
+    return buffer;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

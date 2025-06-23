@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
+#include <stddef.h>
 #include "assembler/assembler.hpp"
 #include "fileread/fileread.hpp"
 #include "global/global_include.hpp"
@@ -84,13 +85,32 @@ typedef WordArray CmdArr;
 struct AsmData
 {
     TokensArray tokens_array;
-    CmdArr cmd;
     CodeArr    code         ;
     Labels     labels       ;
     IOfile     file         ;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+using PushType = uint8_t;
+static_assert(sizeof(PushType) == 1, "for economy of memory PushType must have size 1 byte. In your system uint8_t is not 1 byte");
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+using PopType = uint8_t;
+static_assert(sizeof(PopType) == 1, "for economy of memory PopType must have size 1 byte. In your system uint8_t is not 1 byte");
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+using DrawType = uint8_t;
+static_assert(sizeof(PopType) == 1, "for economy of memory DrawType must have size 1 byte. In your system uint8_t is not 1 byte");
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+using RGBAtype = uint8_t;
+static_assert(sizeof(PopType) == 1, "for economy of memory DrawType must have size 1 byte. In your system uint8_t is not 1 byte");
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static void         CheckInputFiles          (const IOfile* files);
 
@@ -100,13 +120,9 @@ static AssemblerErr WriteCmdInCodeArr        (AsmData* AsmDataInfo);
 static AssemblerErr WriteCodeArrInFile       (AsmData* AsmDataInfo);
    
    
-static void         SetCmdArrCodeElem        (AsmData* AsmDataInfo, int SetElem);
-static Word         GetNextCmd               (AsmData* AsmDataInfo);
+static void         SetNextCodeInstruction        (AsmData* AsmDataInfo, int instruction);
 static Token GetNextToken(AsmData* AsmDataInfo);
 
-static void         UpdateBufferForMemory    (Word* buffer);
-   
-static const char*  GetCmdName               (size_t cmd_pointer);
    
 static AssemblerErr NullArgCmdPattern        (AsmData* AsmDataInfo, Cmd cmd);
    
@@ -116,30 +132,7 @@ static AssemblerErr PpMmPattern              (AsmData* AsmDataInfo, Cmd cmd);
 static bool IsTokenCommand(const Token* token, size_t* cmd_pointer);
 
 
-static int          GetPushArg              (PushType* Push);
-static int          GetPopArg               (PopType*  Pop );
-static void         PushTypeCtor            (PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t Sum);
-static void         PopTypeCtor             (PopType*  Pop , uint8_t Reg, uint8_t Mem, uint8_t Sum);
-   
-static int          GetRegisterPointer      (const Word* word);
-static char         GetChar                 (const Word* word);
-   
-static bool         IsCharNum               (char c);
-static bool         IsStrInt                (const Word* word);
-static bool         IsInt                   (const Word* word, char* wordEndPtr);
-static bool         IsChar                  (const Word* word, char* wordEndPtr);
-static bool         IsRegister              (const Word* word);
-static bool         IsMemory                (const Word* word);
-static bool         IsSum                   (const Word* word);
-static bool         IsLabel                 (const Word* word);
-
-static bool IsLabel(const Token* token);
-
-static bool         IsOneLineComment        (const Word* cmd);
-
-static bool         IsTwoSymbolCommentBegin (const Word* word);
-static bool         IsTwoSymbolCommentEnd   (const Word* word);
-
+static bool         IsTokenLabel(const Token* token);
 
 static AssemblerErr InitAllLabels           (AsmData* AsmDataInfo);
 static AssemblerErr LabelsCtor              (AsmData* AsmDataInfo);
@@ -147,15 +140,25 @@ static AssemblerErr LabelsDtor              (AsmData* AsmDataInfo);
 
 static Label        LabelCtor               (const TokenizerLabel* token_label, size_t pointer, bool alreadyDefined);
 static AssemblerErr PushLabel               (AsmData* AsmDataInfo, const Label* label);
-static bool         IsLabelAlready          (const AsmData* AsmDataInfo, const Word* label, size_t* labelPlace);
 static bool IsLabelAlready(const AsmData* AsmDataInfo, const TokenizerLabel* label, size_t* labelPlace);
 
 
 static CmdInfo      GetCmdInfo              (const Token* token);
-static bool         FindDefaultCmd          (const Word* cmd, size_t* defaultCmdPointer);
 static size_t       CalcCodeSize            (const TokensArray* tokens_array);
 
-static AssemblerErr JmpCmdPattern           (AsmData* AsmDataInfo, Cmd JumpType);
+static AssemblerErr JmpCmdPattern           (AsmData* AsmDataInfo, Cmd jump_type);
+
+
+static bool IsTokenNumber(const Token* token);
+static PushType GetPushType(bool stack, bool reg, bool memory, bool sum);
+static int GetNumberFromToken(const Token* token);
+static bool IsTokenRegister(const Token* token);
+static int GetRegisterFromToken(const Token* token);
+static bool IsTokenMemory(const Token* token);
+static bool IsTokenRightBracket(const Token* token);
+static bool IsTokenPlus(const Token* token);
+static PopType GetPopType(bool reg, bool memory, bool int_mem_addr, bool aligment);
+static DrawType GetDrawType(bool IsReg[3]);
 
 
 static AssemblerErr HandlePush              (AsmData* AsmDataInfo);
@@ -182,8 +185,6 @@ static AssemblerErr HandleOutrc             (AsmData* AsmDataInfo);
 static AssemblerErr HandleDraw              (AsmData* AsmDataInfo);
 static AssemblerErr HandleHlt               (AsmData* AsmDataInfo);
 static AssemblerErr HandleLabel             (AsmData* AsmDataInfo);
-static AssemblerErr HandleOneLineComment    (AsmData* AsmDataInfo);
-static AssemblerErr HandleTwoSymbolComment  (AsmData* AsmDataInfo);
 static AssemblerErr HandleRGBA              (AsmData* AsmDataInfo);
 
 
@@ -321,6 +322,7 @@ static AssemblerErr (*GetCmd(size_t cmd_pointer)) (AsmData* AsmDataInfo)
         case Cmd::draw:      return HandleDraw;
         case Cmd::rgba:      return HandleRGBA;
         case Cmd::CMD_QUANT:
+        case Cmd::undef_cmd:
         default:
         {
             err.err = AssemblerErrorType::UNDEFINED_ENUM_COMMAND;
@@ -354,7 +356,7 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
             continue;
         }
 
-        if (IsLabel(&token))
+        if (IsTokenLabel(&token))
         {
             ASSEMBLER_ASSERT(HandleLabel(AsmDataInfo));
             continue;
@@ -418,72 +420,91 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    char*       endBuffer = nullptr;
-
-    StackElem_t PushElem = (StackElem_t) strtol(buffer.word, &endBuffer, 10);
-    PushType    Push     = {};
-    int         SetElem  = 0;
-    int         Sum      = 0;
-
-
     Token    push_arg_token  = GetNextToken(AsmDataInfo);
     PushType push_type       = 0;
     int      push_arg_int    = 0;
-    int      sum             = 0;
+    int      aligment        = 0;
 
     if (IsTokenNumber(&push_arg_token))
     {
         push_type    = GetPushType(1, 0, 0, 0);
-        push_arg_int = GetNumberFromToken(&push_arg_token);  
-        sum          = 0;
+        push_arg_int = GetNumberFromToken(&push_arg_token);
+        aligment     = 0;
     }
 
     else if (IsTokenRegister(&push_arg_token))
     {
         push_type    = GetPushType(0, 1, 0, 0);
         push_arg_int = GetRegisterFromToken(&push_arg_token);
-        sum          = 0;
+        aligment     = 0;
     }
 
     else if (IsTokenMemory(&push_arg_token))
     {
-        UpdateBufferForMemory(&buffer);
+              push_arg_token      = GetNextToken(AsmDataInfo);
+        Token push_arg_next_token = GetNextToken(AsmDataInfo);
 
-        StackElem_t PushElemMemIndex = (StackElem_t) strtol(buffer.word, &endBuffer, 10);
-
-        if (IsInt(&buffer, endBuffer))
+        if (IsTokenRightBracket(&push_arg_next_token))
         {
-            PushTypeCtor(&Push, 0, 0, 1, 0);
-            SetElem = PushElemMemIndex;
-            Sum = 0;
+            if (IsTokenNumber(&push_arg_token))
+            {
+                push_type    = GetPushType(0, 0, 1, 0);
+                push_arg_int = GetNumberFromToken(&push_arg_token);
+                aligment     = 0;
+            }
+
+            else if (IsTokenRegister(&push_arg_token))
+            {
+                push_type    = GetPushType(0, 1, 1, 0);
+                push_arg_int = GetRegisterFromToken(&push_arg_token);
+                aligment     = 0;
+            }
+
+            else
+            {
+                err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
+                return ASSEMBLER_VERIF(AsmDataInfo, err, push_arg_token);
+            }
         }
 
-        else if (IsRegister(&buffer))
+        else if (IsTokenRegister(&push_arg_token) &&
+                 IsTokenPlus(&push_arg_next_token))
         {
-            PushTypeCtor(&Push, 0, 1, 1, 0);
-            SetElem = GetRegisterPointer(&buffer);
-            Sum = 0;
-        }
+            push_arg_next_token = GetNextToken(AsmDataInfo);
 
-        else if (IsSum(&buffer))
-        {
-            PushTypeCtor(&Push, 0, 0, 1, 1);
-            SetElem      = GetRegisterPointer(&buffer);
-            buffer.word += REGISTERS_NAME_LEN + 1;
-            Sum          = (int) strtol(buffer.word, &endBuffer, 10);
+            if (IsTokenNumber(&push_arg_next_token))
+            {
+                push_type    = GetPushType(0, 1, 0, 1);
+                push_arg_int = GetRegisterFromToken(&push_arg_token);
+                aligment     = GetNumberFromToken(&push_arg_next_token);
+            }
+                
+            else
+            {
+                err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
+                return ASSEMBLER_VERIF(AsmDataInfo, err, push_arg_token);   
+            }
+
+            push_arg_next_token = GetNextToken(AsmDataInfo);
+
+            if (IsTokenRightBracket(&push_arg_next_token))
+            {
+                err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
+                return ASSEMBLER_VERIF(AsmDataInfo, err, push_arg_token);
+            }
         }
     }
 
     else
     {
         err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, buffer);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, push_arg_token);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, push);
-    SetCmdArrCodeElem(AsmDataInfo, GetPushArg(&Push));
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
-    SetCmdArrCodeElem(AsmDataInfo, Sum);
+    SetNextCodeInstruction(AsmDataInfo, push);
+    SetNextCodeInstruction(AsmDataInfo, push_type);
+    SetNextCodeInstruction(AsmDataInfo, push_arg_int);
+    SetNextCodeInstruction(AsmDataInfo, aligment);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
@@ -493,7 +514,7 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
 static PushType GetPushType(bool stack, bool reg, bool memory, bool sum)
 {
     PushType type = 0;
-    type = (stack << 3) | (reg << 2) | (memory << 1) | (sum);
+    type = (PushType) ((stack << 3) | (reg << 2) | (memory << 1) | (sum));
 
     return type;
 }
@@ -504,7 +525,7 @@ static int GetNumberFromToken(const Token* token)
 {
     assert(token);
 
-    const char* number_str = token->value.number.number;
+    const char* number_str = token->value.number.number    ; assert(number_str);
     size_t      str_len    = token->value.number.number_len;
 
     char* number_str_end = nullptr;
@@ -532,33 +553,14 @@ static int GetRegisterFromToken(const Token* token)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void UpdateBufferForMemory(Word* buffer)
+static bool IsTokenPlus(const Token* token)
 {
-    assert(buffer);
-    assert(buffer->word);
-
-    buffer->len -= 2;
-    buffer->word++;
-
-    return;
+    assert(token);
+    return  (token->type            == TokenType   ::token_math_operation) &&
+            (token->value.operation == MathOperator::plus);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-// static AssemblerErr UpdateBufferForMemory(char** buffer, size_t* bufferSize)
-// {
-//     assert(buffer);
-//     assert(bufferSize);
-
-//     AssemblerErr err = {};
-//     (*buffer)[*bufferSize - 1] = '\0';
-//     *bufferSize -= 2;
-//     (*buffer)++;
-
-//     return ASSEMBLER_VERIF(err);
-// }
-
-// //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static AssemblerErr HandlePop(AsmData* AsmDataInfo)
 {
@@ -566,62 +568,90 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
     
     AssemblerErr err = {};
 
-    Word buffer = GetNextCmd(AsmDataInfo);
+    Token   pop_arg_token = GetNextToken(AsmDataInfo);
+    PopType pop_type      = 0;
+    int     pop_arg_int   = 0;
+    int     aligment      = 0;
 
-    PopType Pop = {};
-    int SetElem = 0;
-    int Sum     = 0;
-
-    if (IsRegister(&buffer))
+    if (IsTokenRegister(&pop_arg_token))
     {
-        PopTypeCtor(&Pop, 1, 0, 0);
-        SetElem = GetRegisterPointer(&buffer);
-        Sum = 0;
+        pop_type    = GetPopType(1, 0, 0, 0);
+        pop_arg_int = GetRegisterFromToken(&pop_arg_token);
+        aligment    = 0;
     }
 
-    else if (IsMemory(&buffer))
+    else if (IsTokenMemory(&pop_arg_token))
     {
-        UpdateBufferForMemory(&buffer);
+              pop_arg_token      = GetNextToken(AsmDataInfo);
+        Token pop_arg_next_token = GetNextToken(AsmDataInfo);
 
-        char*       endBuffer       = nullptr;
-        StackElem_t PopElemMemIndex = (StackElem_t) strtol(buffer.word, &endBuffer,  10);
-
-        if (IsInt(&buffer, endBuffer))
+        if (IsTokenRightBracket(&pop_arg_next_token))
         {
-            PopTypeCtor(&Pop, 0, 1, 0);
-            SetElem = PopElemMemIndex;
-            Sum = 0;
+            if (IsTokenNumber(&pop_arg_token))
+            {
+                pop_type    = GetPopType(0, 1, 1, 0);
+                pop_arg_int = GetNumberFromToken(&pop_arg_token);
+                aligment    = 0;
+            }
+
+            else if (IsTokenRegister(&pop_arg_token))
+            {
+                pop_type    = GetPopType(1, 1, 0, 0);
+                pop_arg_int = GetRegisterFromToken(&pop_arg_token);
+                aligment    = 0;
+            }
+
+            else
+            {
+                err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
+                return ASSEMBLER_VERIF(AsmDataInfo, err, pop_arg_token);
+            }
         }
 
-        else if (IsRegister(&buffer))
+        else if (IsTokenRegister(&pop_arg_token) &&
+                 IsTokenPlus    (&pop_arg_next_token))
         {
-            PopTypeCtor(&Pop, 1, 1, 0);
-            SetElem = GetRegisterPointer(&buffer);
-            Sum = 0;
+            pop_arg_next_token = GetNextToken(AsmDataInfo);
+            
+            if (IsTokenNumber(&pop_arg_next_token))
+            {
+                pop_type    = GetPopType(1, 1, 0, 1);
+                pop_arg_int = GetRegisterFromToken(&pop_arg_token);
+                aligment    = GetNumberFromToken(&pop_arg_next_token);
+            }
+
+            else
+            {
+                err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
+                return ASSEMBLER_VERIF(AsmDataInfo, err, pop_arg_token);
+            }
+
         }
 
-        else if (IsSum(&buffer))
-        {
-            PopTypeCtor(&Pop, 0, 1, 1);
-            SetElem      = GetRegisterPointer(&buffer);
-            buffer.word += REGISTERS_NAME_LEN + 1;
-            Sum          = (int) strtol(buffer.word, &endBuffer, 10);
-        }
     }
 
     else
     {
         err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, buffer);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, pop_arg_token);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, pop);
-    SetCmdArrCodeElem(AsmDataInfo, GetPopArg(&Pop));
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
-    SetCmdArrCodeElem(AsmDataInfo, Sum);
-
+    SetNextCodeInstruction(AsmDataInfo, Cmd::pop);
+    SetNextCodeInstruction(AsmDataInfo, pop_type);
+    SetNextCodeInstruction(AsmDataInfo, pop_arg_int);
+    SetNextCodeInstruction(AsmDataInfo, aligment);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopType GetPopType(bool reg, bool memory, bool int_mem_addr, bool aligment)
+{
+    PopType type = 0;
+    type = (PopType) ((reg << 3) | (memory << 2) | (int_mem_addr << 1) | aligment);
+
+    return type;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -695,37 +725,36 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    Word callArg = GetNextCmd(AsmDataInfo);
+    Token call_arg_token = GetNextToken(AsmDataInfo);
+    int   call_arg_int   = 0;
 
-    int SetElem = 0;
-
-    if (IsLabel(&callArg))
+    if (IsTokenLabel(&call_arg_token))
     {
-        size_t labelPointer = 0;
+        size_t label_pointer = 0;
 
-        if (IsLabelAlready(AsmDataInfo, &callArg, &labelPointer))
+        if (IsLabelAlready(AsmDataInfo, &call_arg_token.value.label, &label_pointer))
         {
-            Label label = AsmDataInfo->labels.labels[labelPointer];
-            SetElem     = (int) (label.codePlace);
+            Label label  = AsmDataInfo->labels.labels[label_pointer];
+            call_arg_int = (int) label.codePlace;
         }
 
         else
         {
             err.err = AssemblerErrorType::LABEL_REDEFINE;
-            return ASSEMBLER_VERIF(AsmDataInfo, err, callArg);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, call_arg_token);
         }
     }
 
     else
     {
         err.err = AssemblerErrorType::LABEL_REDEFINE;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, callArg);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, call_arg_token);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, Cmd::call);
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
+    SetNextCodeInstruction(AsmDataInfo, Cmd::call);
+    SetNextCodeInstruction(AsmDataInfo, call_arg_int);
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err, callArg);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, call_arg_token);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -739,40 +768,40 @@ static AssemblerErr HandleRet(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd cmd)
+static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd pp)
 {
     assert(AsmDataInfo);
 
     AssemblerErr err = {};
         
-    Word        ppArg    = GetNextCmd(AsmDataInfo);
-    int         SetElem  = 0;
+    Token  pp_arg_token = GetNextToken(AsmDataInfo);
+    int    pp_arg_int   = 0;
 
-    if (IsRegister(&ppArg))
+    if (IsTokenRegister(&pp_arg_token))
     {
-        SetElem = GetRegisterPointer(&ppArg);
+        pp_arg_int = GetRegisterFromToken(&pp_arg_token);
     }
 
     else
     {
-        if (cmd == Cmd::pp)
+        if (pp == Cmd::pp)
         {
             err.err = AssemblerErrorType::INCORRECT_PP_ARG;
-            return ASSEMBLER_VERIF(AsmDataInfo, err, ppArg);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, pp_arg_token);
         }
 
-        else if (cmd == Cmd::mm)
+        else if (pp== Cmd::mm)
         {
             err.err = AssemblerErrorType::INCORRECT_MM_ARG;
-            return ASSEMBLER_VERIF(AsmDataInfo, err, ppArg);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, pp_arg_token);
         }
 
         assert(0 && "undef situation: must be 'pp' or 'mm' cmd");
         return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, cmd);
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
+    SetNextCodeInstruction(AsmDataInfo, pp);
+    SetNextCodeInstruction(AsmDataInfo, pp_arg_int);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
@@ -897,51 +926,65 @@ static AssemblerErr HandleDraw(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    Word firstArg  = GetNextCmd(AsmDataInfo);
-    Word secondArg = GetNextCmd(AsmDataInfo);
-
-    // char* firstArgEndPtr  = nullptr;
-    // char* secondArgEndPtr = nullptr;
-
-    // strtol(firstArg.word,  &firstArgEndPtr,  10);
-    // strtol(secondArg.word, &secondArgEndPtr, 10);
-    
-    bool IsReg1 = IsRegister(&firstArg);
-    bool IsReg2 = IsRegister(&secondArg);
-
-    
-    if (IsReg1 && IsReg2)
+    Token draw_arg_token[3] = 
     {
-        SetCmdArrCodeElem(AsmDataInfo, Cmd::draw                     );
-        SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(&firstArg ));
-        SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(&secondArg));
+        GetNextToken(AsmDataInfo),
+        GetNextToken(AsmDataInfo),
+        GetNextToken(AsmDataInfo),
+    };
 
-        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+    int  draw_arg_int[3] = {};
+    bool IsReg       [3] = {};
+
+    for (size_t i = 0; i < 3; i++)
+    {
+        Token token = draw_arg_token[i];
+        if (IsTokenRegister(&token))
+        {
+            IsReg[i] = 1;
+            draw_arg_int[i] = GetRegisterFromToken(&token);
+            continue;
+        }
+
+        else if (IsTokenNumber(&token))
+        {
+            IsReg[i] = 0;
+            draw_arg_int[i] = GetNumberFromToken(&token);
+            continue;
+        }
+
+        err.err = AssemblerErrorType::INCORRECT_PP_ARG;
+        return ASSEMBLER_VERIF(AsmDataInfo, err, token);
     }
 
-    else if (!IsReg1)
-    {
-        err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, firstArg);
-    }
+    DrawType type = GetDrawType(IsReg);
 
-    else if (!IsReg2)
-    {
-        err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, secondArg);
-    }
+    SetNextCodeInstruction(AsmDataInfo, Cmd::draw);
+    SetNextCodeInstruction(AsmDataInfo, type);
+    for (size_t i = 0; i < 3; i++)
+        SetNextCodeInstruction(AsmDataInfo, draw_arg_int[i]);
 
-    err.err = AssemblerErrorType::INVALID_INPUT_AFTER_POP;
-    return ASSEMBLER_VERIF(AsmDataInfo, err, firstArg);
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-typedef int RGBATYpe;
+static DrawType GetDrawType(bool IsReg[3])
+{
+    DrawType type = 0;
+    type =  (DrawType) ((IsReg[2] << 2) | (IsReg[1] << 1) | (IsReg[0]));
+    return type;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+typedef uint8_t RGBATYpe;
 
 static RGBATYpe GetRGBAType(bool isReg[4])
 {
-    return (isReg[3] << 24) | (isReg[2] << 16) | (isReg[1] << 8) | isReg[0];
+    RGBATYpe type = 0;
+    type = (RGBATYpe) ((isReg[3] << 3) | (isReg[2] << 2) | (isReg[1] << 1) | (isReg[0]));
+    return type;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -952,98 +995,45 @@ static AssemblerErr HandleRGBA(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    Word   arg   [4] = {};
-    char*  argEnd[4] = {};
-    int    argInt[4] = {};
-    bool   isReg [4] = {};
-    bool   isInt [4] = {};
+    Token rgba_arg_token[4] = 
+    {
+        GetNextToken(AsmDataInfo),
+        GetNextToken(AsmDataInfo),
+        GetNextToken(AsmDataInfo),
+        GetNextToken(AsmDataInfo),
+    };
 
-    for (size_t i = 0; i < 4; i++) arg   [i] =       GetNextCmd (AsmDataInfo                 );
-    for (size_t i = 0; i < 4; i++) argInt[i] = (int) strtol     ( arg[i].word, &argEnd[i], 10);
-    for (size_t i = 0; i < 4; i++) isReg [i] =       IsRegister (&arg[i]                     );
-    for (size_t i = 0; i < 4; i++) isInt [i] =       IsInt      (&arg[i],       argEnd[i]    );
-
-
-    SetCmdArrCodeElem(AsmDataInfo, Cmd::rgba);
-    SetCmdArrCodeElem(AsmDataInfo, GetRGBAType(isReg));
+    int  rgba_arg_int[4] = {};
+    bool IsRegister  [4] = {};
 
     for (size_t i = 0; i < 4; i++)
     {
-        if (isReg[i])
+        Token token = rgba_arg_token[i];
+
+        if (IsTokenRegister(&token))
         {
-            SetCmdArrCodeElem(AsmDataInfo, GetRegisterPointer(&arg[i]));
+            rgba_arg_int[i] = GetRegisterFromToken(&token);
+            IsRegister  [i] = true;
             continue;
         }
     
-        else if (isInt[i])
+        else if (IsTokenNumber(&token))
         {
-            SetCmdArrCodeElem(AsmDataInfo, argInt[i]);
+            rgba_arg_int[i] = GetNumberFromToken(&token);
+            IsRegister  [i] = false;
             continue;
         }
-        
+
         err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, arg[i]);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, rgba_arg_token[i]);
     }
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-}
+    RGBAtype type = GetRGBAType(IsRegister);
 
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr HandleOneLineComment(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-    assert(AsmDataInfo->cmd.words);
-    assert(AsmDataInfo->cmd.pointer >= 1);
-
-    AssemblerErr err = {};
-
-    size_t       cmdQuant = AsmDataInfo->cmd.size;
-
-    CmdArr       cmdArr   = AsmDataInfo->cmd;
-    size_t       pointer  = AsmDataInfo->cmd.pointer - 1;
-    Word         cmd      = cmdArr.words[pointer];
-    const size_t line     = cmd.line;
-
-    
-    while (cmd.line == line && pointer < cmdQuant)
-    {
-        pointer++;
-        cmd = cmdArr.words[pointer];
-    }
-
-    // pointer++;
-
-    AsmDataInfo->cmd.pointer = pointer;
-
-    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr HandleTwoSymbolComment(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-    assert(AsmDataInfo->cmd.words);
-    assert(AsmDataInfo->cmd.pointer >= 1);
-
-    AssemblerErr err = {};
-
-    size_t       cmdQuant = AsmDataInfo->cmd.size;
-
-    CmdArr       cmdArr   = AsmDataInfo->cmd;
-    size_t       pointer  = AsmDataInfo->cmd.pointer - 1;
-    Word         cmd      = cmdArr.words[pointer];
-
-    while (!IsTwoSymbolCommentEnd(&cmd) && pointer < cmdQuant)
-    {
-        pointer++;
-        cmd = cmdArr.words[pointer];
-    }
-
-    pointer++;
-
-    AsmDataInfo->cmd.pointer = pointer;
+    SetNextCodeInstruction(AsmDataInfo, Cmd::rgba);
+    SetNextCodeInstruction(AsmDataInfo, type);
+    for (size_t i = 0; i < 4; i++)
+        SetNextCodeInstruction(AsmDataInfo, rgba_arg_int[i]);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
@@ -1055,53 +1045,52 @@ static AssemblerErr NullArgCmdPattern(AsmData* AsmDataInfo, Cmd cmd)
     assert(AsmDataInfo);
 
     AssemblerErr err = {};
-    SetCmdArrCodeElem(AsmDataInfo, cmd);
+    SetNextCodeInstruction(AsmDataInfo, cmd);
     AsmDataInfo->code.size++;
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
+static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd jump_type)
 { 
     assert(AsmDataInfo);
     
     AssemblerErr err = {};
 
-    Word JumpArg = GetNextCmd(AsmDataInfo);
+    Token jmp_arg_token = GetNextToken(AsmDataInfo);
+    int   jmp_arg_int   = 0;
 
-    int SetElem = 0;
-
-    if (IsLabel(&JumpArg))
+    if (IsTokenLabel(&jmp_arg_token))
     {
-        size_t labelPointer = 0;
+        size_t label_pointer = 0;
 
-        if (IsLabelAlready(AsmDataInfo, &JumpArg, &labelPointer))
+        if (IsLabelAlready(AsmDataInfo, &jmp_arg_token.value.label, &label_pointer))
         {
-            Label label = AsmDataInfo->labels.labels[labelPointer];
-            SetElem     = (int) label.codePlace;
+            Label label = AsmDataInfo->labels.labels[label_pointer];
+            jmp_arg_int = (int) label.codePlace;
         }
 
         else
         {
             err.err = AssemblerErrorType::LABEL_REDEFINE;
-            return ASSEMBLER_VERIF(AsmDataInfo, err, JumpArg);
+            return ASSEMBLER_VERIF(AsmDataInfo, err, jmp_arg_token);
         }
     }
 
-    else if (IsStrInt(&JumpArg))
+    else if (IsTokenNumber(&jmp_arg_token))
     {
-        SetElem = WordToInt(&JumpArg);
+        jmp_arg_int = GetNumberFromToken(&jmp_arg_token);
     }
 
     else
     {
         err.err = AssemblerErrorType::LABEL_REDEFINE;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, JumpArg);
+        return ASSEMBLER_VERIF(AsmDataInfo, err, jmp_arg_token);
     }
 
-    SetCmdArrCodeElem(AsmDataInfo, JumpType);
-    SetCmdArrCodeElem(AsmDataInfo, SetElem);
+    SetNextCodeInstruction(AsmDataInfo, jump_type);
+    SetNextCodeInstruction(AsmDataInfo, jmp_arg_int);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
@@ -1111,7 +1100,6 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd JumpType)
 static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
-    assert(AsmDataInfo->cmd.words);
 
     AssemblerErr err = {};
 
@@ -1125,32 +1113,29 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
 
 
     size_t token_pointer = 0;
-
-    size_t cmd_pointer  = 0; //
     size_t code_pointer = 0; //
 
-    while(cmd_pointer < AsmDataInfo->cmd.size)
+    while(token_pointer < tokens_quant)
     {
-        // Word   cmd      = AsmDataInfo->cmd.words[cmd_pointer];
         bool   defined   = true;
-        size_t cmd_index = cmd_pointer;
+        size_t cmd_index = 0;
 
         Token token = tokens_array[token_pointer];
 
         if (IsTokenCommand(&token, &cmd_index))
         {
-            cmd_pointer  += CmdInfoArr[cmd_index].argQuant + 1;
-            code_pointer += CmdInfoArr[cmd_index].codeRecordSize;
+            token_pointer  += CmdInfoArr[cmd_index].argQuant + 1;
+            code_pointer   += CmdInfoArr[cmd_index].codeRecordSize;
             continue;
         }
     
-        if (IsLabel(&token))
+        if (IsTokenLabel(&token))
         {
             const TokenizerLabel token_label = token.value.label;
     
             if (!IsLabelAlready(AsmDataInfo, &token_label, &cmd_index))
             {
-                cmd_pointer++;
+                token_pointer++;
                 Label label = LabelCtor(&token_label, code_pointer, defined);
                 ASSEMBLER_ASSERT(PushLabel(AsmDataInfo, &label));
                 continue;
@@ -1209,7 +1194,7 @@ static AssemblerErr LabelsCtor(AsmData* AsmDataInfo)
 
     AssemblerErr err = {};
 
-    static size_t const DefaultLabelsQuant = 10;
+    static const size_t DefaultLabelsQuant = 10;
 
     AsmDataInfo->labels.labels = (Label*) calloc(DefaultLabelsQuant, sizeof(Label));
 
@@ -1300,13 +1285,14 @@ static bool IsLabelAlready(const AsmData* AsmDataInfo, const TokenizerLabel* lab
     Labels labels = AsmDataInfo->labels;
     size_t size   = labels.size;
 
-    for (size_t labelPointer = 0; labelPointer < size; labelPointer++)
+    for (size_t label_pointer = 0; label_pointer < size; label_pointer++)
     {
-        const char* temp = labels.labels[labelPointer].name;
+        Label label_i = labels.labels[label_pointer];
+        
 
-        if (strcmp(label->name, temp) == 0)
+        if (strncmp(label->name, label_i.name, label->name_len) == 0)
         {
-            *labelPlace = labelPointer;
+            *labelPlace = label_pointer;
             return true;
         }
     }
@@ -1366,162 +1352,10 @@ static CmdInfo GetCmdInfo(const Token* token)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool FindDefaultCmd(const Token* token, size_t* defaultCmdPointer)
-{
-    assert(token);
-    assert(defaultCmdPointer);
-
-
-    return false;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void PushTypeCtor(PushType* Push, uint8_t Stk, uint8_t Reg, uint8_t Mem, uint8_t Sum)
-{
-    assert(Push);
-
-    Push->stk = Stk ? 1 : 0;
-    Push->reg = Reg ? 1 : 0;
-    Push->mem = Mem ? 1 : 0;
-    Push->sum = Sum ? 1 : 0;
-
-    return;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetPushArg(PushType* Push)
-{
-    assert(Push);
-
-    return *(int*) Push;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void PopTypeCtor(PopType* Pop, uint8_t Reg, uint8_t Mem, uint8_t Sum)
-{
-    assert(Pop);
-
-    Pop->reg = Reg ? 1 : 0;
-    Pop->mem = Mem ? 1 : 0;
-    Pop->sum = Sum ? 1 : 0;
-
-    return;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetPopArg(PopType* Pop)
-{
-    assert(Pop);
-
-    return *(int*) Pop;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetRegisterPointer(const Word* buffer)
-{
-    assert(buffer);
-
-    const char fisrtBuf  = buffer->word[0];
-
-    return fisrtBuf - 'a';
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static char GetChar(const Word* buffer)
-{
-    assert(buffer);
-    assert(buffer->word);
-
-    size_t      wordLen = buffer->len;
-    const char* word    = buffer->word;
-
-    if (wordLen == 4)
-    {
-        const char word2 = word[2]; 
-
-        if      (word2 == 'n') return '\n';
-        else if (word2 == '_') return ' ';
-
-        assert(0 && "undef situation: must be '\n' only");
-    }
-
-    else if (wordLen != 3)
-    {
-        assert(0 && "undef situation: must be size = 3 or 4");
-    }
-
-    return word[1];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool IsStrInt(const Word* word)
-{
-    assert(word);
-
-    const char* str = word->word;    
-
-    for (size_t i = 0; str[i] != '\0'; i++)
-    {
-        if (!IsCharNum(str[i]))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool IsCharNum(char c)
-{
-    return  ('0' <=  c) &&
-            ( c  <= '9');
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 static bool IsTokenNumber(const Token* token)
 {
     assert(token);
     return (token->type == TokenType::token_number);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool IsChar(const Word* word, char* wordEndPtr)
-{
-    assert(word);
-    assert(wordEndPtr);
-
-    size_t     strLen  = word->len;
-    const char str0    = word->word[0];
-    const char strLast = word->word[strLen - 1];
-
-    if (!(3 <= strLen && strLen <= 4) ||
-         (str0    != '\'')              ||
-         (strLast != '\''))
-    {
-        return false;
-    }
-
-    else if (strLen == 4)
-    {
-        const char str1 = word->word[1];
-        const char str2 = word->word[2];
-
-        return  (str1 == '\\') &&
-               ((str2 == 'n' ) || (str2 == '_'));
-    }
-
-    return true;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1543,27 +1377,16 @@ static bool IsTokenMemory(const Token* token)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsSum(const Word* word)
+static bool IsTokenRightBracket(const Token* token)
 {
-    assert(word);
-
-    const char* str = word->word;
-    size_t      len = word->len;
-
-    bool WasPlus = false;
-
-    for (size_t i = 0; i < len; i++)
-    {
-        if      (str[i] == '+' && !WasPlus) WasPlus = true;
-        else if (str[i] == '+' &&  WasPlus) return false;
-    }
-
-    return WasPlus;
+    assert(token);
+    return  (token->type          == TokenType::token_bracket) &&
+            (token->value.bracket == Bracket::right_bracket);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsLabel(const Token* token)
+static bool IsTokenLabel(const Token* token)
 {
     assert(token);
     return (token->type == TokenType::token_label);
@@ -1571,63 +1394,15 @@ static bool IsLabel(const Token* token)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static bool IsOneLineComment(const Word* cmd)
-{
-    assert(cmd);
-
-    return cmd->word[0] == ';';
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool IsTwoSymbolCommentBegin(const Word* cmd)
-{
-    assert(cmd);
-
-    return cmd->word[0] == '#';
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool IsTwoSymbolCommentEnd(const Word* cmd)
-{
-    assert(cmd);
-
-    size_t len = cmd->len;
-    char   lastCmdNameChar = cmd->word[len - 1];
-
-    return lastCmdNameChar == '/';
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static const char* GetCmdName(size_t cmd_pointer)
-{
-    return CmdInfoArr[cmd_pointer].name;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void SetCmdArrCodeElem(AsmData* AsmDataInfo, int SetElem)
+static void SetNextCodeInstruction(AsmData* AsmDataInfo, int instruction)
 {
     assert(AsmDataInfo);
     assert(AsmDataInfo->code.code);
 
     size_t pointer = AsmDataInfo->code.pointer;
-    AsmDataInfo->code.code[pointer] = SetElem;
+    AsmDataInfo->code.code[pointer] = instruction;
     AsmDataInfo->code.pointer++;
     return;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static Word GetNextCmd(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-
-    AsmDataInfo->cmd.pointer++;
-    size_t pointer = AsmDataInfo->cmd.pointer - 1;
-    return AsmDataInfo->cmd.words[pointer];
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1722,6 +1497,8 @@ static void PrintIncorrectCmd(const char* msg, const char* file, Token token)
     assert(msg);
     assert(file);
 
+    assert(token.place.line != 1337);
+
     COLOR_PRINT(RED, 
         "%s '%s'\n",
         msg, "what do you want mothetfucker");
@@ -1730,16 +1507,6 @@ static void PrintIncorrectCmd(const char* msg, const char* file, Token token)
 
     return;
 }
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static const char* GetTokenInStr(Token token)
-{
-    return nullptr;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1758,13 +1525,20 @@ static void PrintIncorrectCmdFilePlace(const char* file, Token token)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static const char* GetTokenInStr(Token token)
+{
+    
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static void PrintError(const AssemblerErr* err)
 {
     assert(err);
 
     const char* inputStream  = err->file.asm_file;
     const char* outputStream = err->file.bin_file;
-    const char* cmdName      = nullptr;
+    const char* cmdName      = "poka jdem";
     
 
     switch (err->err)
@@ -1812,6 +1586,10 @@ static void PrintError(const AssemblerErr* err)
 
         case AssemblerErrorType::BAD_LABELS_CALLOC:
             COLOR_PRINT(RED, "Error: failed to allocate memory for labels.\n");
+            break;
+
+        case AssemblerErrorType::BAD_LABELS_REALLOC:
+            COLOR_PRINT(RED, "Error: failed to reallocate memory for labels.\n");
             break;
 
         case AssemblerErrorType::INCORRECT_SUM_FIRST_OPERAND:
