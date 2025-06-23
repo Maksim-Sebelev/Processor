@@ -164,22 +164,16 @@ static const size_t REGISTERS_NAME_LEN = 2;
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-struct PushType
-{
-    unsigned int stk : 1;
-    unsigned int reg : 1;
-    unsigned int mem : 1;
-    unsigned int sum : 1;
-};
+
+
+//
+using PushType = uint8_t;
+static_assert(sizeof(PushType) == 1, "for economy of memory PushType must have size 1 byte. In your system uint8_t is not 1 byte");
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-struct PopType
-{
-    unsigned int reg : 1;
-    unsigned int mem : 1;
-    unsigned int sum : 1;
-};
+using PopType = uint8_t;
+static_assert(sizeof(PopType) == 1, "for economy of memory PopType must have size 1 byte. In your system uint8_t is not 1 byte");
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

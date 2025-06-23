@@ -5,10 +5,8 @@ ifeq ($(origin CC),default)
 endif
 
 
-SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system
-
-CFLAGS ?= 
-LDFLAGS = $(SFML_FLAGS)
+CFLAGS  ?= 
+LDFLAGS ?=
 
 BUILD_TYPE ?= debug
 # BUILD_TYPE ?= release
@@ -19,23 +17,21 @@ ifeq ($(BUILD_TYPE), release)
 endif 
 
 ifeq ($(BUILD_TYPE), debug)
-	CFLAGS += -g -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ 								         \
-			  -Wcast-align -Wcast-qual -Wchar-subscripts -Wconditionally-supported 							      \
-			  -Waggressive-loop-optimizations -Wc++14-compat -Wmissing-declarations 					           \
-			  -Wformat-security -Wformat-signedness -Wformat=2 -Winline -Wlogical-op 					            \
-			  -Wnon-virtual-dtor -Wopenmp-simd -Woverloaded-virtual -Wpacked -Wpointer-arith 				         \
-			  -Wconversion -Wctor-dtor-privacy -Wempty-body -Wfloat-equal -Wformat-nonliteral 			              \
-			  -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -Wstack-usage=8192                	   \
+	CFLAGS += -g -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++                                          \
+			  -Wcast-align -Wcast-qual -Wchar-subscripts -Wconditionally-supported                                \
+			  -Waggressive-loop-optimizations -Wc++14-compat -Wmissing-declarations                                \
+			  -Wformat-security -Wformat-signedness -Wformat=2 -Winline -Wlogical-op                                \
+			  -Wnon-virtual-dtor -Wopenmp-simd -Woverloaded-virtual -Wpacked -Wpointer-arith                         \
+			  -Wconversion -Wctor-dtor-privacy -Wempty-body -Wfloat-equal -Wformat-nonliteral                         \
+			  -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -Wstack-usage=8192                      \
 			  -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel              \
 			  -Wstrict-overflow=2 -Wsuggest-attribute=noreturn -Wsuggest-final-methods -Wsuggest-final-types             \
 			  -Wsuggest-override -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunreachable-code -Wunused           \
 			  -Wuseless-cast -Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing          \
 			  -Wno-old-style-cast -Wno-varargs -Wstack-protector -fcheck-new -fsized-deallocation -fstack-protector         \
-			  -pie -fPIE -Werror=vla 																		                  \
+			  -pie -fPIE -Werror=vla                                                                                         \
 			  -fsanitize=address,alignment,bool,bounds,enum,float-cast-overflow,float-divide-by-zero,integer-divide-by-zero,leak,nonnull-attribute,null,object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,undefined,unreachable,vla-bound,vptr \
 
-
-	LDFLAGS += -fsanitize=address,undefined -lasan -lubsan
 endif
 
 
@@ -53,13 +49,13 @@ BIN_FILE       ?= programm.bin
 
 override CFLAGS += $(COMMONINC)
 
-CSRC =  assembler/main.cpp                        \
-		assembler/src/flags/flags.cpp              \
-		assembler/src/fileread/fileread.cpp         \
-		assembler/src/assembler/assembler.cpp        \
-		assembler/src/tokenizer/tokenizer.cpp         \
-		common/src/lib/lib.cpp                         \
-		common/src/functions_for_files/files.cpp        \
+CSRC =  assembler/main.cpp                          \
+		assembler/src/flags/flags.cpp                \
+		assembler/src/fileread/fileread.cpp           \
+		assembler/src/assembler/assembler.cpp          \
+		assembler/src/assembler/tokenizer/tokenizer.cpp \
+		common/src/lib/lib.cpp                           \
+		common/src/functions_for_files/files.cpp          \
 
 
 ifeq ($(BUILD_TYPE), debug)

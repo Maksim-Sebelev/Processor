@@ -2,7 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include "tokenizer/tokenizer.hpp"
+#include "assembler/tokenizer/tokenizer.hpp"
 #include "global/global_include.hpp"
 #include "functions_for_files/files.hpp"
 #include "lib/lib.hpp"
@@ -22,9 +22,12 @@ struct Pointers
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+__attribute__ ((noreturn))
+static void           BadSyntaxErr         (const char* asm_file, size_t line, size_t pos_in_line);
 
 static Token*         TokensCalloc         (size_t buffer_len);
 static void           TokensRealloc        (Token** tokens_array, size_t tokens_quant);
+static TokensArray    TokensArrayCtor      (Token*  tokens_array, size_t size);
 
 static bool           GetCmdFlag           (const char* word, const char* command, size_t command_len);
 static Cmd            GetCmd               (const char* word, size_t* word_len);
@@ -137,31 +140,20 @@ TokensArray GetTokensArray(const char* asm_file)
         }
         
         TokenizerLabel label = GetLabel(word);
-        if (label.label_len != 0)
+        if (label.name_len != 0)
         {
             HandleLabel(tokens_array, &pointer, label);
             continue;
         }
 
-        EXIT(EXIT_FAILURE, 
-            "syntax error.\n"
-            "undefined word in:\n"
-            WHITE
-            "%s:%lu:%lu\n"
-            "\ndetected in:",
-            asm_file, pointer.lp, pointer.sp
-            );
+        BadSyntaxErr(asm_file, pointer.lp, pointer.sp);
     }
 
     size_t tokens_array_size = pointer.tp;
 
     TokensRealloc(&tokens_array, tokens_array_size);
 
-    TokensArray final_tokens_array = 
-    {
-        .array = tokens_array     ,
-        .size  = tokens_array_size,
-    };
+    TokensArray final_tokens_array = TokensArrayCtor(tokens_array, tokens_array_size);
 
     return final_tokens_array;
 }
@@ -202,6 +194,36 @@ static void TokensRealloc(Token** tokens_array, size_t tokens_quant)
         EXIT(EXIT_FAILURE, "failed reallocate memory for tokens array.");
 
     return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static TokensArray TokensArrayCtor(Token* tokens_array, size_t size)
+{
+    assert(tokens_array);
+    return (TokensArray)
+    {
+        .array   = tokens_array,
+        .size    = size        ,
+        .pointer = 0           ,
+    };
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+__attribute__ ((noreturn)) static void BadSyntaxErr(const char* asm_file, size_t line, size_t pos_in_line)
+{
+    assert(asm_file);
+
+    EXIT(   
+            EXIT_FAILURE, 
+            "syntax error.\n"
+            "undefined word in:\n"
+            WHITE
+            "%s:%lu:%lu\n"
+            "\ndetected in:",
+            asm_file, line, pos_in_line
+        );
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -371,7 +393,7 @@ static TokenizerLabel GetLabel(const char* word)
 
     name_len++;
 
-    TokenizerLabel label = {.label = word, .label_len = name_len};
+    TokenizerLabel label = {.name = word, .name_len = name_len};
 
     return label;
 }
@@ -518,7 +540,7 @@ static void HandleLabel(Token* tokens_arr, Pointers* pointer, TokenizerLabel lab
     tokens_arr[token_pointer].type        = TokenType::token_label;
     tokens_arr[token_pointer].value.label = label;
    
-    HandleGeneralPattern(tokens_arr, pointer, label.label_len);
+    HandleGeneralPattern(tokens_arr, pointer, label.name_len);
 
     return;
 }
