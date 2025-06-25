@@ -2,7 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include "assembler/tokenizer/tokenizer.hpp"
+#include "tokenizer/tokenizer.hpp"
 #include "global/global_include.hpp"
 #include "functions_for_files/files.hpp"
 #include "lib/lib.hpp"

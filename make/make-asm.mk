@@ -53,14 +53,15 @@ override CFLAGS += $(COMMONINC)
 CSRC =  assembler/main.cpp                           \
 		assembler/src/flags/flags.cpp                 \
 		assembler/src/assembler/assembler.cpp          \
-		assembler/src/assembler/tokenizer/tokenizer.cpp \
-		common/src/lib/lib.cpp                           \
-		common/src/functions_for_files/files.cpp          \
+		assembler/src/tokenizer/tokenizer.cpp           \
+		assembler/src/assembler/labels/labels.cpp        \
+		common/src/lib/lib.cpp                            \
+		common/src/functions_for_files/files.cpp           \
 
 
 ifeq ($(BUILD_TYPE), debug)
-	CSRC += common/src/logger/log.cpp 					    \
-			assembler/src/assembler/tokenizer/tokens_log.cpp \
+	CSRC += common/src/logger/log.cpp             \
+			assembler/src/tokenizer/tokens_log.cpp \
 
 endif
 
@@ -69,6 +70,7 @@ DEPS = $(COBJ:.o=.d)
 
 .PHONY: all
 all: $(EXECUTABLE_DIR)/$(EXECUTABLE)
+	cp -r $(EXECUTABLE_DIR)/ examples/build
 
 $(EXECUTABLE_DIR)/$(EXECUTABLE): $(COBJ)
 	@mkdir -p $(@D)

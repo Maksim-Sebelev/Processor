@@ -9,12 +9,13 @@
 #include "lib/lib.hpp"
 #include "stack/stack.hpp"
 #include "functions_for_files/files.hpp"
-#include "assembler/tokenizer/tokenizer.hpp"
+#include "tokenizer/tokenizer.hpp"
 #include "functions_for_files/files.hpp"
+#include "assembler/labels/labels.hpp"
 
 #ifdef _DEBUG
 #include "logger/log.hpp"
-#include "assembler/tokenizer/tokens_log.hpp"
+#include "tokenizer/tokens_log.hpp"
 #endif // _DEBUG
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -60,30 +61,11 @@ struct CodeArr
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-struct Label
-{
-    const char* name;
-    size_t      codePlace;
-    bool        alradyDefined;
-};
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-struct Labels
-{
-    size_t size    ;
-    size_t capacity;
-    size_t pointer ;
-    Label* labels  ;
-};
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 struct AsmData
 {
     TokensArray tokens_array;
     CodeArr     code        ;
-    Labels      labels      ;
+    LabelsArray labels      ;
     IOfile      file        ;
     Buffer      buffer      ;
 };
@@ -333,7 +315,7 @@ static AssemblerErr (*GetCmd(Cmd command)) (AsmData* AsmDataInfo)
         }
     }
 
-    assert(0 && "we must not be here");
+   __builtin_unreachable();
     return nullptr;
 }
 
@@ -742,7 +724,7 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
         if (IsLabelAlready(AsmDataInfo, &call_arg_token.value.label, &label_pointer))
         {
             Label label  = AsmDataInfo->labels.labels[label_pointer];
-            call_arg_int = (int) label.codePlace;
+            call_arg_int = (int) label.code_place;
         }
 
         else
@@ -803,7 +785,7 @@ static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd pp)
             return ASSEMBLER_VERIF(AsmDataInfo, err, pp_arg_token);
         }
 
-        assert(0 && "undef situation: must be 'pp' or 'mm' cmd");
+        __builtin_unreachable();
         return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
@@ -1075,7 +1057,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd jump_type)
         if (IsLabelAlready(AsmDataInfo, &jmp_arg_token.value.label, &label_pointer))
         {
             Label label = AsmDataInfo->labels.labels[label_pointer];
-            jmp_arg_int = (int) label.codePlace;
+            jmp_arg_int = (int) label.code_place;
         }
 
         else
@@ -1159,7 +1141,7 @@ static AssemblerErr InitLabels(AsmData* AsmDataInfo)
     // size_t size = AsmDataInfo->labels.size;
     // for (size_t i = 0; i < size; i++)
     // {
-    //     LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .codePlace = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].codePlace, AsmDataInfo->labels.labels[i].alradyDefined);
+    //     LOG_PRINT(Blue, "label[%2lu] = .name = '%10s', .code_place = '%3lu', .alreadyDefined = '%d'\n", i, AsmDataInfo->labels.labels[i].name, AsmDataInfo->labels.labels[i].code_place, AsmDataInfo->labels.labels[i].defined);
     // }
     // )
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
@@ -1212,121 +1194,7 @@ static bool IsTokenCommand(const Token* token, size_t* cmd_pointer)
         }
     }
 
-    assert(0 && "undef cmd");
-
-    return false;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr LabelsCtor(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-
-    AssemblerErr err = {};
-
-    static const size_t DefaultLabelsQuant = 10;
-
-    AsmDataInfo->labels.labels = (Label*) calloc(DefaultLabelsQuant, sizeof(Label));
-
-    if (!AsmDataInfo->labels.labels)
-    {
-        err.err = AssemblerErrorType::BAD_LABELS_CALLOC;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-    }
-
-    AsmDataInfo->labels.capacity = DefaultLabelsQuant;
-
-    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr LabelsDtor(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-
-    AssemblerErr err = {};
-    
-    FREE(AsmDataInfo->labels.labels);
-    AsmDataInfo->labels = {};
-
-    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static Label LabelCtor(const TokenizerLabel* token_label, size_t pointer, bool alreadyDefined)
-{
-    assert(token_label);
-
-    Label label = {};
-
-    label.name          = token_label->name;
-    label.codePlace     = pointer;
-    label.alradyDefined = alreadyDefined;
-
-    return label;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr PushLabel(AsmData* AsmDataInfo, const Label* label)
-{
-    assert(AsmDataInfo);
-    assert(AsmDataInfo->labels.labels);
-    assert(label);
-
-    AssemblerErr err = {};
-
-    Labels* Labels = &AsmDataInfo->labels;
-
-    Labels->size++;
-
-    size_t size = Labels->size;
-    size_t capacity = Labels->capacity;
-
-    if (size <= capacity)
-    {
-        Labels->labels[Labels->size - 1] = *label;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-    }
-
-    size_t new_capacity = 2 * capacity;
-    Labels->labels = (Label*) realloc(Labels->labels, new_capacity * sizeof(Label));
-
-    if (!Labels->labels)
-    {
-        err.err = AssemblerErrorType::BAD_LABELS_REALLOC;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-    }
-
-    Labels->labels[Labels->size - 1] = *label;
-
-    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool IsLabelAlready(const AsmData* AsmDataInfo, const TokenizerLabel* label, size_t* labelPlace)
-{
-    assert(AsmDataInfo);
-    assert(AsmDataInfo->labels.labels);
-    
-    Labels labels = AsmDataInfo->labels;
-    size_t size   = labels.size;
-
-    for (size_t label_pointer = 0; label_pointer < size; label_pointer++)
-    {
-        Label label_i = labels.labels[label_pointer];
-        
-
-        if (strncmp(label->name, label_i.name, label->name_len) == 0)
-        {
-            *labelPlace = label_pointer;
-            return true;
-        }
-    }
+    __builtin_unreachable();
 
     return false;
 }
@@ -1377,7 +1245,7 @@ static CmdInfo GetCmdInfo(const Token* token)
             return cmd;
     }
 
-    assert(0 && "we must find cmd and return in cycle");
+    __builtin_unreachable();
     return {};
 }
 
@@ -1634,7 +1502,7 @@ static void PrintError(const AssemblerErr* err)
             break;
 
         default: 
-            assert(0 && "yoy forgot about some error in err print");
+            __builtin_unreachable();
             break;
     }
 
@@ -1650,8 +1518,8 @@ static void PrintError(const AssemblerErr* err)
 //     COLOR_PRINT(GREEN, "\nlabel dump begin:\n");
 
 //     COLOR_PRINT(RED,    "name:   '%s'\n", label->name);
-//     COLOR_PRINT(YELLOW, "place:  '%lu'\n", label->codePlace);
-//     COLOR_PRINT(CYAN,   "is def: '%d'\n", label->alradyDefined);
+//     COLOR_PRINT(YELLOW, "place:  '%lu'\n", label->code_place);
+//     COLOR_PRINT(CYAN,   "is def: '%d'\n", label->defined);
 
 //     COLOR_PRINT(GREEN, "label dump end.\n\n");
 
