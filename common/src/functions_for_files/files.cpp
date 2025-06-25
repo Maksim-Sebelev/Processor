@@ -37,10 +37,9 @@ size_t CalcFileLen(const char* file)
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-char* ReadFileInBuffer(const char* file, size_t* len)
+Buffer ReadFileInBuffer(const char* file)
 {
     assert(file);
-    assert(len);
 
     size_t file_len = CalcFileLen(file      );
     FILE*  file_ptr = SafeFopen  (file, "rb");
@@ -57,19 +56,23 @@ char* ReadFileInBuffer(const char* file, size_t* len)
     if (fread_return != file_len)
         EXIT(EXIT_FAILURE, "failed reading '%s'.", file);
 
+    Buffer final_buffer =
+    {
+        .buffer = buffer,
+        .size   = file_len,
+    };
 
-    *len = file_len;
-
-    return buffer;
+    return final_buffer;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void BufferDtor(const char* buffer)
+void BufferDtor(Buffer* buffer)
 {
     assert(buffer);
     
-    FREE(buffer);
+    FREE(buffer->buffer);
+    buffer->size = 0;
 
     return;
 }

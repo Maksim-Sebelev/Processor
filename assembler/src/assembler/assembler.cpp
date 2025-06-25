@@ -5,15 +5,16 @@
 #include <string.h>
 #include <stddef.h>
 #include "assembler/assembler.hpp"
-#include "fileread/fileread.hpp"
 #include "global/global_include.hpp"
 #include "lib/lib.hpp"
 #include "stack/stack.hpp"
 #include "functions_for_files/files.hpp"
 #include "assembler/tokenizer/tokenizer.hpp"
+#include "functions_for_files/files.hpp"
 
 #ifdef _DEBUG
 #include "logger/log.hpp"
+#include "assembler/tokenizer/tokens_log.hpp"
 #endif // _DEBUG
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -81,9 +82,10 @@ struct Labels
 struct AsmData
 {
     TokensArray tokens_array;
-    CodeArr    code         ;
-    Labels     labels       ;
-    IOfile     file         ;
+    CodeArr     code        ;
+    Labels      labels      ;
+    IOfile      file        ;
+    Buffer      buffer      ;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -130,7 +132,7 @@ static bool IsTokenCommand(const Token* token, size_t* cmd_pointer);
 
 static bool         IsTokenLabel(const Token* token);
 
-static AssemblerErr InitAllLabels           (AsmData* AsmDataInfo);
+static AssemblerErr InitLabels           (AsmData* AsmDataInfo);
 static AssemblerErr LabelsCtor              (AsmData* AsmDataInfo);
 static AssemblerErr LabelsDtor              (AsmData* AsmDataInfo);
 
@@ -156,6 +158,7 @@ static bool IsTokenPlus(const Token* token);
 static PopType GetPopType(bool reg, bool memory, bool int_mem_addr, bool aligment);
 static DrawType GetDrawType(bool IsReg[3]);
 
+static bool IsTokenJmpOrCall(const Token* token);
 
 static AssemblerErr HandlePush              (AsmData* AsmDataInfo);
 static AssemblerErr HandlePop               (AsmData* AsmDataInfo);
@@ -217,7 +220,7 @@ void RunAssembler(const IOfile* file)
     AsmData AsmDataInfo = {};
 
     ASSEMBLER_ASSERT(AsmDataCtor         (&AsmDataInfo, file));
-    ASSEMBLER_ASSERT(InitAllLabels       (&AsmDataInfo)      );
+    ASSEMBLER_ASSERT(InitLabels       (&AsmDataInfo)      );
     ASSEMBLER_ASSERT(WriteCmdInCodeArr   (&AsmDataInfo)      );
     ASSEMBLER_ASSERT(WriteCodeArrInFile  (&AsmDataInfo)      );
     ASSEMBLER_ASSERT(AsmDataDtor         (&AsmDataInfo)      );
@@ -243,7 +246,10 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
     
     // code array
 
-    AsmDataInfo->tokens_array = GetTokensArray(file->asm_file);
+    Buffer buffer = ReadFileInBuffer(file->asm_file);
+
+    AsmDataInfo->buffer = buffer;
+    AsmDataInfo->tokens_array = GetTokensArray(file->asm_file, &buffer);
     const size_t code_size    = CalcCodeSize(&AsmDataInfo->tokens_array);
     int*         code_array   = (int*) calloc(code_size, sizeof(*code_array));
 
@@ -253,7 +259,9 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
         return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
-    AsmDataInfo->code.code = code_array;
+    AsmDataInfo->code.code    = code_array;
+    AsmDataInfo->code.size    = code_size;
+    AsmDataInfo->code.pointer = 0;
 
     // log of tokens array
 
@@ -274,7 +282,7 @@ static AssemblerErr AsmDataDtor(AsmData* AsmDataInfo)
     AssemblerErr err = {};
 
     FREE(AsmDataInfo->code.code);
-    // BufferDtor(&AsmDataInfo->cmd);
+    BufferDtor(&AsmDataInfo->buffer);
     TokensArrayDtor(&AsmDataInfo->tokens_array);
     LabelsDtor(AsmDataInfo);
 
@@ -285,13 +293,11 @@ static AssemblerErr AsmDataDtor(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr (*GetCmd(size_t cmd_pointer)) (AsmData* AsmDataInfo)
+static AssemblerErr (*GetCmd(Cmd command)) (AsmData* AsmDataInfo)
 {
-    Cmd cmd = (Cmd) cmd_pointer;
-
     AssemblerErr err = {};
 
-    switch (cmd)
+    switch (command)
     {
         case Cmd::hlt:       return HandleHlt;
         case Cmd::push:      return HandlePush;
@@ -343,12 +349,16 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
 
     while (AsmDataInfo->tokens_array.pointer < tokens_array_size)
     {
-        Token token = GetNextToken(AsmDataInfo);
-        size_t defaultCmdPointer = 0;
+        Token  token              = GetNextToken(AsmDataInfo);
+        size_t cmd_info_arr_index = 0;
 
-        if (IsTokenCommand(&token, &defaultCmdPointer))
+        ON_DEBUG(
+        TokenLog(&token);
+        )
+
+        if (IsTokenCommand(&token, &cmd_info_arr_index))
         {
-            ASSEMBLER_ASSERT(GetCmd(defaultCmdPointer)(AsmDataInfo));
+            ASSEMBLER_ASSERT(GetCmd(token.value.command) (AsmDataInfo));
             continue;
         }
 
@@ -414,8 +424,6 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
 
-    assert(0);
-
     AssemblerErr err = {};
 
     Token    push_arg_token  = GetNextToken(AsmDataInfo);
@@ -432,6 +440,7 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
 
     else if (IsTokenRegister(&push_arg_token))
     {
+    
         push_type    = GetPushType(0, 1, 0, 0);
         push_arg_int = GetRegisterFromToken(&push_arg_token);
         aligment     = 0;
@@ -485,7 +494,7 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
 
             push_arg_next_token = GetNextToken(AsmDataInfo);
 
-            if (IsTokenRightBracket(&push_arg_next_token))
+            if (!IsTokenRightBracket(&push_arg_next_token))
             {
                 err.err = AssemblerErrorType::INVALID_INPUT_AFTER_PUSH;
                 return ASSEMBLER_VERIF(AsmDataInfo, err, push_arg_token);
@@ -1095,7 +1104,7 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd jump_type)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
+static AssemblerErr InitLabels(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
 
@@ -1119,14 +1128,13 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
         size_t cmd_index = 0;
 
         Token token = tokens_array[token_pointer];
-
-        if (IsTokenCommand(&token, &cmd_index))
+    
+        if (IsTokenJmpOrCall(&token))
         {
-            token_pointer  += CmdInfoArr[cmd_index].argQuant + 1;
-            code_pointer   += CmdInfoArr[cmd_index].codeRecordSize;
+            token_pointer += 2; // skip jmp-s and call args, that is label
             continue;
         }
-    
+
         if (IsTokenLabel(&token))
         {
             const TokenizerLabel token_label = token.value.label;
@@ -1143,8 +1151,7 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
             return ASSEMBLER_VERIF(AsmDataInfo, err, token);
         }
 
-        err.err = AssemblerErrorType::UNDEFINED_COMMAND;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, token);
+        token_pointer++;
     }
 
 
@@ -1156,6 +1163,32 @@ static AssemblerErr InitAllLabels(AsmData* AsmDataInfo)
     // }
     // )
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsTokenJmpOrCall(const Token* token)
+{
+    assert(token);
+
+    if (token->type != TokenType::token_command)
+        return false;
+
+    
+    switch (token->value.command)
+    {
+        case Cmd::call:
+        case Cmd::jmp:
+        case Cmd::ja:
+        case Cmd::jae:
+        case Cmd::jb:
+        case Cmd::jbe:
+        case Cmd::je:
+        case Cmd::jne: return true;
+        default: break;
+    }
+
+    return false;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

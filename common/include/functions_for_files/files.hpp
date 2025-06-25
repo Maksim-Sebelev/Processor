@@ -7,10 +7,18 @@
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+struct Buffer
+{
+    char*  buffer;
+    size_t size  ;
+};
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 FILE*       SafeFopen       (const char* file, const char* modes);
 size_t      CalcFileLen     (const char* file);
-char*       ReadFileInBuffer(const char* file, size_t* len);
-void        BufferDtor      (const char* buffer);
+Buffer      ReadFileInBuffer(const char* file);
+void        BufferDtor      (Buffer*     buffer);
 const char* GetFileExtension(const char* file_name);
 
 

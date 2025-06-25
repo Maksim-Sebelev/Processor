@@ -26,7 +26,7 @@ ifeq ($(BUILD_TYPE), debug)
 			  -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -Wstack-usage=8192                      \
 			  -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel              \
 			  -Wstrict-overflow=2 -Wsuggest-attribute=noreturn -Wsuggest-final-methods -Wsuggest-final-types             \
-			  -Wsuggest-override -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunreachable-code -Wunused           \
+			  -Wsuggest-override -Wswitch-default -Wsync-nand -Wundef -Wunreachable-code -Wunused           \
 			  -Wuseless-cast -Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing          \
 			  -Wno-old-style-cast -Wno-varargs -Wstack-protector -fcheck-new -fsized-deallocation -fstack-protector         \
 			  -pie -fPIE -Werror=vla                                                                                         \
@@ -50,9 +50,8 @@ BIN_FILE       ?= programm.bin
 
 override CFLAGS += $(COMMONINC)
 
-CSRC =  assembler/main.cpp                          \
-		assembler/src/flags/flags.cpp                \
-		assembler/src/fileread/fileread.cpp           \
+CSRC =  assembler/main.cpp                           \
+		assembler/src/flags/flags.cpp                 \
 		assembler/src/assembler/assembler.cpp          \
 		assembler/src/assembler/tokenizer/tokenizer.cpp \
 		common/src/lib/lib.cpp                           \
@@ -60,7 +59,9 @@ CSRC =  assembler/main.cpp                          \
 
 
 ifeq ($(BUILD_TYPE), debug)
-	CSRC += common/src/logger/log.cpp
+	CSRC += common/src/logger/log.cpp 					    \
+			assembler/src/assembler/tokenizer/tokens_log.cpp \
+
 endif
 
 COBJ := $(addprefix $(OUT_O_DIR)/,$(CSRC:.cpp=.o))

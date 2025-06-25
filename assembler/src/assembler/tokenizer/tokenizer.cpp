@@ -67,17 +67,20 @@ static void           UpdatePointersAfterSlashN         (Pointers* pointer);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-TokensArray GetTokensArray(const char* asm_file)
-{
-    assert(asm_file);
+struct Buffer;
 
-    size_t buffer_size = 0;
-    char*  buffer      = ReadFileInBuffer(asm_file, &buffer_size);
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+TokensArray GetTokensArray(const char* asm_file, Buffer* file_buffer)
+{
+    assert(file_buffer);
+
+    size_t buffer_size = file_buffer->size;
+    char*  buffer      = file_buffer->buffer;
 
     Token* tokens_array = TokensCalloc(buffer_size);
 
     Pointers pointer = {0, 0, 1, 1};
-
 
     while (pointer.ip < buffer_size)
     {
@@ -93,11 +96,11 @@ TokensArray GetTokensArray(const char* asm_file)
         const char* word     = buffer + pointer.ip;
         size_t      word_len = 0;
 
-        if (IsSlash0(word[0])) break;
+        if (IsSlash0(word[0]))
+            break;
 
         if (HandleComment(word, &pointer))
             continue;
-
 
         Cmd cmd = GetCmd(word, &word_len);
         if (cmd != Cmd::undef_cmd)
