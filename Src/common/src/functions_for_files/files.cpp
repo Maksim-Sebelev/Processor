@@ -14,7 +14,7 @@ FILE* SafeFopen(const char* file, const char* modes)
 
     if (!file)
         EXIT(EXIT_FAILURE, "trying to open nullptr.");
-    
+
     FILE* file_ptr = fopen(file, modes);
 
     if (!file_ptr)
