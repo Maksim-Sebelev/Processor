@@ -282,7 +282,7 @@ static Registers GetRegister(const char* word, size_t* word_len)
     const char w1 = word[1];
 
     bool flag = (w1 == 'x') &&
-                ('a' <= w0  && w0 <= 'a' + REGISTERS_QUANT);
+                ('a' <= w0  && w0 < 'a' + REGISTERS_QUANT);
 
     *word_len = REGISTERS_NAME_LEN;
 

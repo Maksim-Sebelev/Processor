@@ -28,12 +28,12 @@ FILE* SafeFopen(const char* file, const char* modes)
 void SafeFclose(FILE* file_ptr)
 {
     if (!file_ptr)
-        EXIT(EXIT_FAILURE, "trying to close nullptr");
+        EXIT(EXIT_FAILURE, "trying to close nullptr.");
 
     int fclose_return = fclose(file_ptr);
     
     if (fclose_return != 0)
-        EXIT(EXIT_FAILURE, "failed close file (%p)\n", file_ptr);
+        EXIT(EXIT_FAILURE, "failed close file.");
 
     return;
 }

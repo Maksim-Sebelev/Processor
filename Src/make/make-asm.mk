@@ -55,8 +55,9 @@ CSRC =  assembler/main.cpp                           \
 		assembler/src/assembler/assembler.cpp          \
 		assembler/src/tokenizer/tokenizer.cpp           \
 		assembler/src/assembler/labels/labels.cpp        \
-		common/src/lib/lib.cpp                            \
-		common/src/functions_for_files/files.cpp           \
+		assembler/src/assembler/code_array/code_array.cpp \
+		common/src/lib/lib.cpp                             \
+		common/src/functions_for_files/files.cpp            \
 
 
 ifeq ($(BUILD_TYPE), debug)
