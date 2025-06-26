@@ -27,7 +27,7 @@ CodeArray CodeArrayCtor(const TokensArray* tokens_array)
 
     CodeArray final_code_array =
     {
-        .code    = code_array,
+        .array   = code_array,
         .size    = code_size ,
         .pointer = 0         ,
     };
@@ -45,37 +45,6 @@ void CodeArrayDtor(CodeArray* code_array)
 
     code_array->size    = 0;
     code_array->pointer = 0;
-
-    return;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-void WriteCodeArrayInFile(const char* file, const CodeArray* code_array)
-{
-    assert(file);
-    assert(code_array);
-
-    FILE* file_ptr = SafeFopen(file, "wb"); assert(file_ptr);
-
-    size_t code_array_size = code_array->size;
-
-    int fprintf_return = fprintf(file_ptr, "%lu\n", code_array_size);
-
-    if (1 != fprintf_return)
-        EXIT(EXIT_FAILURE, "failed fprintf code array size in '%s'.", file);
-
-    int* code = code_array->array;
-
-    for (size_t i = 0; i < code_array_size; i++)
-    {
-        int instruction = code[i];
-    
-        fprintf_return = fprintf(file_ptr, "%d ", instruction); 
-
-        if (1 != fprintf_return)
-            EXIT(EXIT_FAILURE, "failed fprintf code[%lu]\n in '%s'.", i, file);
-    }
 
     return;
 }

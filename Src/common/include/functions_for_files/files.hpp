@@ -16,9 +16,12 @@ struct Buffer
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 FILE*       SafeFopen       (const char* file, const char* modes);
+void        SafeFclose      (FILE* file_ptr);
+
 size_t      CalcFileLen     (const char* file);
 Buffer      ReadFileInBuffer(const char* file);
 void        BufferDtor      (Buffer*     buffer);
+
 const char* GetFileExtension(const char* file_name);
 
 

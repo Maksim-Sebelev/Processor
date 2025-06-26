@@ -84,48 +84,18 @@ static_assert(sizeof(PopType) == 1, "for economy of memory DrawType must have si
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void         CheckInputFiles          (const IOfile* files);
+typedef uint8_t RGBATYpe;
+static_assert(sizeof(RGBATYpe) == 1, "for economy of memory RGBAType must have size 1 byte. In your system uint8_t is not 1 byte");
 
-static AssemblerErr AsmDataCtor              (AsmData* AsmDataInfo, const IOfile* file);
-static AssemblerErr AsmDataDtor              (AsmData* AsmDataInfo);
-static AssemblerErr WriteCmdInCodeArr        (AsmData* AsmDataInfo);
-static AssemblerErr WriteCodeArrInFile       (AsmData* AsmDataInfo);
-   
-   
-static void         SetNextCodeInstruction        (AsmData* AsmDataInfo, int instruction);
-static Token GetNextToken(AsmData* AsmDataInfo);
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-   
-static AssemblerErr NullArgCmdPattern        (AsmData* AsmDataInfo, Cmd cmd);
-   
-static AssemblerErr PpMmPattern              (AsmData* AsmDataInfo, Cmd cmd);
-   
+static void         CheckInputFiles         (const IOfile* files);
 
-static bool IsTokenCommand(const Token* token, size_t* cmd_pointer);
-
-
-static bool         IsTokenLabel(const Token* token);
-
-static AssemblerErr InitLabels           (AsmData* AsmDataInfo);
-
-static CmdInfo      GetCmdInfo              (const Token* token);
-static size_t       CalcCodeSize            (const TokensArray* tokens_array);
-
-static AssemblerErr JmpCmdPattern           (AsmData* AsmDataInfo, Cmd jump_type);
-
-
-static bool IsTokenNumber(const Token* token);
-static PushType GetPushType(bool stack, bool reg, bool memory, bool sum);
-static int GetNumberFromToken(const Token* token);
-static bool IsTokenRegister(const Token* token);
-static int GetRegisterFromToken(const Token* token);
-static bool IsTokenMemory(const Token* token);
-static bool IsTokenRightBracket(const Token* token);
-static bool IsTokenPlus(const Token* token);
-static PopType GetPopType(bool reg, bool memory, bool int_mem_addr, bool aligment);
-static DrawType GetDrawType(bool IsReg[3]);
-
-static bool IsTokenJmpOrCall(const Token* token);
+static AssemblerErr AsmDataCtor             (AsmData* AsmDataInfo, const IOfile* file);
+static AssemblerErr InitLabels              (AsmData* AsmDataInfo);
+static AssemblerErr WriteCmdInCodeArr       (AsmData* AsmDataInfo);
+static AssemblerErr WriteCodeArrayInFile    (AsmData* AsmDataInfo);
+static AssemblerErr AsmDataDtor             (AsmData* AsmDataInfo);
 
 static AssemblerErr HandlePush              (AsmData* AsmDataInfo);
 static AssemblerErr HandlePop               (AsmData* AsmDataInfo);
@@ -149,12 +119,91 @@ static AssemblerErr HandleOutc              (AsmData* AsmDataInfo);
 static AssemblerErr HandleOutr              (AsmData* AsmDataInfo);
 static AssemblerErr HandleOutrc             (AsmData* AsmDataInfo);
 static AssemblerErr HandleDraw              (AsmData* AsmDataInfo);
+static AssemblerErr HandleRGBA              (AsmData* AsmDataInfo);
 static AssemblerErr HandleHlt               (AsmData* AsmDataInfo);
 static AssemblerErr HandleLabel             (AsmData* AsmDataInfo);
-static AssemblerErr HandleRGBA              (AsmData* AsmDataInfo);
+
+   
+static void         SetNextCodeInstruction        (AsmData* AsmDataInfo, int instruction);
+static Token GetNextToken(AsmData* AsmDataInfo);
+
+   
+static AssemblerErr NullArgCmdPattern        (AsmData* AsmDataInfo, Cmd cmd);
+   
+static AssemblerErr PpMmPattern              (AsmData* AsmDataInfo, Cmd cmd);
+   
+
+static bool IsTokenCommand(const Token* token, size_t* cmd_pointer);
 
 
-static AssemblerErr Verify                      (const AsmData* AsmDataInfo, AssemblerErr* err, Token token, const char* file, int line, const char* func);
+
+static bool         IsTokenLabel(const Token* token);
+
+
+static CmdInfo      GetCmdInfo              (const Token* token);
+static size_t       CalcCodeSize            (const TokensArray* tokens_array);
+
+static AssemblerErr JmpCmdPattern           (AsmData* AsmDataInfo, Cmd jump_type);
+
+static AssemblerErr (*GetCmd(Cmd command)) (AsmData* AsmDataInfo);
+
+static bool IsTokenNumber(const Token* token);
+static PushType GetPushType(bool stack, bool reg, bool memory, bool sum);
+static int GetNumberFromToken(const Token* token);
+static bool IsTokenRegister(const Token* token);
+static int GetRegisterFromToken(const Token* token);
+static bool IsTokenMemory(const Token* token);
+static bool IsTokenRightBracket(const Token* token);
+static bool IsTokenPlus(const Token* token);
+static PopType GetPopType(bool reg, bool memory, bool int_mem_addr, bool aligment);
+static DrawType GetDrawType(bool IsReg[3]);
+
+static bool IsTokenJmpOrCall(const Token* token);
+
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// HandlePush helper funtions
+
+struct PushCodeArgs
+{
+    PushType type;
+    int      int_arg;
+    int      aligmnent;
+};
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushCodeArgs GetPushCodeArgs                   (PushType type, int int_arg, int aligmnet);
+
+static PushCodeArgs GetPushCodeArgsForPushNumber      (const Token* push_arg_token);
+static PushCodeArgs GetPushCodeArgsForPushRegister    (const Token* push_arg_token);
+static PushCodeArgs GetPushCodeArgsForPushMemNumber   (const Token* push_arg_token);
+static PushCodeArgs GetPushCodeArgsForPushMemRegister (const Token* push_arg_token);
+static PushCodeArgs GetPushCodeArgsForPushAligment    (const Token* push_arg_token, const Token* push_arg_next_token);
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// HabdlePop helper functions
+
+struct PopCodeArgs
+{
+    PopType type;
+    int     int_arg;
+    int     aligment;
+};
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopCodeArgs GetPopCodeArgs                     (PopType type, int int_arg, int aligment);
+
+static PopCodeArgs GetPopCodeArgsForPopRegister       (const Token* pop_arg_token);
+static PopCodeArgs GetPopCodeArgsForPopMemInt         (const Token* pop_arg_token);
+static PopCodeArgs GetPopCodeArgsForPopMemRegister    (const Token* pop_arg_token);
+static PopCodeArgs GetPopCodeArgsForPopMemAligment    (const Token* pop_arg_token, const Token* pop_arg_next_token);
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Error processing functions
+
+static AssemblerErr Verify                     (const AsmData* AsmDataInfo, AssemblerErr* err, Token token, const char* file, int line, const char* func);
 static void         PrintError                 (const AssemblerErr* err);
 static void         PrintIncorrectCmd          (const char* msg, const char* file, Token token);
 static void         PrintIncorrectCmdFilePlace (const char* file , Token token);
@@ -163,18 +212,18 @@ static void         AssemblerAssertPrint       (const AssemblerErr* err, const c
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define ASSEMBLER_VERIF(AsmDataInfo, err, token) Verify(AsmDataInfo, &err, token, __FILE__, __LINE__, __func__)
-
+ 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define ASSEMBLER_ASSERT(Err) do                                                   \
-{                                                                                   \
-    AssemblerErr errCopy = Err;                                                      \
-    if (errCopy.err != AssemblerErrorType::NO_ERR)                                    \
-    {                                                                                  \
-        AssemblerAssertPrint(&errCopy, __FILE__, __LINE__, __func__);                   \
-        exit(EXIT_FAILURE);                                                              \
-    }                                                                                     \
-} while (0)                                                                                \
+#define ASSEMBLER_ASSERT(Err) do                                   \
+{                                                                   \
+    AssemblerErr errCopy = Err;                                      \
+    if (errCopy.err != AssemblerErrorType::NO_ERR)                    \
+    {                                                                  \
+        AssemblerAssertPrint(&errCopy, __FILE__, __LINE__, __func__);   \
+        exit(EXIT_FAILURE);                                              \
+    }                                                                     \
+} while (0)                                                                \
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -189,13 +238,41 @@ void RunAssembler(const IOfile* file)
     ASSEMBLER_ASSERT(AsmDataCtor         (&AsmDataInfo, file));
     ASSEMBLER_ASSERT(InitLabels          (&AsmDataInfo)      );
     ASSEMBLER_ASSERT(WriteCmdInCodeArr   (&AsmDataInfo)      );
-    ASSEMBLER_ASSERT(WriteCodeArrInFile  (&AsmDataInfo)      );
+    ASSEMBLER_ASSERT(WriteCodeArrayInFile(&AsmDataInfo)      );
     ASSEMBLER_ASSERT(AsmDataDtor         (&AsmDataInfo)      );
 
     return;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void CheckInputFiles(const IOfile* files)
+{
+    assert(files);
+
+    if (!files->asm_file)
+        EXIT(EXIT_FAILURE, "asm file name is nullptr.");
+
+    if (!files->bin_file)
+        EXIT(EXIT_FAILURE, "bin file name is nullptr.");
+
+    const char* asm_file_extension = GetFileExtension(files->asm_file);
+
+    if ((!asm_file_extension) || (strcmp(asm_file_extension, "asm") != 0))
+        EXIT(EXIT_FAILURE, "bad asm extension: '%s'\nmust be '.asm'", files->asm_file);
+
+    const char* bin_file_extension = GetFileExtension(files->bin_file);
+
+    if ((!bin_file_extension) || (strcmp(bin_file_extension, bin_extension) != 0))
+        EXIT(EXIT_FAILURE, "bad bin extension: '%s'\nmust be '.bin'", files->bin_file);    
+
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// main fucntions
 
 static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
 {
@@ -226,66 +303,64 @@ static AssemblerErr AsmDataCtor(AsmData* AsmDataInfo, const IOfile* file)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr AsmDataDtor(AsmData* AsmDataInfo)
+static AssemblerErr InitLabels(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
 
     AssemblerErr err = {};
 
-    BufferDtor     (&AsmDataInfo->buffer      );
-    TokensArrayDtor(&AsmDataInfo->tokens_array);
-    CodeArrayDtor  (&AsmDataInfo->code_array  );
-    LabelsArrayDtor(&AsmDataInfo->labels      );
+    const Token* tokens_array = AsmDataInfo->tokens_array.array;
+    const size_t tokens_quant = AsmDataInfo->tokens_array.size;
 
-    *AsmDataInfo = {};
+    static const size_t default_labels_quant = 16;
+    LabelsArray         labels_array         = LabelsArrayCtor(default_labels_quant);
 
-    return err;
-}
+    size_t token_pointer = 0;
+    size_t code_pointer  = 0; 
 
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr (*GetCmd(Cmd command)) (AsmData* AsmDataInfo)
-{
-    AssemblerErr err = {};
-
-    switch (command)
+    while(token_pointer < tokens_quant)
     {
-        case Cmd::hlt:       return HandleHlt;
-        case Cmd::push:      return HandlePush;
-        case Cmd::pop:       return HandlePop;
-        case Cmd::add:       return HandleAdd;
-        case Cmd::sub:       return HandleSub;
-        case Cmd::mul:       return HandleMul;
-        case Cmd::dive:      return HandleDiv;
-        case Cmd::pp:        return HandlePp;
-        case Cmd::mm:        return HandleMm;
-        case Cmd::out:       return HandleOut;
-        case Cmd::outc:      return HandleOutc;
-        case Cmd::outr:      return HandleOutr;
-        case Cmd::outrc:     return HandleOutrc;
-        case Cmd::jmp:       return HandleJmp;
-        case Cmd::ja:        return HandleJa;
-        case Cmd::jae:       return HandleJae;
-        case Cmd::jb:        return HandleJb;
-        case Cmd::jbe:       return HandleJbe;
-        case Cmd::je:        return HandleJe;
-        case Cmd::jne:       return HandleJne;
-        case Cmd::call:      return HandleCall;
-        case Cmd::ret:       return HandleRet;
-        case Cmd::draw:      return HandleDraw;
-        case Cmd::rgba:      return HandleRGBA;
-        case Cmd::CMD_QUANT:
-        case Cmd::undef_cmd:
-        default:
+        Token token = tokens_array[token_pointer];
+        
+        if (IsTokenJmpOrCall(&token))
         {
-            err.err = AssemblerErrorType::UNDEFINED_ENUM_COMMAND;
-            ASSEMBLER_ASSERT(err);
-            return nullptr;
+            token_pointer += 2; // skip jmp-s and call args, that is label
+            continue;
         }
+        
+        if (IsTokenLabel(&token))
+        {
+            const TokenizerLabel token_label = token.value.label;
+            size_t               cmd_index   = 0;
+
+            if (!WasLabelAlreadyDefined(&labels_array, token_label.name, &cmd_index))
+            {
+                token_pointer++;
+                Label label = LabelCtor(token_label.name, code_pointer, true);
+                PushLabel(&labels_array, &label);
+                continue;
+            }
+
+            err.err = AssemblerErrorType::LABEL_REDEFINE;
+            return ASSEMBLER_VERIF(AsmDataInfo, err, token);
+        }
+
+        token_pointer++;
     }
 
-  __builtin_unreachable__();
-    return nullptr;
+    AsmDataInfo->labels = labels_array;
+
+    // ON_DEBUG(
+    // LOG_TITLE(Red, "Labels Array!!!");
+    // size_t size = AsmDataInfo->labels.size;
+    // for (size_t i = 0; i < size; i++)
+    // {
+    //     LOG_PRINT(Blue, "label[%2lu] =\n{\nname = '%.*s'\ncode place = '%3lu'\nis_def = '%d'\n}\n\n", i, 10, AsmDataInfo->labels.array[i].name, AsmDataInfo->labels.array[i].code_place, AsmDataInfo->labels.array[i].is_defined);
+    // }
+    // LOG_TITLE(Red, "Labels Array End");
+    // LOG_NS();
+    // )
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -330,125 +405,63 @@ static AssemblerErr WriteCmdInCodeArr(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr WriteCodeArrInFile(AsmData* AsmDataInfo)
+static AssemblerErr WriteCodeArrayInFile(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
-    assert(AsmDataInfo->code_array.array);
 
     AssemblerErr err = {};
 
-    const char* codeFileName = AsmDataInfo->file.bin_file;
+    const char* bin_file   = AsmDataInfo->file.bin_file;
+    CodeArray   code_array = AsmDataInfo->code_array;
 
-    FILE* codeFile = fopen(codeFileName, "wb");
+    FILE* file_ptr = SafeFopen(bin_file, "wb"); assert(file_ptr);
 
-    if (!codeFile)
+    size_t code_array_size = code_array.size;
+
+    int fprintf_return = fprintf(file_ptr, "%lu\n", code_array_size);
+
+    if (1 != fprintf_return)
+        EXIT(EXIT_FAILURE, "failed fprintf code array size in '%s'.", bin_file);
+
+    int* code = code_array.array;
+
+    for (size_t i = 0; i < code_array_size; i++)
     {
-        err.err = AssemblerErrorType::FAILED_OPEN_OUTPUT_STREAM;
-        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+        int instruction = code[i];
+    
+        fprintf_return = fprintf(file_ptr, "%d ", instruction); 
+
+        if (1 != fprintf_return)
+            EXIT(EXIT_FAILURE, "failed fprintf code[%lu]\n in '%s'.", i, bin_file);
     }
-
-    size_t codeArrSize = AsmDataInfo->code_array.size;
-
-    // ON_DEBUG(
-    // LOG_PRINT(Red, "code arr size = '%lu'\n", codeArrSize);
-    // LOG_ALL_INT_ARRAY(Yellow, AsmDataInfo->code.code, codeArrSize, 3);
-    // )
-
-    fprintf(codeFile, "%lu\n", codeArrSize);
-
-    for (size_t i = 0; i < codeArrSize; i++)
-    {
-        // ON_DEBUG(
-        // LOG_PRINT(Red, "code[%2lu] = '%d'\n", i, AsmDataInfo->code.code[i]);
-        // )
-        fprintf(codeFile, "%d ", AsmDataInfo->code.code[i]);
-    }
-
-    fclose(codeFile);
+    
+    SafeFclose(file_ptr);
 
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-struct PushCodeArgs
+static AssemblerErr AsmDataDtor(AsmData* AsmDataInfo)
 {
-    PushType type;
-    int      int_arg;
-    int      aligmnent;
-};
+    assert(AsmDataInfo);
 
+    AssemblerErr err = {};
 
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    BufferDtor     (&AsmDataInfo->buffer      );
+    TokensArrayDtor(&AsmDataInfo->tokens_array);
+    CodeArrayDtor  (&AsmDataInfo->code_array  );
+    LabelsArrayDtor(&AsmDataInfo->labels      );
 
-static PushCodeArgs GetPushCodeArgs(PushType type, int int_arg, int aligmnet)
-{
-    PushCodeArgs push_code_args = 
-    {
-        .type      = type    ,
-        .int_arg   = int_arg ,
-        .aligmnent = aligmnet,
-    };
+    *AsmDataInfo = {};
 
-    return push_code_args;
+    return err;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PushCodeArgs GetPushCodeArgsForPushNumber(const Token* push_arg_token)
-{
-    assert(push_arg_token);
-
-    return GetPushCodeArgs(GetPushType       (1, 0, 0, 0    ), 
-                           GetNumberFromToken(push_arg_token),
-                           0);
-}
-
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PushCodeArgs GetPushCodeArgsForPushRegister(const Token* push_arg_token)
-{
-    assert(push_arg_token);
-
-    return GetPushCodeArgs(GetPushType         (0, 1, 0, 0    ), 
-                           GetRegisterFromToken(push_arg_token),
-                           0);
-}
-
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PushCodeArgs GetPushCodeArgsForPushMemNumber(const Token* push_arg_token)
-{
-    assert(push_arg_token);
-
-    return GetPushCodeArgs(GetPushType       (0, 0, 1, 0    ), 
-                           GetNumberFromToken(push_arg_token),
-                           0);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PushCodeArgs GetPushCodeArgsForPushMemRegister(const Token* push_arg_token)
-{
-    assert(push_arg_token);
-
-    return GetPushCodeArgs(GetPushType         (0, 1, 1, 0    ), 
-                           GetRegisterFromToken(push_arg_token),
-                           0);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PushCodeArgs GetPushCodeArgsForPushAligment(const Token* push_arg_token, const Token* push_arg_next_token)
-{
-    assert(push_arg_token);
-
-    return GetPushCodeArgs(GetPushType      (0, 1, 0, 1          ), 
-                        GetRegisterFromToken(push_arg_token     ),
-                        GetNumberFromToken  (push_arg_next_token));
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// asm-command processing functions
 
 #define PUSH_BAD_SYNTAX(token) do                          \
 {                                                           \
@@ -525,133 +538,7 @@ static AssemblerErr HandlePush(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static PushType GetPushType(bool stack, bool reg, bool memory, bool sum)
-{
-    PushType type = 0;
-    type = (PushType) ((stack << 3) | (reg << 2) | (memory << 1) | (sum));
-
-    return type;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetNumberFromToken(const Token* token)
-{
-    assert(token);
-
-    const char* number_str = token->value.number.number    ; assert(number_str);
-    size_t      str_len    = token->value.number.number_len;
-
-    char* number_str_end = nullptr;
-    int number = (int) strtol(number_str, &number_str_end, 10);
-
-    if ((size_t) (number_str_end - number_str) == str_len)
-        return number;
-
-    // it's char
-
-    if (str_len != 4) // '\n'
-        return number_str[1];
-
-    return '\n';
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetRegisterFromToken(const Token* token)
-{
-    assert(token);
-
-    return (int) token->value.reg;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool IsTokenPlus(const Token* token)
-{
-    assert(token);
-    return  (token->type            == TokenType   ::token_math_operation) &&
-            (token->value.operation == MathOperator::plus);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-struct PopCodeArgs
-{
-    PopType type;
-    int     int_arg;
-    int     aligment;
-};
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PopCodeArgs GetPopCodeArgs(PopType type, int int_arg, int aligment)
-{
-    PopCodeArgs pop_code_args = 
-    {
-        .type     = type,
-        .int_arg  = int_arg,
-        .aligment = aligment,
-    };
-
-    return pop_code_args;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PopCodeArgs GetPopCodeArgsForPopRegister(const Token* pop_arg_token)
-{
-    assert(pop_arg_token);
-
-    return GetPopCodeArgs(GetPopType          (1, 0, 0, 0   ),
-                          GetRegisterFromToken(pop_arg_token),
-                          0);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PopCodeArgs GetPopCodeArgsForPopMemInt(const Token* pop_arg_token)
-{
-    assert(pop_arg_token);
-
-    return GetPopCodeArgs(GetPopType        (0, 1, 1, 0   ),
-                          GetNumberFromToken(pop_arg_token),
-                          0);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PopCodeArgs GetPopCodeArgsForPopMemRegister(const Token* pop_arg_token)
-{
-    assert(pop_arg_token);
-
-    return GetPopCodeArgs(GetPopType          (1, 0, 0, 0   ),
-                          GetRegisterFromToken(pop_arg_token),
-                          0);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PopCodeArgs GetPopCodeArgsForPopMemAligment(const Token* pop_arg_token, const Token* pop_arg_next_token)
-{
-    assert(pop_arg_token);
-    assert(pop_arg_next_token);
-
-    return GetPopCodeArgs(GetPopType          (1, 1, 0, 1        ),
-                          GetRegisterFromToken(pop_arg_token     ),
-                          GetNumberFromToken  (pop_arg_next_token));
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool IsAligment(const Token* arg_token, const Token* arg_next_token)
-{
-    assert(arg_token);
-    assert(arg_next_token);
-
-    return IsTokenRegister(arg_token) &&
-           IsTokenPlus    (arg_next_token);
-}
+#undef PUSH_BAD_SYNTAX
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -727,16 +614,6 @@ static AssemblerErr HandlePop(AsmData* AsmDataInfo)
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #undef POP_BAD_SYNTAX
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PopType GetPopType(bool reg, bool memory, bool int_mem_addr, bool aligment)
-{
-    PopType type = 0;
-    type = (PopType) ((reg << 3) | (memory << 2) | (int_mem_addr << 1) | aligment);
-
-    return type;
-}
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -854,63 +731,6 @@ static AssemblerErr HandleRet(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd pp)
-{
-    assert(AsmDataInfo);
-
-    AssemblerErr err = {};
-        
-    Token  pp_arg_token = GetNextToken(AsmDataInfo);
-    int    pp_arg_int   = 0;
-
-    if (IsTokenRegister(&pp_arg_token))
-    {
-        pp_arg_int = GetRegisterFromToken(&pp_arg_token);
-    }
-
-    else
-    {
-        if (pp == Cmd::pp)
-        {
-            err.err = AssemblerErrorType::INCORRECT_PP_ARG;
-            return ASSEMBLER_VERIF(AsmDataInfo, err, pp_arg_token);
-        }
-
-        else if (pp== Cmd::mm)
-        {
-            err.err = AssemblerErrorType::INCORRECT_MM_ARG;
-            return ASSEMBLER_VERIF(AsmDataInfo, err, pp_arg_token);
-        }
-
-       __builtin_unreachable__();
-        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-    }
-
-    SetNextCodeInstruction(AsmDataInfo, pp);
-    SetNextCodeInstruction(AsmDataInfo, pp_arg_int);
-
-    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr HandlePp(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-    return PpMmPattern(AsmDataInfo, Cmd::pp);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-static AssemblerErr HandleMm(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-    return PpMmPattern(AsmDataInfo, Cmd::mm);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 static AssemblerErr HandleAdd(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
@@ -947,6 +767,23 @@ static AssemblerErr HandleDiv(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static AssemblerErr HandlePp(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+    return PpMmPattern(AsmDataInfo, Cmd::pp);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+static AssemblerErr HandleMm(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+    return PpMmPattern(AsmDataInfo, Cmd::mm);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static AssemblerErr HandleOut(AsmData* AsmDataInfo)
 {
     assert(AsmDataInfo);
@@ -979,28 +816,6 @@ static AssemblerErr HandleOutrc(AsmData* AsmDataInfo)
     assert(AsmDataInfo);
 
     return NullArgCmdPattern(AsmDataInfo, Cmd::outrc);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr HandleHlt(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-
-    return NullArgCmdPattern(AsmDataInfo, hlt);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr HandleLabel(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-
-    AssemblerErr err = {};
-
-    AsmDataInfo->labels.pointer++;
-
-    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1054,6 +869,314 @@ static AssemblerErr HandleDraw(AsmData* AsmDataInfo)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static AssemblerErr HandleHlt(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+
+    return NullArgCmdPattern(AsmDataInfo, hlt);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static AssemblerErr HandleLabel(AsmData* AsmDataInfo)
+{
+    assert(AsmDataInfo);
+
+    AssemblerErr err = {};
+
+    AsmDataInfo->labels.pointer++;
+
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// helper functions
+
+static AssemblerErr (*GetCmd(Cmd command)) (AsmData* AsmDataInfo)
+{
+    AssemblerErr err = {};
+
+    switch (command)
+    {
+        case Cmd::hlt:   return HandleHlt  ;
+        case Cmd::push:  return HandlePush ;
+        case Cmd::pop:   return HandlePop  ;
+        case Cmd::add:   return HandleAdd  ;
+        case Cmd::sub:   return HandleSub  ;
+        case Cmd::mul:   return HandleMul  ;
+        case Cmd::dive:  return HandleDiv  ;
+        case Cmd::pp:    return HandlePp   ;
+        case Cmd::mm:    return HandleMm   ;
+        case Cmd::out:   return HandleOut  ;
+        case Cmd::outc:  return HandleOutc ;
+        case Cmd::outr:  return HandleOutr ;
+        case Cmd::outrc: return HandleOutrc;
+        case Cmd::jmp:   return HandleJmp  ;
+        case Cmd::ja:    return HandleJa   ;
+        case Cmd::jae:   return HandleJae  ;
+        case Cmd::jb:    return HandleJb   ;
+        case Cmd::jbe:   return HandleJbe  ;
+        case Cmd::je:    return HandleJe   ;
+        case Cmd::jne:   return HandleJne  ;
+        case Cmd::call:  return HandleCall ;
+        case Cmd::ret:   return HandleRet  ;
+        case Cmd::draw:  return HandleDraw ;
+        case Cmd::rgba:  return HandleRGBA ;
+        default:         break             ;
+    }
+
+    err.err = AssemblerErrorType::UNDEFINED_ENUM_COMMAND;
+    ASSEMBLER_ASSERT(err);
+
+    __builtin_unreachable__();
+
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushCodeArgs GetPushCodeArgs(PushType type, int int_arg, int aligmnet)
+{
+    PushCodeArgs push_code_args = 
+    {
+        .type      = type    ,
+        .int_arg   = int_arg ,
+        .aligmnent = aligmnet,
+    };
+
+    return push_code_args;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushCodeArgs GetPushCodeArgsForPushNumber(const Token* push_arg_token)
+{
+    assert(push_arg_token);
+
+    return GetPushCodeArgs(GetPushType       (1, 0, 0, 0    ), 
+                           GetNumberFromToken(push_arg_token),
+                           0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushCodeArgs GetPushCodeArgsForPushRegister(const Token* push_arg_token)
+{
+    assert(push_arg_token);
+
+    return GetPushCodeArgs(GetPushType         (0, 1, 0, 0    ), 
+                           GetRegisterFromToken(push_arg_token),
+                           0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushCodeArgs GetPushCodeArgsForPushMemNumber(const Token* push_arg_token)
+{
+    assert(push_arg_token);
+
+    return GetPushCodeArgs(GetPushType       (0, 0, 1, 0    ), 
+                           GetNumberFromToken(push_arg_token),
+                           0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushCodeArgs GetPushCodeArgsForPushMemRegister(const Token* push_arg_token)
+{
+    assert(push_arg_token);
+
+    return GetPushCodeArgs(GetPushType         (0, 1, 1, 0    ), 
+                           GetRegisterFromToken(push_arg_token),
+                           0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushCodeArgs GetPushCodeArgsForPushAligment(const Token* push_arg_token, const Token* push_arg_next_token)
+{
+    assert(push_arg_token);
+
+    return GetPushCodeArgs(GetPushType      (0, 1, 0, 1          ), 
+                        GetRegisterFromToken(push_arg_token     ),
+                        GetNumberFromToken  (push_arg_next_token));
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PushType GetPushType(bool stack, bool reg, bool memory, bool sum)
+{
+    PushType type = 0;
+    type = (PushType) ((stack << 3) | (reg << 2) | (memory << 1) | (sum));
+
+    return type;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static int GetNumberFromToken(const Token* token)
+{
+    assert(token);
+
+    const char* number_str = token->value.number.number    ; assert(number_str);
+    size_t      str_len    = token->value.number.number_len;
+
+    char* number_str_end = nullptr;
+    int number = (int) strtol(number_str, &number_str_end, 10);
+
+    if ((size_t) (number_str_end - number_str) == str_len)
+        return number;
+
+    // it's char
+
+    if (str_len != 4) // '\n'
+        return number_str[1];
+
+    return '\n';
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static int GetRegisterFromToken(const Token* token)
+{
+    assert(token);
+
+    return (int) token->value.reg;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsTokenPlus(const Token* token)
+{
+    assert(token);
+    return  (token->type            == TokenType   ::token_math_operation) &&
+            (token->value.operation == MathOperator::plus);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopCodeArgs GetPopCodeArgs(PopType type, int int_arg, int aligment)
+{
+    PopCodeArgs pop_code_args = 
+    {
+        .type     = type,
+        .int_arg  = int_arg,
+        .aligment = aligment,
+    };
+
+    return pop_code_args;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopCodeArgs GetPopCodeArgsForPopRegister(const Token* pop_arg_token)
+{
+    assert(pop_arg_token);
+
+    return GetPopCodeArgs(GetPopType          (1, 0, 0, 0   ),
+                          GetRegisterFromToken(pop_arg_token),
+                          0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopCodeArgs GetPopCodeArgsForPopMemInt(const Token* pop_arg_token)
+{
+    assert(pop_arg_token);
+
+    return GetPopCodeArgs(GetPopType        (0, 1, 1, 0   ),
+                          GetNumberFromToken(pop_arg_token),
+                          0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopCodeArgs GetPopCodeArgsForPopMemRegister(const Token* pop_arg_token)
+{
+    assert(pop_arg_token);
+
+    return GetPopCodeArgs(GetPopType          (1, 0, 0, 0   ),
+                          GetRegisterFromToken(pop_arg_token),
+                          0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopCodeArgs GetPopCodeArgsForPopMemAligment(const Token* pop_arg_token, const Token* pop_arg_next_token)
+{
+    assert(pop_arg_token);
+    assert(pop_arg_next_token);
+
+    return GetPopCodeArgs(GetPopType          (1, 1, 0, 1        ),
+                          GetRegisterFromToken(pop_arg_token     ),
+                          GetNumberFromToken  (pop_arg_next_token));
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsAligment(const Token* arg_token, const Token* arg_next_token)
+{
+    assert(arg_token);
+    assert(arg_next_token);
+
+    return IsTokenRegister(arg_token) &&
+           IsTokenPlus    (arg_next_token);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopType GetPopType(bool reg, bool memory, bool int_mem_addr, bool aligment)
+{
+    PopType type = 0;
+    type = (PopType) ((reg << 3) | (memory << 2) | (int_mem_addr << 1) | aligment);
+
+    return type;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd pp)
+{
+    assert(AsmDataInfo);
+
+    AssemblerErr err = {};
+        
+    Token  pp_arg_token = GetNextToken(AsmDataInfo);
+    int    pp_arg_int   = 0;
+
+    if (IsTokenRegister(&pp_arg_token))
+    {
+        pp_arg_int = GetRegisterFromToken(&pp_arg_token);
+    }
+
+    else
+    {
+        if (pp == Cmd::pp)
+        {
+            err.err = AssemblerErrorType::INCORRECT_PP_ARG;
+            return ASSEMBLER_VERIF(AsmDataInfo, err, pp_arg_token);
+        }
+
+        else if (pp== Cmd::mm)
+        {
+            err.err = AssemblerErrorType::INCORRECT_MM_ARG;
+            return ASSEMBLER_VERIF(AsmDataInfo, err, pp_arg_token);
+        }
+
+       __builtin_unreachable__();
+        return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+    }
+
+    SetNextCodeInstruction(AsmDataInfo, pp);
+    SetNextCodeInstruction(AsmDataInfo, pp_arg_int);
+
+    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static DrawType GetDrawType(bool IsReg[3])
 {
     DrawType type = 0;
@@ -1062,8 +1185,6 @@ static DrawType GetDrawType(bool IsReg[3])
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-typedef uint8_t RGBATYpe;
 
 static RGBATYpe GetRGBAType(bool isReg[4])
 {
@@ -1131,7 +1252,7 @@ static AssemblerErr NullArgCmdPattern(AsmData* AsmDataInfo, Cmd cmd)
 
     AssemblerErr err = {};
     SetNextCodeInstruction(AsmDataInfo, cmd);
-    AsmDataInfo->code.size++;
+    AsmDataInfo->code_array.size++;
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
@@ -1179,73 +1300,6 @@ static AssemblerErr JmpCmdPattern(AsmData* AsmDataInfo, Cmd jump_type)
     SetNextCodeInstruction(AsmDataInfo, jump_type);
     SetNextCodeInstruction(AsmDataInfo, jmp_arg_int);
 
-    return ASSEMBLER_VERIF(AsmDataInfo, err, {});
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static AssemblerErr InitLabels(AsmData* AsmDataInfo)
-{
-    assert(AsmDataInfo);
-
-    AssemblerErr err = {};
-
-    // CmdArr cmdArr    = AsmDataInfo->cmd;
-    // size_t cmdQuant  = AsmDataInfo->cmd.size;
-
-    const Token* tokens_array = AsmDataInfo->tokens_array.array;
-    const size_t tokens_quant = AsmDataInfo->tokens_array.size;
-
-    static const size_t default_labels_quant = 16;
-    LabelsArray labels_array = LabelsArrayCtor(default_labels_quant);
-
-    size_t token_pointer = 0;
-    size_t code_pointer = 0; //
-
-    while(token_pointer < tokens_quant)
-    {
-        bool   defined   = true;
-        size_t cmd_index = 0;
-
-        Token token = tokens_array[token_pointer];
-    
-        if (IsTokenJmpOrCall(&token))
-        {
-            token_pointer += 2; // skip jmp-s and call args, that is label
-            continue;
-        }
-
-        if (IsTokenLabel(&token))
-        {
-            const TokenizerLabel token_label = token.value.label;
-    
-            if (!WasLabelAlreadyDefined(&labels_array, token_label.name, &cmd_index))
-            {
-                token_pointer++;
-                Label label = LabelCtor(token_label.name, code_pointer, defined);
-                PushLabel(&labels_array, &label);
-                continue;
-            }
-
-            err.err = AssemblerErrorType::LABEL_REDEFINE;
-            return ASSEMBLER_VERIF(AsmDataInfo, err, token);
-        }
-
-        token_pointer++;
-    }
-
-    AsmDataInfo->labels = labels_array;
-
-    // ON_DEBUG(
-    // LOG_TITLE(Red, "Labels Array!!!");
-    // size_t size = AsmDataInfo->labels.size;
-    // for (size_t i = 0; i < size; i++)
-    // {
-    //     LOG_PRINT(Blue, "label[%2lu] =\n{\nname = '%.*s'\ncode place = '%3lu'\nis_def = '%d'\n}\n\n", i, 10, AsmDataInfo->labels.array[i].name, AsmDataInfo->labels.array[i].code_place, AsmDataInfo->labels.array[i].is_defined);
-    // }
-    // LOG_TITLE(Red, "Labels Array End");
-    // LOG_NS();
-    // )
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
@@ -1347,11 +1401,11 @@ static bool IsTokenLabel(const Token* token)
 static void SetNextCodeInstruction(AsmData* AsmDataInfo, int instruction)
 {
     assert(AsmDataInfo);
-    assert(AsmDataInfo->code.code);
+    assert(AsmDataInfo->code_array.array);
 
-    size_t pointer = AsmDataInfo->code.pointer;
-    AsmDataInfo->code.code[pointer] = instruction;
-    AsmDataInfo->code.pointer++;
+    size_t pointer = AsmDataInfo->code_array.pointer;
+    AsmDataInfo->code_array.array[pointer] = instruction;
+    AsmDataInfo->code_array.pointer++;
     return;
 }
 
@@ -1392,32 +1446,6 @@ void AssemblerAssertPrint(const AssemblerErr* err, const char* file, int line, c
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void CheckInputFiles(const IOfile* files)
-{
-    assert(files);
-
-    if (!files->asm_file)
-        EXIT(EXIT_FAILURE, "asm file name is nullptr.");
-
-    if (!files->bin_file)
-        EXIT(EXIT_FAILURE, "bin file name is nullptr.");
-
-    const char* asm_file_extension = GetFileExtension(files->asm_file);
-
-    if ((!asm_file_extension) || (strcmp(asm_file_extension, "asm") != 0))
-        EXIT(EXIT_FAILURE, "bad asm extension: '%s'\nmust be '.asm'", files->asm_file);
-    
-
-    const char* bin_file_extension = GetFileExtension(files->bin_file);
-
-    if ((!bin_file_extension) ||strcmp(bin_file_extension, bin_extension) != 0)
-        EXIT(EXIT_FAILURE, "bad bin extension: '%s'\nmust be '.bin'", files->bin_file);    
-
-    return;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static AssemblerErr Verify(const AsmData* AsmDataInfo, AssemblerErr* err, Token token, const char* file, int line, const char* func)
 {    
