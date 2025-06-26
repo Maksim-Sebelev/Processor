@@ -1,6 +1,0 @@
-#ifndef _ASSEMBLER_GLOBAL_HPP_
-#define _ASSEMBLER_GLOBAL_HPP_
-
-
-
-#endif // _ASSEMBLER_GLOBAL_HPP_
