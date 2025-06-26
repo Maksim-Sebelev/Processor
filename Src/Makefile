@@ -66,7 +66,7 @@ EXAMPLE_DIR = examples
 EXAMPLE1_DIR  = example1
 EXAMPLE1_FILE = HelloWorld
 
-example1: asm proc
+example1: all asm proc
 	@make                                   \
 	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE1_DIR)   \
 	BIN_DIR=$(EXAMPLE_DIR)/$(EXAMPLE1_DIR)    \
@@ -84,7 +84,7 @@ example1: asm proc
 EXAMPLE2_DIR  = example2
 EXAMPLE2_FILE = Math
 
-example2: asm proc
+example2: all asm proc
 	@make                                   \
 	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE2_DIR)   \
 	BIN_DIR=$(EXAMPLE_DIR)/$(EXAMPLE2_DIR)    \
@@ -102,7 +102,7 @@ example2: asm proc
 EXAMPLE3_DIR  = example3
 EXAMPLE3_FILE = Cycle
 
-example3: asm proc
+example3: all asm proc
 	@make                                   \
 	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE3_DIR)   \
 	BIN_DIR=$(EXAMPLE_DIR)/$(EXAMPLE3_DIR)    \
@@ -120,7 +120,7 @@ example3: asm proc
 EXAMPLE4_DIR  = example4
 EXAMPLE4_FILE = Factorial
 
-example4: asm proc
+example4: all asm proc
 	@make                                   \
 	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE4_DIR)   \
 	BIN_DIR=$(EXAMPLE_DIR)/$(EXAMPLE4_DIR)    \
@@ -138,7 +138,7 @@ example4: asm proc
 EXAMPLE5_DIR  = example5
 EXAMPLE5_FILE = circle
 
-example5: asm proc
+example5: all asm proc
 	@make                                   \
 	ASM_DIR=$(EXAMPLE_DIR)/$(EXAMPLE5_DIR)   \
 	BIN_DIR=$(EXAMPLE_DIR)/$(EXAMPLE5_DIR)    \

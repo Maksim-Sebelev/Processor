@@ -70,7 +70,7 @@ DEPS = $(COBJ:.o=.d)
 
 .PHONY: all
 all: $(EXECUTABLE_DIR)/$(EXECUTABLE)
-	cp -r $(EXECUTABLE_DIR)/ examples/build
+	# cp -r $(EXECUTABLE_DIR)/ examples/build
 
 $(EXECUTABLE_DIR)/$(EXECUTABLE): $(COBJ)
 	@mkdir -p $(@D)
