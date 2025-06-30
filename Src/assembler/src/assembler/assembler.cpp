@@ -1066,7 +1066,7 @@ static PushCodeArgs GetPushCodeArgsForPushAligment(const Token* push_arg_token, 
 {
     assert(push_arg_token);
 
-    return GetPushCodeArgs(GetPushType      (0, 1, 0, 1          ), 
+    return GetPushCodeArgs(GetPushType      (0, 0, 1, 1         ), 
                         GetRegisterFromToken(push_arg_token     ),
                         GetNumberFromToken  (push_arg_next_token));
 }

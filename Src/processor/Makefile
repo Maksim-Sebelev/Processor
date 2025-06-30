@@ -47,7 +47,7 @@ EXECUTABLE     ?= exe
 BIN_DIR        ?=
 BIN_FILE       ?= programm.bin
 
--include make/local.mk
+-include local.mk
 
 override CFLAGS += $(COMMONINC)
 

@@ -3,8 +3,8 @@
         proc run_proc rerun_proc rebuild_proc clean_proc  \
 
 
-# ASM_BUILD_TYPE  ?= release
-ASM_BUILD_TYPE  ?= debug
+ASM_BUILD_TYPE  ?= release
+# ASM_BUILD_TYPE  ?= debug
 PROC_BUILD_TYPE ?= release
 # PROC_BUILD_TYPE ?= debug
 
