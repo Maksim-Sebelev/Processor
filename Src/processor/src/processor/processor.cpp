@@ -10,7 +10,6 @@
 #include "lib/lib.hpp"
 #include "functions_for_files/files.hpp"
 #include "processor/math_operators/operators.hpp"
-#include "processor/video_memory_command/videomem.hpp"
 
 #ifdef _DEBUG
 #include "logger/log.hpp"
@@ -86,21 +85,25 @@ struct SPU
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+using one_bit_t = unsigned char;
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 struct PushType
 {
-    unsigned int stack    : 1;
-    unsigned int reg      : 1;
-    unsigned int memory   : 1;
-    unsigned int aligment : 1;
+    one_bit_t number   : 1;
+    one_bit_t reg      : 1;
+    one_bit_t memory   : 1;
+    one_bit_t aligment : 1;
 };
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 struct PopType
 {
-    unsigned int reg      : 1;
-    unsigned int memory   : 1;
-    unsigned int aligment : 1;
+    one_bit_t reg      : 1;
+    one_bit_t memory   : 1;
+    one_bit_t aligment : 1;
 };
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -116,94 +119,103 @@ struct RGBA
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // check input files
-static void         CheckFileExtension         (const char* file_name);
+static void         CheckFileExtension                 (const char* file_name);
 
-// main functions in RunProcessor
-static ProcessorErr SpuCtor                    (SPU* spu, const ProcessorInput* input);
-static ProcessorErr ExecuteCommands            (SPU* spu);
-static ProcessorErr SpuDtor                    (SPU* spu);
+// main functions in RunProcessor        
+static ProcessorErr SpuCtor                            (SPU* spu, const ProcessorInput* input);
+static ProcessorErr ExecuteCommands                    (SPU* spu);
+static ProcessorErr SpuDtor                            (SPU* spu);
 
-// ctor spu helper funtions
-static ProcessorErr CodeCtor                   (SPU* spu, const char* file);
-static ProcessorErr RamCtor                    (SPU* spu);
-static ProcessorErr ProcessorStackCtor         (SPU* spu);
-static ProcessorErr RegistersCtor              (SPU* spu);
+// ctor spu helper funtions        
+static ProcessorErr CodeCtor                           (SPU* spu, const char* file);
+static ProcessorErr RamCtor                            (SPU* spu);
+static ProcessorErr ProcessorStackCtor                 (SPU* spu);
+static ProcessorErr RegistersCtor                      (SPU* spu);
 
-// dtor spu helper functions
-static ProcessorErr CodeDtor                   (SPU* spu);
-static ProcessorErr RamDtor                    (SPU* spu);
-static ProcessorErr ProcessorStackDtor         (SPU* spu);
-static ProcessorErr RegistersDtor              (SPU* spu);
+// dtor spu helper functions        
+static ProcessorErr CodeDtor                           (SPU* spu);
+static ProcessorErr RamDtor                            (SPU* spu);
+static ProcessorErr ProcessorStackDtor                 (SPU* spu);
+static ProcessorErr RegistersDtor                      (SPU* spu);
 
-// processing functions commands
-static ProcessorErr HandlePush                 (SPU* spu);
-static ProcessorErr HandlePop                  (SPU* spu);
-static ProcessorErr HandleAdd                  (SPU* spu); // arimthetic commands
-static ProcessorErr HandleSub                  (SPU* spu);
-static ProcessorErr HandleMul                  (SPU* spu);
-static ProcessorErr HandleDiv                  (SPU* spu); // ===============
-static ProcessorErr HandlePp                   (SPU* spu);
-static ProcessorErr HandleMm                   (SPU* spu);
-static ProcessorErr HandleJmp                  (SPU* spu); // jumps
-static ProcessorErr HandleJa                   (SPU* spu);
-static ProcessorErr HandleJae                  (SPU* spu);
-static ProcessorErr HandleJb                   (SPU* spu);
-static ProcessorErr HandleJbe                  (SPU* spu);
-static ProcessorErr HandleJe                   (SPU* spu);
-static ProcessorErr HandleJne                  (SPU* spu); // =================
-static ProcessorErr HandleCall                 (SPU* spu);
-static ProcessorErr HandleRet                  (SPU* spu);
-static ProcessorErr HandleOut                  (SPU* spu); // console out commands
-static ProcessorErr HandleOutc                 (SPU* spu);
-static ProcessorErr HandleOutr                 (SPU* spu);
-static ProcessorErr HandleOutrc                (SPU* spu); // =================
-ON_VIDEO
-(
-static ProcessorErr HandleDraw                 (SPU* spu); // functions for work with video memory
-static ProcessorErr HandleRGBA                 (SPU* spu); // =================
-)
-// pattern for similar functions
+// processing functions commands        
+static ProcessorErr HandlePush                         (SPU* spu);
+static ProcessorErr HandlePop                          (SPU* spu);
+static ProcessorErr HandleAdd                          (SPU* spu); // arimthetic commands
+static ProcessorErr HandleSub                          (SPU* spu);
+static ProcessorErr HandleMul                          (SPU* spu);
+static ProcessorErr HandleDiv                          (SPU* spu); // ===============
+static ProcessorErr HandlePp                           (SPU* spu);
+static ProcessorErr HandleMm                           (SPU* spu);
+static ProcessorErr HandleJmp                          (SPU* spu); // jumps
+static ProcessorErr HandleJa                           (SPU* spu);
+static ProcessorErr HandleJae                          (SPU* spu);
+static ProcessorErr HandleJb                           (SPU* spu);
+static ProcessorErr HandleJbe                          (SPU* spu);
+static ProcessorErr HandleJe                           (SPU* spu);
+static ProcessorErr HandleJne                          (SPU* spu); // =================
+static ProcessorErr HandleCall                         (SPU* spu);
+static ProcessorErr HandleRet                          (SPU* spu);
+static ProcessorErr HandleOut                          (SPU* spu); // console out commands
+static ProcessorErr HandleOutc                         (SPU* spu);
+static ProcessorErr HandleOutr                         (SPU* spu);
+static ProcessorErr HandleOutrc                        (SPU* spu); // =================
+static ProcessorErr HandleDraw                         (SPU* spu); // functions for work with video memory
+static ProcessorErr HandleRGBA                         (SPU* spu); // =================
 
-static ProcessorErr ArithmeticCmdPattern       (SPU* spu, ArithmeticOperator arithmetic_operator);
-static ProcessorErr PpMmPattern                (SPU* spu, Cmd command);
-static ProcessorErr JumpsCmdPatter             (SPU* spu, ComparisonOperator comparison_operator);
+// pattern for similar functions        
+static ProcessorErr ArithmeticCmdPattern               (SPU* spu, ArithmeticOperator arithmetic_operator);
+static ProcessorErr PpMmPattern                        (SPU* spu, Cmd command);
+static ProcessorErr JumpsCmdPatter                     (SPU* spu, ComparisonOperator comparison_operator);
 
-// HandlePush helper functioins
-static PushType     GetPushType                (int PushArg);
-static PopType      GetPopType                 (int PopArg);
+// HandlePush helper functioins        
+static PushType     GetPushType                        (int push_type_int);
 
-static int          GetPushPopArg              (SPU* spu);
-static int          GetPushPopSum              (SPU* spu);
-static int          GetPushPopRegister         (SPU* spu);
-static int          GetPushPopMemory           (SPU* spu);
-static int          GetPushPopMemoryWithReg    (SPU* spu);
-static int          GetPushPopAligment        (SPU* spu);
+static bool         IsPushTypeNumber                   (PushType push_type);
+static bool         IsPushTypeRegister                 (PushType push_type);
+static bool         IsPushTypeMemory                   (PushType push_type);
+static bool         IsPushTypeMemoryRegister           (PushType push_type);
+static bool         IsPushTypeAligment                 (PushType push_type);
 
-static ProcessorErr SetPopMemory               (SPU* spu, StackElem_t pop_element);
-static ProcessorErr SetPopMemoryWithRegister   (SPU* spu, StackElem_t pop_element);
-static ProcessorErr SetPopSum                  (SPU* spu, StackElem_t pop_element);
-static ProcessorErr SetPopRegister             (SPU* spu, StackElem_t pop_element);
+static int          GetPushElementTypeRegister         (const SPU* spu, int push_arg);
+static int          GetPushElementTypeMemory           (const SPU* spu, int push_arg);
+static int          GetPushElementTypeMemoryRegister   (const SPU* spu, int push_arg);
+static int          GetPushElementTypeAligment         (const SPU* spu, int push_arg, int aligment);
 
-static size_t       GetCodeSize                (SPU* spu);
-static size_t       GetIp                      (SPU* spu);
-static int          GetCodeElementByIp                (SPU* spu);
-static int          GetNextCodeElement            (SPU* spu);
-static void         SetCodeElem                (SPU* spu, size_t code_pointer, int setting_element);
-static int          GetMemoryElement                 (SPU* spu, size_t index);
+// HandlePop  helper functions
+static PopType      GetPopType                         (int PopArg);
+
+static bool         IsPopTypeRegister                 (PopType pop_type);
+static bool         IsPopTypeMemory                   (PopType pop_type);
+static bool         IsPopTypeMemoryRegister           (PopType pop_type);
+static bool         IsPopTypeAligment                 (PopType pop_type);
+
+static void         SetRegisterInPopTypeRegister      (SPU* spu, int pop_element, int pop_argument);
+static void         SetRamInPopTypeMemory             (SPU* spu, int pop_element, int pop_argument);
+static void         SetRamInPopTypeMemoryRegister     (SPU* spu, int pop_element, int pop_argument);
+static void         SetRamInPopTypeAligment           (SPU* spu, int pop_element, int pop_argument, int aligment);
+
+// rgba functions
+static RGBA         GetRGBA                           (int pixel);
+static ProcessorErr VertexArrayCtor                   (sf::VertexArray& pixels, size_t ram_addr_begin, size_t high, size_t width, SPU* spu);
+static int          PackRGBA                          (RGBA rgba);
+\
+// global functions for work with struct SPU
+static size_t       GetCodeSize                        (SPU* spu);
+static size_t       GetIp                              (SPU* spu);
+static int          GetNextCodeInstruction                 (SPU* spu);
+static void         SetCodeElem                        (SPU* spu, size_t code_pointer, int setting_element);
+static int          GetMemoryElement                   (SPU* spu, size_t index);
+static int          GetRegisterOrInt                   (const SPU* spu, bool is_arg_register, int argument);
+static one_bit_t    GetIBitOfInt                       (int n, size_t i);
+static ProcessorErr ReadCodeFromFile                   (SPU* spu, FILE* code_file_ptr);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // error processing functions
-static ProcessorErr   Verify                     (SPU* spu, ProcessorErr* err,  const char* file, int line, const char* func);
-static void           PrintError                 (          ProcessorErr* err);
-static void           ProcessorAssertPrint       (          ProcessorErr* Err, const char* File, int Line, const char* Func);
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static RGBA           GetRGBA                    (int pixel);
-static ProcessorErr   VertexArrayCtor            (sf::VertexArray& pixels, size_t ram_addr_begin, size_t high, size_t width, SPU* spu);
-static int            PackRGBA                   (RGBA rgba);
-static void           GetRGBAType                (int rgbaInt, bool* isReg1, bool* isReg2, bool* isReg3, bool* isReg4);
+static ProcessorErr Verify                            (SPU* spu, ProcessorErr* err, const char* file, int line, const char* func);
+static void         PrintError                        (          ProcessorErr* err                                              );
+static void         ProcessorAssertPrint              (          ProcessorErr* err, const char* file, int line, const char* func);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -214,16 +226,15 @@ static void WhereProcessorIs (const char* command);
 )
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define PROCESSOR_ASSERT(Err) do                                   \
+#define PROCESSOR_ASSERT(error) do                                 \
 {                                                                   \
-    ProcessorErr ErrCopy = Err;                                      \
-    if (ErrCopy.err != ProcessorErrorType::NO_ERR)                    \
+    ProcessorErr err_copy = error;                                   \
+    if (err_copy.err != ProcessorErrorType::NO_ERR)                   \
     {                                                                  \
-        ProcessorAssertPrint(&ErrCopy, __FILE__, __LINE__, __func__);   \
-        COLOR_PRINT(CYAN, "abort() in 3, 2, 1...");                      \
-        abort();                                                          \
-    }                                                                      \
-} while (0)                                                                 \
+        ProcessorAssertPrint(&err_copy, __FILE__, __LINE__, __func__);  \
+        exit(EXIT_FAILURE);                                              \
+    }                                                                     \
+} while (0)                                                                \
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -308,7 +319,7 @@ static ProcessorErr ExecuteCommands(SPU* spu)
 
     while (GetIp(spu) < code_size)
     {
-        int command = GetNextCodeElement(spu);
+        int command = GetNextCodeInstruction(spu);
         switch (command)
         {
             case Cmd::push:  PROCESSOR_ASSERT(HandlePush (spu)); break;
@@ -533,28 +544,28 @@ static ProcessorErr HandlePush(SPU* spu)
 
     ProcessorErr err = {};
 
-    int      push_type_int = GetNextCodeElement(spu);
-    PushType push_type     = GetPushType       (push_type_int);
+    int      push_type_int = GetNextCodeInstruction(spu);
+    PushType push_type     = GetPushType           (push_type_int);
 
     StackElem_t pushing_element = 0;
 
-    int push_arg = GetNextCodeElement(spu);
-    int aligment = GetNextCodeElement(spu);
+    int push_arg = GetNextCodeInstruction(spu);
+    int aligment = GetNextCodeInstruction(spu);
 
     if (IsPushTypeNumber(push_type))
         pushing_element = push_arg;
 
     else if (IsPushTypeRegister(push_type))
-        pushing_element = spu->registers[push_arg];
+        pushing_element = GetPushElementTypeRegister(spu, push_arg);
 
     else if (IsPushTypeMemory(push_type))
-        pushing_element = spu->ram.array[push_arg];
+        pushing_element = GetPushElementTypeMemory(spu, push_arg);
 
     else if (IsPushTypeMemoryRegister(push_type))
-        pushing_element = spu->ram.array[spu->registers[push_arg]];
+        pushing_element = GetPushElementTypeMemoryRegister(spu, push_arg);
 
     else if (IsPushTypeAligment(push_type))
-        pushing_element = spu->ram.array[spu->registers[push_arg] + aligment];
+        pushing_element = GetPushElementTypeAligment(spu, push_arg, aligment);
 
     else
     {
@@ -577,16 +588,27 @@ static ProcessorErr HandlePop(SPU* spu)
     assert(spu);
     ProcessorErr err = {};
 
-    int pop_type_int = GetNextCodeElement(spu         );
-    PopType pop_type = GetPopType     (pop_type_int);
+    int     pop_type_int = GetNextCodeInstruction(spu);
+    PopType pop_type     = GetPopType        (pop_type_int);
 
-    StackElem_t poping_element = 0;
-    STACK_ASSERT(StackPop(&spu->stack, &poping_element));
+    int     pop_arg      = GetNextCodeInstruction(spu);
+    int     aligment     = GetNextCodeInstruction(spu);
 
-    if      (pop_type.reg == 1 && pop_type.memory == 0 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopRegister            (spu, poping_element));
-    else if (pop_type.reg == 0 && pop_type.memory == 1 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopMemory              (spu, poping_element));
-    else if (pop_type.reg == 1 && pop_type.memory == 1 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopMemoryWithRegister  (spu, poping_element));
-    else if (pop_type.reg == 0 && pop_type.memory == 1 && pop_type.aligment == 1) PROCESSOR_ASSERT(SetPopSum                 (spu, poping_element));
+    StackElem_t pop_element = 0;
+    STACK_ASSERT(StackPop(&spu->stack, &pop_element));
+
+    if (IsPopTypeRegister(pop_type))
+        SetRegisterInPopTypeRegister(spu, pop_element, pop_arg);
+    
+    else if (IsPopTypeMemory(pop_type))
+        SetRamInPopTypeMemory(spu, pop_element, pop_arg);
+    
+    else if (IsPopTypeMemoryRegister(pop_type))
+        SetRamInPopTypeMemoryRegister(spu, pop_element, pop_arg);    
+    
+    else if (IsPopTypeAligment(pop_type))
+        SetRamInPopTypeAligment(spu, pop_element, pop_arg, aligment);
+
     else
     {
         err.err = ProcessorErrorType::INVALID_CMD;
@@ -597,6 +619,8 @@ static ProcessorErr HandlePop(SPU* spu)
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// arithmetic commands
 
 static ProcessorErr HandleAdd(SPU* spu)
 {
@@ -663,6 +687,7 @@ static ProcessorErr HandleMm(SPU* spu)
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// jump commands
 
 static ProcessorErr HandleJmp(SPU* spu)
 {
@@ -740,6 +765,7 @@ static ProcessorErr HandleJne(SPU* spu)
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// commands for work with asm-functions
 
 static ProcessorErr HandleCall(SPU* spu)
 {
@@ -748,13 +774,12 @@ static ProcessorErr HandleCall(SPU* spu)
     assert(spu);
 
     ProcessorErr err = {};
-
-    StackElem_t return_pointer  = (StackElem_t) (spu->code_array.ip +
-                                                 CmdInfoArr[Cmd::call].codeRecordSize); // skip 'call func:' in code_array array.
+    
+    StackElem_t return_pointer  = (StackElem_t) GetIp(spu) + 2; // skip 'call func:' is made in assembler
 
     STACK_ASSERT(StackPush(&spu->stack, return_pointer));
 
-    spu->code_array.ip = (size_t) GetNextCodeElement(spu);
+    spu->code_array.ip = (size_t) GetNextCodeInstruction(spu);
 
     return PROCESSOR_VERIFY(spu, err);
 }
@@ -779,6 +804,7 @@ static ProcessorErr HandleRet(SPU* spu)
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// functions for console out
 
 static ProcessorErr HandleOut(SPU* spu)
 {
@@ -862,6 +888,7 @@ static ProcessorErr HandleOutr(SPU* spu)
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// commands for work with video memory
 
 static ProcessorErr HandleDraw(SPU* spu)
 {
@@ -870,13 +897,13 @@ static ProcessorErr HandleDraw(SPU* spu)
 
     ProcessorErr err = {};    
 
-    const int draw_type_int = GetNextCodeElement(spu);
+    const int draw_type_int = GetNextCodeInstruction(spu);
 
     const int argument[3] =
     {
-        GetNextCodeElement(spu),
-        GetNextCodeElement(spu),
-        GetNextCodeElement(spu),
+        GetNextCodeInstruction(spu),
+        GetNextCodeInstruction(spu),
+        GetNextCodeInstruction(spu),
     };
 
     const bool is_arg_register[3] =
@@ -888,8 +915,9 @@ static ProcessorErr HandleDraw(SPU* spu)
     
 
     const size_t vertex_array_ram_begin_addr = (size_t) GetRegisterOrInt(spu, is_arg_register[0], argument[0]);
-    const size_t high                        = (size_t) GetRegisterOrInt(spu, is_arg_register[1], argument[2]);
-    const size_t width                       = (size_t) GetRegisterOrInt(spu, is_arg_register[2], argument[3]);
+    const size_t high                        = (size_t) GetRegisterOrInt(spu, is_arg_register[1], argument[1]);
+    const size_t width                       = (size_t) GetRegisterOrInt(spu, is_arg_register[2], argument[2]);
+
 
     const size_t vertext_quant = high * width;
 
@@ -921,6 +949,8 @@ static ProcessorErr HandleDraw(SPU* spu)
                 }
 
                 case sf::Event::Closed: window.close(); break;
+    
+                default: break;
             }
         }
     }
@@ -941,23 +971,32 @@ static ProcessorErr HandleRGBA(SPU* spu)
 
     ProcessorErr err = {};
 
-    const int rgba_type_int = GetNextCodeElement(spu);    
+    const int rgba_type_int = GetNextCodeInstruction(spu);    
 
-    int  argument            [4] = {};
-    bool is_argmunet_register[4] = {};
-
-    RGBA rgba = {};
-
-    for (size_t i = 0; i < 4; i++)
+    const int argument[4] =
     {
-        argument[i] = GetNextCodeElement(spu);
-        is_argmunet_register[i] = (bool) GetIBitOfInt(rgba_type_int, i);
-    }
+        GetNextCodeInstruction(spu),
+        GetNextCodeInstruction(spu),
+        GetNextCodeInstruction(spu),
+        GetNextCodeInstruction(spu),
+    };
 
-    unsigned char format_argument[4] = {};
+    const bool is_argmunet_register[4] =
+    {
+        (bool) GetIBitOfInt(rgba_type_int, 0),
+        (bool) GetIBitOfInt(rgba_type_int, 1),
+        (bool) GetIBitOfInt(rgba_type_int, 2),
+        (bool) GetIBitOfInt(rgba_type_int, 3),
+    };
 
-    for (size_t i = 0; i < 4; i++)
-        format_argument[i] = GetRegisterOrInt(spu, is_argmunet_register[i], argument[i]);
+
+    const unsigned char format_argument[4] =
+    {
+        (unsigned char) GetRegisterOrInt(spu, is_argmunet_register[0], argument[0]),
+        (unsigned char) GetRegisterOrInt(spu, is_argmunet_register[1], argument[1]),
+        (unsigned char) GetRegisterOrInt(spu, is_argmunet_register[2], argument[2]),
+        (unsigned char) GetRegisterOrInt(spu, is_argmunet_register[3], argument[3]),
+    };
 
     RGBA rgba = 
     {
@@ -975,10 +1014,123 @@ static ProcessorErr HandleRGBA(SPU* spu)
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/// pattern for similar functions
+
+
+static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator arithmetic_operator)
+{
+    assert(spu);
+    ProcessorErr err = {};
+
+    StackElem_t first_operand  = 0;
+    StackElem_t second_operand = 0;
+
+    STACK_ASSERT(StackPop(&spu->stack, &second_operand));
+    STACK_ASSERT(StackPop(&spu->stack, &first_operand));
+
+    StackElem_t push_elem = MakeArithmeticOperation(first_operand, second_operand, arithmetic_operator);
+    STACK_ASSERT(StackPush(&spu->stack, push_elem));
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr PpMmPattern(SPU* spu, Cmd command)
+{
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    int argument = GetNextCodeInstruction(spu);
+    size_t registerPointer = (size_t) spu->code_array.array[argument];
+
+    switch (command)
+    {
+        case Cmd::pp: spu->registers[registerPointer]++; break;
+        case Cmd::mm: spu->registers[registerPointer]--; break;
+        default: __builtin_unreachable__("here must be 'pp' or 'mm' commands"); break;
+    }
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator comparison_operator)
+{
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t first_operand  = 0;
+    StackElem_t second_operand = 0;
+
+    if (comparison_operator != always_true)
+    {
+        STACK_ASSERT(StackPop(&spu->stack, &second_operand));
+        STACK_ASSERT(StackPop(&spu->stack, &first_operand));
+    }
+
+    if (MakeComparisonOperation(first_operand, second_operand, comparison_operator))
+    {
+        spu->code_array.ip = (size_t) GetNextCodeInstruction(spu);
+        return PROCESSOR_VERIFY(spu, err);
+    }
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// push and pop helper macroses
+#define register_assert(spu, arg)       \
+assert(arg >= 0);                        \
+assert(arg < Registers::REGISTERS_QUANT); \
+assert(spu->registers)                     \
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define ram_assert(spu, arg)                  \
+assert(spu->ram.array);                        \
+assert(arg >= 0);                               \
+if ((size_t) arg >= spu->ram.size)               \
+{                                                 \
+    ProcessorErr error = {};                       \
+    error.err = ProcessorErrorType::RAM_OVERFLOW;   \
+    PROCESSOR_ASSERT(error);                         \
+}                                                     \
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// HandlePush helper functions
+
+static PushType GetPushType(int push_type_int)
+{
+    one_bit_t   number_flag = GetIBitOfInt(push_type_int, 3);
+    one_bit_t register_flag = GetIBitOfInt(push_type_int, 2);
+    one_bit_t   memory_flag = GetIBitOfInt(push_type_int, 1);
+    one_bit_t aligment_flag = GetIBitOfInt(push_type_int, 0);
+
+    PushType type = 
+    {
+        .number   = number_flag   ? 1 : 0  ,
+        .reg      = register_flag ? 1 : 0,
+        .memory   = memory_flag   ? 1 : 0,
+        .aligment = aligment_flag ? 1 : 0,
+    };
+
+    return type;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static bool IsPushTypeNumber(PushType push_type)
 {
-    return (push_type.stack    == 1) &&
+    return (push_type.number   == 1) &&
            (push_type.reg      == 0) &&
            (push_type.memory   == 0) &&
            (push_type.aligment == 0);
@@ -988,7 +1140,7 @@ static bool IsPushTypeNumber(PushType push_type)
 
 static bool IsPushTypeRegister(PushType push_type)
 {
-    return (push_type.stack    == 0) &&
+    return (push_type.number   == 0) &&
            (push_type.reg      == 1) &&
            (push_type.memory   == 0) &&
            (push_type.aligment == 0);
@@ -998,7 +1150,7 @@ static bool IsPushTypeRegister(PushType push_type)
 
 static bool IsPushTypeMemory(PushType push_type)
 {
-    return (push_type.stack     == 0) &&
+    return  (push_type.number   == 0) &&
             (push_type.reg      == 0) &&
             (push_type.memory   == 1) &&
             (push_type.aligment == 0);
@@ -1008,7 +1160,7 @@ static bool IsPushTypeMemory(PushType push_type)
 
 static bool IsPushTypeMemoryRegister(PushType push_type)
 {
-    return (push_type.stack    == 0) &&
+    return (push_type.number   == 0) &&
            (push_type.reg      == 1) &&
            (push_type.memory   == 1) &&
            (push_type.aligment == 0);
@@ -1018,7 +1170,7 @@ static bool IsPushTypeMemoryRegister(PushType push_type)
 
 static bool IsPushTypeAligment(PushType push_type)
 {
-    return (push_type.stack    == 0) &&
+    return (push_type.number   == 0) &&
            (push_type.reg      == 0) &&
            (push_type.memory   == 1) &&
            (push_type.aligment == 1);
@@ -1026,10 +1178,185 @@ static bool IsPushTypeAligment(PushType push_type)
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static int GetPushElementTypeRegister(const SPU* spu, int push_arg)
+{
+    assert(spu);
+    register_assert(spu, push_arg);
+
+    return spu->registers[push_arg];
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static int GetPushElementTypeMemory(const SPU* spu, int push_arg)
+{
+    assert(spu);
+    ram_assert(spu, push_arg);
+
+    return spu->ram.array[push_arg];
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static int GetPushElementTypeMemoryRegister(const SPU* spu, int push_arg)
+{
+    assert(spu);
+    register_assert(spu, push_arg);
+    
+    int register_value = spu->registers[push_arg];
+
+    ram_assert(spu, register_value);
+
+    return spu->ram.array[register_value];
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static int GetPushElementTypeAligment(const SPU* spu, int push_arg, int aligment)
+{
+    assert(spu);
+    register_assert(spu, push_arg);
+
+    int register_value = spu->registers[push_arg];
+
+    int ram_addr = register_value + aligment;
+
+    ram_assert(spu, ram_addr);
+
+    return spu->ram.array[ram_addr];
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// HandlePop helper functions
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static PopType GetPopType(int pop_type_int)
+{
+    one_bit_t register_flag = GetIBitOfInt(pop_type_int, 2);
+    one_bit_t memory_flag   = GetIBitOfInt(pop_type_int, 1);
+    one_bit_t aligment_flag = GetIBitOfInt(pop_type_int, 0);
+    
+    PopType type =
+    {
+        .reg      = register_flag ? 1 : 0,
+        .memory   = memory_flag   ? 1 : 0,
+        .aligment = aligment_flag ? 1 : 0,
+    };
+
+    return type;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsPopTypeRegister(PopType pop_type)
+{
+    return (pop_type.reg      == 1) &&
+           (pop_type.memory   == 0) &&
+           (pop_type.aligment == 0);
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------static bool IsPopTypeRegisterMemo
+
+static bool IsPopTypeMemory(PopType pop_type)
+{
+    return (pop_type.reg      == 0) &&
+           (pop_type.memory   == 1) &&
+           (pop_type.aligment == 0);
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------static bool IsPopTypeRegisterMemo
+
+static bool IsPopTypeMemoryRegister(PopType pop_type)
+{
+    return (pop_type.reg      == 1) &&
+           (pop_type.memory   == 1) &&
+           (pop_type.aligment == 0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static bool IsPopTypeAligment(PopType pop_type)
+{
+    return (pop_type.reg      == 0) &&
+           (pop_type.memory   == 0) &&
+           (pop_type.aligment == 1);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetRegisterInPopTypeRegister(SPU* spu, int pop_element, int pop_argument)
+{
+    assert(spu);
+    register_assert(spu, pop_argument);
+
+    spu->registers[pop_argument] = pop_element;
+
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetRamInPopTypeMemory(SPU* spu, int pop_element, int pop_argument)
+{
+    assert(spu);
+    ram_assert(spu, pop_argument);
+
+    spu->ram.array[pop_argument] = pop_element;
+
+    return;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetRamInPopTypeMemoryRegister(SPU* spu, int pop_element, int pop_argument)
+{
+    assert(spu);
+    register_assert(spu, pop_argument);
+
+    int register_value = spu->registers[pop_argument];
+
+    ram_assert(spu, register_value);
+
+    spu->ram.array[register_value] = pop_element;
+
+    return;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetRamInPopTypeAligment(SPU* spu, int pop_element, int pop_argument, int aligment)
+{
+    assert(spu);
+    register_assert(spu, pop_argument);
+
+    int register_value = spu->registers[pop_argument];
+
+    int ram_addr = register_value + aligment;
+    
+    ram_assert(spu, ram_addr);
+
+    spu->ram.array[ram_addr] = pop_element;
+
+    return;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#undef register_assert
+#undef ram_assert
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static RGBA GetRGBA(int pixel)
 {
-    assert(rgba);
-
     RGBA rgba =
     {
         .r = GetIBitOfInt(pixel, 0),
@@ -1039,23 +1366,6 @@ static RGBA GetRGBA(int pixel)
     };
 
     return rgba;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void GetRGBAType(int rgbaInt, bool* isReg1, bool* isReg2, bool* isReg3, bool* isReg4)
-{
-    assert(isReg1);
-    assert(isReg2);
-    assert(isReg3);
-    assert(isReg4);
-
-    *isReg1 = (rgbaInt >> 0)  & 0xFF;
-    *isReg2 = (rgbaInt >> 8)  & 0xFF; 
-    *isReg3 = (rgbaInt >> 16) & 0xFF; 
-    *isReg4 = (rgbaInt >> 24) & 0xFF; 
-
-    return;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1090,255 +1400,14 @@ static ProcessorErr VertexArrayCtor(sf::VertexArray& pixels, size_t ram_addr_beg
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static size_t GetRegisterOrInt(const SPU* spu, bool is_arg_register, int argument)
+static int GetRegisterOrInt(const SPU* spu, bool is_arg_register, int argument)
 {
     return (is_arg_register) ? spu->registers[argument] : argument;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator arithmetic_operator)
-{
-    assert(spu);
-    ProcessorErr err = {};
-
-    StackElem_t first_operand  = 0;
-    StackElem_t second_operand = 0;
-
-    STACK_ASSERT(StackPop(&spu->stack, &second_operand));
-    STACK_ASSERT(StackPop(&spu->stack, &first_operand));
-
-    StackElem_t push_elem = MakeArithmeticOperation(first_operand, second_operand, arithmetic_operator);
-    STACK_ASSERT(StackPush(&spu->stack, push_elem));
-
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr PpMmPattern(SPU* spu, Cmd command)
-{
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    int argument = GetNextCodeElement(spu);
-    size_t registerPointer = (size_t) spu->code_array.array[argument];
-
-    switch (command)
-    {
-        case Cmd::pp: spu->registers[registerPointer]++; break;
-        case Cmd::mm: spu->registers[registerPointer]--; break;
-        default: __builtin_unreachable__("here must be 'pp' or 'mm' commands"); break;
-    }
-
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator comparison_operator)
-{
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    StackElem_t first_operand  = 0;
-    StackElem_t second_operand = 0;
-
-    if (comparison_operator != always_true)
-    {
-        STACK_ASSERT(StackPop(&spu->stack, &second_operand));
-        STACK_ASSERT(StackPop(&spu->stack, &first_operand));
-    }
-
-    if (MakeComparisonOperation(first_operand, second_operand, comparison_operator))
-    {
-        spu->code_array.ip = (size_t) GetNextCodeElement(spu);
-        return PROCESSOR_VERIFY(spu, err);
-    }
-
-    spu->code_array.ip += CmdInfoArr[comparison_operator].codeRecordSize;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PushType GetPushType(int push_type_int)
-{
-    unsigned int stack_flag    = GetIBitOfInt(push_type_int, 0);
-    unsigned int registet_flag = GetIBitOfInt(push_type_int, 1);
-    unsigned int memory_flag   = GetIBitOfInt(push_type_int, 2);
-    unsigned int aligment_flag = GetIBitOfInt(push_type_int, 3);
-
-    PushType type = 
-    {
-        .stack    = stack_flag   ,
-        .reg      = registet_flag,
-        .memory   = memory_flag  ,
-        .aligment = aligment_flag,
-    };
-
-    return type;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static PopType GetPopType(int pop_type_int)
-{
-    unsigned int register_flag = GetIBitOfInt(pop_type_int, 0);
-    unsigned int memory_flag   = GetIBitOfInt(pop_type_int, 1);
-    unsigned int aligment_flag = GetIBitOfInt(pop_type_int, 2);
-    
-    PopType type =
-    {
-        .reg      = register_flag,
-        .memory   = memory_flag  ,
-        .aligment = aligment_flag,
-    };
-
-    return type;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetPushPopArg(SPU* spu)
-{
-    assert(spu);
-    assert(spu->code_array.array);
-
-    return spu->code_array.array[spu->code_array.ip + 2];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetPushPopSum(SPU* spu)
-{
-    assert(spu);
-    assert(spu->code_array.array);
-
-    return spu->code_array.array[spu->code_array.ip + 3];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetPushPopRegister(SPU* spu)
-{
-    assert(spu);
-    assert(spu->registers);
-
-    return spu->registers[GetPushPopArg(spu)];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetPushPopMemory(SPU* spu)
-{
-    assert(spu);
-    assert(spu->ram.array);
-
-    return spu->ram.array[GetPushPopArg(spu)];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetPushPopMemoryWithReg(SPU* spu)
-{
-    assert(spu);
-    assert(spu->ram.array);
-
-    return spu->ram.array[GetPushPopRegister(spu)];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetPushPopAligment(SPU* spu)
-{
-    assert(spu);
-    assert(spu->ram.array);
-
-    return spu->ram.array[GetPushPopRegister(spu) + GetPushPopSum(spu)];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr SetPopRegister(SPU* spu, StackElem_t pop_element)
-{
-    assert(spu);
-    assert(spu->registers);
-
-    ProcessorErr err = {};
-
-    spu->registers[GetPushPopArg(spu)] = pop_element;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr SetPopMemory(SPU* spu, StackElem_t pop_element)
-{
-    assert(spu);
-    assert(spu->ram.array);
-
-    ProcessorErr err = {};
-
-    size_t pointer = (size_t) GetPushPopArg(spu);
-
-    if (pointer >= spu->ram.size)
-    {
-        err.err = ProcessorErrorType::RAM_OVERFLOW;
-        return PROCESSOR_VERIFY(spu, err);
-    }
-
-    spu->ram.array[pointer] = pop_element;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr SetPopMemoryWithRegister(SPU* spu, StackElem_t pop_element)
-{
-    assert(spu);
-    assert(spu->ram.array);
-
-    ProcessorErr err = {};
-
-    size_t pointer = (size_t) GetPushPopRegister(spu);
-
-    if (pointer >= spu->ram.size)
-    {
-        err.err = ProcessorErrorType::RAM_OVERFLOW;
-        return PROCESSOR_VERIFY(spu, err);
-    }
-
-    spu->ram.array[pointer] = pop_element;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr SetPopSum(SPU* spu, StackElem_t pop_element)
-{
-    assert(spu);
-    assert(spu->ram.array);
-
-    ProcessorErr err = {};
-
-    size_t pointer = (size_t) (GetPushPopRegister(spu) + GetPushPopSum(spu));
-
-    if (pointer >= spu->ram.size)
-    {
-        err.err = ProcessorErrorType::RAM_OVERFLOW;
-        return PROCESSOR_VERIFY(spu, err);
-    }
-
-    spu->ram.array[pointer] = pop_element;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetNextCodeElement(SPU* spu)
+static int GetNextCodeInstruction(SPU* spu)
 {
     assert(spu);
     assert(spu->code_array.array);
@@ -1426,7 +1495,7 @@ static ProcessorErr ReadCodeFromFile(SPU* spu, FILE* code_file_ptr)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static unsigned int GetIBitOfInt(int n, size_t i)
+static one_bit_t GetIBitOfInt(int n, size_t i)
 {
     return (n >> i) & 1;
 }

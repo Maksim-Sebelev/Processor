@@ -95,7 +95,7 @@ static CmdInfo GetCmdInfo(const Token* token)
             return cmd;
     }
 
-    __builtin_unreachable__();
+    __builtin_unreachable__("we must find a command here");
     return {};
 }
 

@@ -160,7 +160,7 @@ static PushCodeArgs GetPushCodeArgsForPushAligment    (const Token* push_arg_tok
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // HabdlePop helper functions
 
-static PopType     GetPopType                         (bool reg, bool memory, bool int_mem_addr, bool aligment);
+static PopType     GetPopType                         (bool reg, bool memory, bool aligment);
 
 static PopCodeArgs GetPopCodeArgs                     (PopType type, int int_arg, int aligment);
 
@@ -719,7 +719,7 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
         if (WasLabelAlreadyDefined(&labels_array, call_arg_token.value.label.name, &label_pointer))
         {
             Label label  = AsmDataInfo->labels.array[label_pointer];
-            call_arg_int = (int) label.code_place;
+            call_arg_int = (int) label.code_place + 2; // '2' is call bin code record size
         }
 
         else
@@ -1073,10 +1073,10 @@ static PushCodeArgs GetPushCodeArgsForPushAligment(const Token* push_arg_token, 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // pop helper fnctions
 
-static PopType GetPopType(bool reg, bool memory, bool int_mem_addr, bool aligment)
+static PopType GetPopType(bool reg, bool memory, bool aligment)
 {
     PopType type = 0;
-    type = (PopType) ((reg << 3) | (memory << 2) | (int_mem_addr << 1) | aligment);
+    type = (PopType) ((reg << 2) | (memory << 1) | aligment);
 
     return type;
 }
@@ -1101,7 +1101,7 @@ static PopCodeArgs GetPopCodeArgsForPopRegister(const Token* pop_arg_token)
 {
     assert(pop_arg_token);
 
-    return GetPopCodeArgs(GetPopType          (1, 0, 0, 0   ),
+    return GetPopCodeArgs(GetPopType          (1, 0, 0      ),
                           GetRegisterFromToken(pop_arg_token),
                           0);
 }
@@ -1112,7 +1112,7 @@ static PopCodeArgs GetPopCodeArgsForPopMemInt(const Token* pop_arg_token)
 {
     assert(pop_arg_token);
 
-    return GetPopCodeArgs(GetPopType        (0, 1, 1, 0   ),
+    return GetPopCodeArgs(GetPopType        (0, 1, 0      ),
                           GetNumberFromToken(pop_arg_token),
                           0);
 }
@@ -1123,7 +1123,7 @@ static PopCodeArgs GetPopCodeArgsForPopMemRegister(const Token* pop_arg_token)
 {
     assert(pop_arg_token);
 
-    return GetPopCodeArgs(GetPopType          (1, 0, 0, 0   ),
+    return GetPopCodeArgs(GetPopType          (1, 0, 0      ),
                           GetRegisterFromToken(pop_arg_token),
                           0);
 }
@@ -1135,7 +1135,7 @@ static PopCodeArgs GetPopCodeArgsForPopMemAligment(const Token* pop_arg_token, c
     assert(pop_arg_token);
     assert(pop_arg_next_token);
 
-    return GetPopCodeArgs(GetPopType          (1, 1, 0, 1        ),
+    return GetPopCodeArgs(GetPopType          (0, 0, 1           ),
                           GetRegisterFromToken(pop_arg_token     ),
                           GetNumberFromToken  (pop_arg_next_token));
 }
@@ -1256,7 +1256,7 @@ static AssemblerErr PpMmPattern(AsmData* AsmDataInfo, Cmd pp)
             default: break;
         }
 
-       __builtin_unreachable__();
+       __builtin_unreachable__("here can be only 'pp' or 'mm' commands");
         return ASSEMBLER_VERIF(AsmDataInfo, err, {});
     }
 
@@ -1475,7 +1475,7 @@ static AssemblerErr (*GetCmd(Cmd command)) (AsmData* AsmDataInfo)
     err.err = AssemblerErrorType::UNDEFINED_ENUM_COMMAND;
     ASSEMBLER_ASSERT(err);
 
-    __builtin_unreachable__();
+    __builtin_unreachable__("we must make return in switchc or fall in stack_assert");
 
     return nullptr;
 }
@@ -1646,7 +1646,7 @@ static void PrintError(const AssemblerErr* err)
             PrintIncorrectCmd("Error: expected ',':", inputStream, err->token);
             break;
         
-        default: __builtin_unreachable__();
+        default: __builtin_unreachable__("maybe I forgot about some error code"); break;
     }
 
     return;

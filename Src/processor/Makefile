@@ -51,12 +51,14 @@ BIN_FILE       ?= programm.bin
 
 override CFLAGS += $(COMMONINC)
 
-CSRC =  processor/main.cpp                        \
-		processor/src/processor/processor.cpp      \
-		common/src/lib/lib.cpp                      \
-		common/src/stack/hash.cpp                    \
-		common/src/stack/stack.cpp                    \
-		common/src/functions_for_files/files.cpp       \
+CSRC =  processor/main.cpp                                  \
+		processor/src/processor/processor.cpp                \
+		processor/src/processor/math_operators/operators.cpp  \
+		common/src/lib/lib.cpp                                 \
+		common/src/stack/hash.cpp                               \
+		common/src/stack/stack.cpp                               \
+		common/src/functions_for_files/files.cpp                  \
+
 
 ifeq ($(BUILD_TYPE), debug)
 	CSRC += common/src/logger/log.cpp
