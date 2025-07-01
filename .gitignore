@@ -25,3 +25,4 @@ project_struct/
 # dir with log-file
 log/
 
+iwyu.txt

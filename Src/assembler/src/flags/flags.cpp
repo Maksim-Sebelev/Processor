@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <unistd.h>
 #include <getopt.h>
 #include <assert.h>
 #include "global/global_include.hpp"

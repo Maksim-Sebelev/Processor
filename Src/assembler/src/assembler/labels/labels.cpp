@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
 #include "assembler/labels/labels.hpp"
 #include "lib/lib.hpp"
 

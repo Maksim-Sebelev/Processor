@@ -3,12 +3,9 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
-#include <stddef.h>
 #include "assembler/assembler.hpp"
 #include "global/global_include.hpp"
 #include "lib/lib.hpp"
-#include "stack/stack.hpp"
-#include "functions_for_files/files.hpp"
 #include "tokenizer/tokenizer.hpp"
 #include "functions_for_files/files.hpp"
 #include "assembler/labels/labels.hpp"

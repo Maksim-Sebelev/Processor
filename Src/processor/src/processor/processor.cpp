@@ -9,6 +9,8 @@
 #include "global/global_include.hpp"
 #include "lib/lib.hpp"
 #include "functions_for_files/files.hpp"
+#include "processor/math_operators/operators.hpp"
+#include "processor/video_memory_command/videomem.hpp"
 
 #ifdef _DEBUG
 #include "logger/log.hpp"
@@ -76,10 +78,10 @@ struct RAM
 
 struct SPU
 {
-    CodeArray    code_array                ;
-    Stack_t      stack                     ;
-    StackElem_t  registers[REGISTERS_QUANT];
-    RAM          ram                       ;
+    CodeArray code_array                ;
+    Stack_t   stack                     ;
+    int       registers[REGISTERS_QUANT];
+    RAM       ram                       ;
 };
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -105,10 +107,10 @@ struct PopType
 
 struct RGBA
 {
-    unsigned int r;
-    unsigned int g;
-    unsigned int b;
-    unsigned int a;
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+    unsigned char a;
 };
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -134,39 +136,39 @@ static ProcessorErr ProcessorStackDtor         (SPU* spu);
 static ProcessorErr RegistersDtor              (SPU* spu);
 
 // processing functions commands
-static ProcessorErr HandlePush                 (SPU* spu); //
-static ProcessorErr HandlePop                  (SPU* spu); //
-static ProcessorErr HandleAdd                  (SPU* spu); //
+static ProcessorErr HandlePush                 (SPU* spu);
+static ProcessorErr HandlePop                  (SPU* spu);
+static ProcessorErr HandleAdd                  (SPU* spu); // arimthetic commands
 static ProcessorErr HandleSub                  (SPU* spu);
 static ProcessorErr HandleMul                  (SPU* spu);
-static ProcessorErr HandleDiv                  (SPU* spu); //
+static ProcessorErr HandleDiv                  (SPU* spu); // ===============
 static ProcessorErr HandlePp                   (SPU* spu);
 static ProcessorErr HandleMm                   (SPU* spu);
-static ProcessorErr HandleJmp                  (SPU* spu);
+static ProcessorErr HandleJmp                  (SPU* spu); // jumps
 static ProcessorErr HandleJa                   (SPU* spu);
 static ProcessorErr HandleJae                  (SPU* spu);
 static ProcessorErr HandleJb                   (SPU* spu);
 static ProcessorErr HandleJbe                  (SPU* spu);
 static ProcessorErr HandleJe                   (SPU* spu);
-static ProcessorErr HandleJne                  (SPU* spu);
+static ProcessorErr HandleJne                  (SPU* spu); // =================
 static ProcessorErr HandleCall                 (SPU* spu);
 static ProcessorErr HandleRet                  (SPU* spu);
-static ProcessorErr HandleOut                  (SPU* spu);
+static ProcessorErr HandleOut                  (SPU* spu); // console out commands
 static ProcessorErr HandleOutc                 (SPU* spu);
 static ProcessorErr HandleOutr                 (SPU* spu);
-static ProcessorErr HandleOutrc                (SPU* spu);
-static ProcessorErr HandleDraw                 (SPU* spu);
-static ProcessorErr HandleRGBA                 (SPU* spu);
-static ProcessorErr HandleHalt                 (SPU* spu);
-
+static ProcessorErr HandleOutrc                (SPU* spu); // =================
+ON_VIDEO
+(
+static ProcessorErr HandleDraw                 (SPU* spu); // functions for work with video memory
+static ProcessorErr HandleRGBA                 (SPU* spu); // =================
+)
+// pattern for similar functions
 
 static ProcessorErr ArithmeticCmdPattern       (SPU* spu, ArithmeticOperator arithmetic_operator);
 static ProcessorErr PpMmPattern                (SPU* spu, Cmd command);
 static ProcessorErr JumpsCmdPatter             (SPU* spu, ComparisonOperator comparison_operator);
 
-static StackElem_t  MakeArithmeticOperation    (StackElem_t first_operand, StackElem_t second_operand, ArithmeticOperator arithmetic_operator);
-static bool         MakeComparisonOperation    (StackElem_t first_operand, StackElem_t second_operand, ComparisonOperator comparison_operator);
-
+// HandlePush helper functioins
 static PushType     GetPushType                (int PushArg);
 static PopType      GetPopType                 (int PopArg);
 
@@ -192,7 +194,7 @@ static int          GetMemoryElement                 (SPU* spu, size_t index);
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // error processing functions
-static ProcessorErr Verify                      (SPU* spu, ProcessorErr* err,  const char* file, int line, const char* func);
+static ProcessorErr   Verify                     (SPU* spu, ProcessorErr* err,  const char* file, int line, const char* func);
 static void           PrintError                 (          ProcessorErr* err);
 static void           ProcessorAssertPrint       (          ProcessorErr* Err, const char* File, int Line, const char* Func);
 
@@ -332,13 +334,9 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::outrc: PROCESSOR_ASSERT(HandleOutrc(spu)); break;
             case Cmd::draw:  PROCESSOR_ASSERT(HandleDraw (spu)); break;
             case Cmd::rgba:  PROCESSOR_ASSERT(HandleRGBA (spu)); break;
-
-            case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return HandleHalt(spu);
+            case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return PROCESSOR_VERIFY(spu, err);
             default:
             {
-                // ON_DEBUG(
-                // LOG_PRINT(Red, "udef command = '%d'\n", GetCodeElementByIp(spu));
-                // )
                 err.err = ProcessorErrorType::INVALID_CMD;
                 return PROCESSOR_VERIFY(spu, err);
             }
@@ -566,7 +564,412 @@ static ProcessorErr HandlePush(SPU* spu)
 
     STACK_ASSERT(StackPush(&spu->stack, pushing_element));
 
-    spu->code_array.ip += CmdInfoArr[Cmd::push].codeRecordSize;
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandlePop(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+    ProcessorErr err = {};
+
+    int pop_type_int = GetNextCodeElement(spu         );
+    PopType pop_type = GetPopType     (pop_type_int);
+
+    StackElem_t poping_element = 0;
+    STACK_ASSERT(StackPop(&spu->stack, &poping_element));
+
+    if      (pop_type.reg == 1 && pop_type.memory == 0 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopRegister            (spu, poping_element));
+    else if (pop_type.reg == 0 && pop_type.memory == 1 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopMemory              (spu, poping_element));
+    else if (pop_type.reg == 1 && pop_type.memory == 1 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopMemoryWithRegister  (spu, poping_element));
+    else if (pop_type.reg == 0 && pop_type.memory == 1 && pop_type.aligment == 1) PROCESSOR_ASSERT(SetPopSum                 (spu, poping_element));
+    else
+    {
+        err.err = ProcessorErrorType::INVALID_CMD;
+        return PROCESSOR_VERIFY(spu, err);
+    }
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleAdd(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return ArithmeticCmdPattern(spu, ArithmeticOperator::plus);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleSub(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return ArithmeticCmdPattern(spu, ArithmeticOperator::minus);;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleMul(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return ArithmeticCmdPattern(spu, ArithmeticOperator::multiplication);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleDiv(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return ArithmeticCmdPattern(spu, ArithmeticOperator::division);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandlePp(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+    
+    assert(spu);
+
+    return PpMmPattern(spu, Cmd::pp);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleMm(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+    
+    assert(spu);
+
+    return PpMmPattern(spu, Cmd::mm);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleJmp(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return JumpsCmdPatter(spu, ComparisonOperator::always_true);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleJa(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return JumpsCmdPatter(spu, ComparisonOperator::above);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleJae(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return JumpsCmdPatter(spu, ComparisonOperator::above_or_equal);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleJb(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return JumpsCmdPatter(spu, ComparisonOperator::bellow);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleJbe(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return JumpsCmdPatter(spu, ComparisonOperator::bellow_or_equal);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleJe(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return JumpsCmdPatter(spu, ComparisonOperator::equal);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleJne(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    return JumpsCmdPatter(spu, ComparisonOperator::not_equal);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleCall(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t return_pointer  = (StackElem_t) (spu->code_array.ip +
+                                                 CmdInfoArr[Cmd::call].codeRecordSize); // skip 'call func:' in code_array array.
+
+    STACK_ASSERT(StackPush(&spu->stack, return_pointer));
+
+    spu->code_array.ip = (size_t) GetNextCodeElement(spu);
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleRet(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t return_pointer = 0;
+    STACK_ASSERT(StackPop(&spu->stack, &return_pointer));
+
+    spu->code_array.ip = (size_t) return_pointer;
+
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleOut(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t elem = GetLastStackElem(&spu->stack);
+
+    COLOR_PRINT(VIOLET, "%d", elem);
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleOutc(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t elem = GetLastStackElem(&spu->stack);
+
+    if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
+    {
+        err.err = ProcessorErrorType::OUT_CHAR_NOT_CHAR;
+        return PROCESSOR_VERIFY(spu, err);
+    }
+
+    COLOR_PRINT(VIOLET, "%c", elem);
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleOutrc(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t elem = 0;
+    STACK_ASSERT(StackPop(&spu->stack, &elem));
+
+    if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
+    {
+        err.err = ProcessorErrorType::OUT_CHAR_NOT_CHAR;
+        return PROCESSOR_VERIFY(spu, err);
+    }
+
+    COLOR_PRINT(VIOLET, "%c", elem);
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleOutr(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    StackElem_t elem = 0;
+
+    STACK_ASSERT(StackPop(&spu->stack, &elem));
+
+    COLOR_PRINT(VIOLET, "%d", elem);
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleDraw(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+    assert(spu);
+
+    ProcessorErr err = {};    
+
+    const int draw_type_int = GetNextCodeElement(spu);
+
+    const int argument[3] =
+    {
+        GetNextCodeElement(spu),
+        GetNextCodeElement(spu),
+        GetNextCodeElement(spu),
+    };
+
+    const bool is_arg_register[3] =
+    {
+        (bool) GetIBitOfInt(draw_type_int, 0),
+        (bool) GetIBitOfInt(draw_type_int, 1),
+        (bool) GetIBitOfInt(draw_type_int, 2),
+    };
+    
+
+    const size_t vertex_array_ram_begin_addr = (size_t) GetRegisterOrInt(spu, is_arg_register[0], argument[0]);
+    const size_t high                        = (size_t) GetRegisterOrInt(spu, is_arg_register[1], argument[2]);
+    const size_t width                       = (size_t) GetRegisterOrInt(spu, is_arg_register[2], argument[3]);
+
+    const size_t vertext_quant = high * width;
+
+    sf::VertexArray pixels(sf::PrimitiveType::Points, vertext_quant);
+    PROCESSOR_ASSERT(VertexArrayCtor(pixels, vertex_array_ram_begin_addr, high, width, spu));
+
+    sf::RenderWindow window(sf::VideoMode((unsigned int) width, (unsigned int) high), "Press 'esc' or 'space' to close.");
+
+    window.draw(pixels);
+    window.display(); 
+
+    while (window.isOpen())
+    {
+        sf::Event event = {};
+    
+        while (window.pollEvent(event))
+        {
+            switch (event.type)
+            {
+                case sf::Event::KeyPressed:
+                {
+                    switch (event.key.code)
+                    {
+                        case sf::Keyboard::Space :
+                        case sf::Keyboard::Escape: window.close(); break;
+                        default:                                   break; 
+                    }
+                    break;
+                }
+
+                case sf::Event::Closed: window.close(); break;
+            }
+        }
+    }
+    
+    pixels.clear();
+    window.clear();
+
+    return PROCESSOR_VERIFY(spu, err);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static ProcessorErr HandleRGBA(SPU* spu)
+{
+    WHERE_PROCESSOR_IS();
+
+    assert(spu);
+
+    ProcessorErr err = {};
+
+    const int rgba_type_int = GetNextCodeElement(spu);    
+
+    int  argument            [4] = {};
+    bool is_argmunet_register[4] = {};
+
+    RGBA rgba = {};
+
+    for (size_t i = 0; i < 4; i++)
+    {
+        argument[i] = GetNextCodeElement(spu);
+        is_argmunet_register[i] = (bool) GetIBitOfInt(rgba_type_int, i);
+    }
+
+    unsigned char format_argument[4] = {};
+
+    for (size_t i = 0; i < 4; i++)
+        format_argument[i] = GetRegisterOrInt(spu, is_argmunet_register[i], argument[i]);
+
+    RGBA rgba = 
+    {
+        .r = format_argument[0],
+        .g = format_argument[1],
+        .b = format_argument[2],
+        .a = format_argument[3],
+    };
+
+    int rgba_int_result = PackRGBA(rgba);
+
+    STACK_ASSERT(StackPush(&spu->stack, rgba_int_result));
 
     return PROCESSOR_VERIFY(spu, err);
 }
@@ -621,296 +1024,7 @@ static bool IsPushTypeAligment(PushType push_type)
            (push_type.aligment == 1);
 }
 
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandlePop(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    ProcessorErr err = {};
-
-    int pop_type_int = GetNextCodeElement(spu         );
-    PopType pop_type = GetPopType     (pop_type_int);
-
-    StackElem_t poping_element = 0;
-    STACK_ASSERT(StackPop(&spu->stack, &poping_element));
-
-    if      (pop_type.reg == 1 && pop_type.memory == 0 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopRegister            (spu, poping_element));
-    else if (pop_type.reg == 0 && pop_type.memory == 1 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopMemory              (spu, poping_element));
-    else if (pop_type.reg == 1 && pop_type.memory == 1 && pop_type.aligment == 0) PROCESSOR_ASSERT(SetPopMemoryWithRegister  (spu, poping_element));
-    else if (pop_type.reg == 0 && pop_type.memory == 1 && pop_type.aligment == 1) PROCESSOR_ASSERT(SetPopSum                 (spu, poping_element));
-    else
-    {
-        err.err = ProcessorErrorType::INVALID_CMD;
-        return PROCESSOR_VERIFY(spu, err);
-    }
-
-    spu->code_array.ip += CmdInfoArr[pop].codeRecordSize;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleAdd(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    return ArithmeticCmdPattern(spu, ArithmeticOperator::plus);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleSub(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return ArithmeticCmdPattern(spu, ArithmeticOperator::minus);;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleMul(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return ArithmeticCmdPattern(spu, ArithmeticOperator::multiplication);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleDiv(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return ArithmeticCmdPattern(spu, ArithmeticOperator::division);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandlePp(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-    
-    assert(spu);
-
-    return PpMmPattern(spu, Cmd::pp);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleMm(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-    
-    assert(spu);
-
-    return PpMmPattern(spu, Cmd::mm);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleJmp(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return JumpsCmdPatter(spu, ComparisonOperator::always_true);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleJa(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return JumpsCmdPatter(spu, ComparisonOperator::above);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleJae(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return JumpsCmdPatter(spu, ComparisonOperator::above_or_equal);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleJb(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return JumpsCmdPatter(spu, ComparisonOperator::bellow);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleJbe(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return JumpsCmdPatter(spu, ComparisonOperator::bellow_or_equal);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleJe(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return JumpsCmdPatter(spu, ComparisonOperator::equal);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleJne(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-    return JumpsCmdPatter(spu, ComparisonOperator::not_equal);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleCall(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    StackElem_t return_pointer  = (StackElem_t) (spu->code_array.ip +
-                                                CmdInfoArr[Cmd::call].codeRecordSize); // skip 'call func:' in code_array array.
-
-    STACK_ASSERT(StackPush(&spu->stack, return_pointer));
-
-    spu->code_array.ip = (size_t) GetNextCodeElement(spu);
-
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleRet(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    StackElem_t return_pointer = 0;
-    STACK_ASSERT(StackPop(&spu->stack, &return_pointer));
-
-    spu->code_array.ip = (size_t) return_pointer;
-
-
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleOut(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    StackElem_t elem = GetLastStackElem(&spu->stack);
-
-    COLOR_PRINT(VIOLET, "%d", elem);
-
-    spu->code_array.ip += CmdInfoArr[Cmd::out].codeRecordSize;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleOutc(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    StackElem_t elem = GetLastStackElem(&spu->stack);
-
-    if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
-    {
-        err.err = ProcessorErrorType::OUT_CHAR_NOT_CHAR;
-        return PROCESSOR_VERIFY(spu, err);
-    }
-
-    COLOR_PRINT(VIOLET, "%c", elem);
-
-    spu->code_array.ip += CmdInfoArr[Cmd::outc].codeRecordSize;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleOutrc(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    StackElem_t elem = 0;
-    STACK_ASSERT(StackPop(&spu->stack, &elem));
-
-    if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
-    {
-        err.err = ProcessorErrorType::OUT_CHAR_NOT_CHAR;
-        return PROCESSOR_VERIFY(spu, err);
-    }
-
-    COLOR_PRINT(VIOLET, "%c", elem);
-
-    spu->code_array.ip += CmdInfoArr[Cmd::outrc].codeRecordSize;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleOutr(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    StackElem_t elem = 0;
-
-    STACK_ASSERT(StackPop(&spu->stack, &elem));
-
-    COLOR_PRINT(VIOLET, "%d", elem);
-
-    spu->code_array.ip += CmdInfoArr[Cmd::outr].codeRecordSize;
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static RGBA GetRGBA(int pixel)
 {
@@ -976,117 +1090,9 @@ static ProcessorErr VertexArrayCtor(sf::VertexArray& pixels, size_t ram_addr_beg
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static ProcessorErr HandleDraw(SPU* spu)
+static size_t GetRegisterOrInt(const SPU* spu, bool is_arg_register, int argument)
 {
-    WHERE_PROCESSOR_IS();
-    assert(spu);
-
-    ProcessorErr err = {};    
-
-    int type_int = GetCodeElementByIp(spu);
-
-    int  argument       [4] = {};
-    bool is_arg_register[3] = {};
-    
-
-    for (size_t i = 0; i < 4; i++)
-    {
-        size_t code_elememt_index = GetIp(spu) + i;
-        argument[i] = GetCodeElement(spu, code_elememt_index);
-    }
-
-    const int draw_type_int = argument[0];
-
-    for (size_t i = 0; i < 3; i++)
-        is_arg_register[i] = (bool) GetIBitOfInt(draw_type_int, i);
-
-
-    const size_t vertex_array_ram_begin_addr = (size_t) (is_arg_register[0]) ? spu->registers[argument[1]] : argument[1];
-    const size_t high                        = (size_t) (is_arg_register[1]) ? spu->registers[argument[2]] : argument[2];
-    const size_t width                       = (size_t) (is_arg_register[2]) ? spu->registers[argument[3]] : argument[3];
-
-    const size_t vertext_quant = high * width;
-
-    sf::VertexArray pixels(sf::PrimitiveType::Points, vertext_quant);
-    PROCESSOR_ASSERT(VertexArrayCtor(pixels, vertex_array_ram_begin_addr, high, width, spu));
-
-    // ON_DEBUG(
-    // LOG_COLOR(Yellow);
-
-    // for (size_t i = 0; i < vertext_quant; i++)
-    // {
-    //     LOG_ADC_PRINT("pixels[%lu].color = '%d %d %d %d'\n", i, (int) pixels[i].color.r, (int) pixels[i].color.g, (int) pixels[i].color.b, (int) pixels[i].color.a);
-    // }
-    // )
-
-    sf::RenderWindow window(sf::VideoMode((unsigned int) width, (unsigned int) high), "Press 'esc' or 'space' to close.");
-
-    window.draw(pixels);
-    window.display(); 
-
-    while (window.isOpen())
-    {
-        sf::Event event = {};
-    
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::KeyPressed)
-            {
-                switch (event.key.code)
-                {
-                    case sf::Keyboard::Space :
-                    case sf::Keyboard::Escape: window.close(); break;
-                    default:                                   break; 
-                }
-            }   
-
-            if (event.type == sf::Event::Closed)
-                window.close();
-        }
-    }
-    
-    pixels.clear();
-    window.clear();
-
-    spu->code_array.ip += CmdInfoArr[draw].codeRecordSize;
-
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleRGBA(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    int argument[5] = {};
- 
-    for (size_t i = 0; i < 5; i++)
-    {
-        
-    }
-
-
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr HandleHalt(SPU* spu)
-{
-    WHERE_PROCESSOR_IS();
-
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    spu->code_array.ip += CmdInfoArr[hlt].codeRecordSize;
-    STACK_ASSERT(StackDtor(&spu->stack));
-    return PROCESSOR_VERIFY(spu, err);
+    return (is_arg_register) ? spu->registers[argument] : argument;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1104,7 +1110,7 @@ static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator arithmetic
 
     StackElem_t push_elem = MakeArithmeticOperation(first_operand, second_operand, arithmetic_operator);
     STACK_ASSERT(StackPush(&spu->stack, push_elem));
-    spu->code_array.ip += CmdInfoArr[arithmetic_operator].codeRecordSize;
+
     return PROCESSOR_VERIFY(spu, err);
 }
 
@@ -1116,26 +1122,15 @@ static ProcessorErr PpMmPattern(SPU* spu, Cmd command)
 
     ProcessorErr err = {};
 
-    size_t registerPointer = (size_t) spu->code_array.array[GetIp(spu) +1];
+    int argument = GetNextCodeElement(spu);
+    size_t registerPointer = (size_t) spu->code_array.array[argument];
 
     switch (command)
     {
-        case Cmd::pp:
-        {
-            spu->registers[registerPointer]++;
-            break;
-        }
-
-        case Cmd::mm:
-        {
-            spu->registers[registerPointer]--;
-            break;
-        }
-        
-        default: __builtin_unreachable__(); break;
+        case Cmd::pp: spu->registers[registerPointer]++; break;
+        case Cmd::mm: spu->registers[registerPointer]--; break;
+        default: __builtin_unreachable__("here must be 'pp' or 'mm' commands"); break;
     }
-    
-    spu->code_array.ip += CmdInfoArr[command].codeRecordSize;
 
     return PROCESSOR_VERIFY(spu, err);
 }
@@ -1343,26 +1338,6 @@ static ProcessorErr SetPopSum(SPU* spu, StackElem_t pop_element)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static int GetCodeElementByIp(SPU* spu)
-{
-    assert(spu);
-    assert(spu->code_array.array);
-
-    return spu->code_array.array[spu->code_array.ip];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int GetCodeElement(SPU* spu, size_t code_pointer)
-{
-    assert(spu);
-    assert(spu->code_array.array);
-
-    return spu->code_array.array[code_pointer];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 static int GetNextCodeElement(SPU* spu)
 {
     assert(spu);
@@ -1433,11 +1408,13 @@ static ProcessorErr ReadCodeFromFile(SPU* spu, FILE* code_file_ptr)
     {
         int command = 0;
         int fscanf_return = fscanf(code_file_ptr, "%d", &command);
+    
         if (fscanf_return != 1)
         {
             err.err = ProcessorErrorType::INVALID_CMD;
             return PROCESSOR_VERIFY(spu, err);
         }
+
         SetCodeElem(spu, cmd_i, command);
     }
 
@@ -1445,55 +1422,6 @@ static ProcessorErr ReadCodeFromFile(SPU* spu, FILE* code_file_ptr)
     LOG_ALL_INT_ARRAY(Yellow, spu->code_array.array, spu->code_array.size);
     )
     return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static bool MakeComparisonOperation(StackElem_t first_operand, StackElem_t second_operand, ComparisonOperator comparison_operator)
-{
-    switch (comparison_operator)
-    {
-        case ComparisonOperator::always_true:      return true;
-        case ComparisonOperator::above:            return first_operand >  second_operand;
-        case ComparisonOperator::above_or_equal:   return first_operand >= second_operand;
-        case ComparisonOperator::bellow:           return first_operand <  second_operand;
-        case ComparisonOperator::bellow_or_equal:  return first_operand <= second_operand;
-        case ComparisonOperator::equal:            return first_operand == second_operand;
-        case ComparisonOperator::not_equal:        return first_operand != second_operand;
-        default: assert (0 && "undefined comparison operator"); break;
-    }
-
-    assert(0 && "undefined comparison operator");
-    return false;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static StackElem_t MakeArithmeticOperation(StackElem_t first_operand, StackElem_t second_operand, ArithmeticOperator arithmetic_operator)
-{
-    switch (arithmetic_operator)
-    {
-        case plus:           return first_operand + second_operand;
-        case minus:          return first_operand - second_operand;
-        case multiplication: return first_operand * second_operand;
-        case division: 
-        {
-            if (second_operand == 0)
-            {
-                ProcessorErr err = {};
-                CodePlaceCtor(&err.place, __FILE__, __LINE__, __func__);
-                err.err = ProcessorErrorType::DIVISION_BY_ZERO;
-                PROCESSOR_ASSERT(err);
-                __builtin_unreachable__();
-            }
-            return first_operand / second_operand;
-        }
-
-        default: __builtin_unreachable__();
-    }
-
-    __builtin_unreachable__();
-    return 0;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
