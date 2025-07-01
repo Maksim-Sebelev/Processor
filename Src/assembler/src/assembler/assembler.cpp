@@ -335,33 +335,40 @@ static AssemblerErr InitLabels(AsmData* AsmDataInfo)
     LabelsArray         labels_array         = LabelsArrayCtor(default_labels_quant);
 
     size_t token_pointer = 0;
-    size_t code_pointer  = 0; 
+    size_t code_pointer  = 0;
 
     while(token_pointer < tokens_quant)
     {
         Token token = tokens_array[token_pointer];
         
+        
         if (IsTokenJmpOrCall(&token))
         {
-            token_pointer += 2; // skip jmp-s and call args, that is label
+            token_pointer += 2;
+            code_pointer  += 2;
             continue;
         }
         
-        if (IsTokenLabel(&token))
+        else if (IsTokenCommand(&token))
+        {
+            Cmd     command       = token.value.command;
+            CmdInfo command_info  = GetCmdInfo(command);
+                    code_pointer += command_info.codeRecordSize;
+        }
+
+        else if (IsTokenLabel(&token))
         {
             const TokenizerLabel token_label = token.value.label;
             size_t               cmd_index   = 0;
 
-            if (!WasLabelAlreadyDefined(&labels_array, token_label.name, &cmd_index))
+            if (WasLabelAlreadyDefined(&labels_array, token_label.name, &cmd_index))
             {
-                token_pointer++;
-                Label label = LabelCtor(token_label.name, code_pointer, true);
-                PushLabel(&labels_array, &label);
-                continue;
+                err.err = AssemblerErrorType::LABEL_REDEFINE;
+                return ASSEMBLER_VERIF(AsmDataInfo, err, token);
             }
 
-            err.err = AssemblerErrorType::LABEL_REDEFINE;
-            return ASSEMBLER_VERIF(AsmDataInfo, err, token);
+            Label label = LabelCtor(token_label.name, code_pointer, true);
+            PushLabel(&labels_array, &label);
         }
 
         token_pointer++;
@@ -369,16 +376,16 @@ static AssemblerErr InitLabels(AsmData* AsmDataInfo)
 
     AsmDataInfo->labels = labels_array;
 
-    // ON_DEBUG(
-    // LOG_TITLE(Red, "Labels Array!!!");
-    // size_t size = AsmDataInfo->labels.size;
-    // for (size_t i = 0; i < size; i++)
-    // {
-    //     LOG_PRINT(Blue, "label[%2lu] =\n{\nname = '%.*s'\ncode place = '%3lu'\nis_def = '%d'\n}\n\n", i, 10, AsmDataInfo->labels.array[i].name, AsmDataInfo->labels.array[i].code_place, AsmDataInfo->labels.array[i].is_defined);
-    // }
-    // LOG_TITLE(Red, "Labels Array End");
-    // LOG_NS();
-    // )
+    ON_DEBUG(
+    LOG_TITLE(Red, "Labels Array!!!");
+    size_t size = AsmDataInfo->labels.size;
+    for (size_t i = 0; i < size; i++)
+    {
+        LOG_PRINT(Blue, "label[%2lu] =\n{\nname = '%.*s'\ncode place = '%3lu'\nis_def = '%d'\n}\n\n", i, 10, AsmDataInfo->labels.array[i].name, AsmDataInfo->labels.array[i].code_place, AsmDataInfo->labels.array[i].is_defined);
+    }
+    LOG_TITLE(Red, "Labels Array End");
+    LOG_NS();
+    )
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 
@@ -719,7 +726,7 @@ static AssemblerErr HandleCall(AsmData* AsmDataInfo)
         if (WasLabelAlreadyDefined(&labels_array, call_arg_token.value.label.name, &label_pointer))
         {
             Label label  = AsmDataInfo->labels.array[label_pointer];
-            call_arg_int = (int) label.code_place + 2; // '2' is call bin code record size
+            call_arg_int = (int) label.code_place; // '2' is call bin code record size
         }
 
         else
@@ -1123,7 +1130,7 @@ static PopCodeArgs GetPopCodeArgsForPopMemRegister(const Token* pop_arg_token)
 {
     assert(pop_arg_token);
 
-    return GetPopCodeArgs(GetPopType          (1, 0, 0      ),
+    return GetPopCodeArgs(GetPopType          (1, 1, 0      ),
                           GetRegisterFromToken(pop_arg_token),
                           0);
 }

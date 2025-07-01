@@ -12,7 +12,7 @@
 int main(int argc, char* argv[])
 {
     ON_DEBUG(
-    COLOR_PRINT(GREEN, "\nASSEMBLER START\n");
+    COLOR_PRINT(GREEN, "\nASSEMBLER START\n\n");
     LOG_OPEN();
     )
 
@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
 
     ON_DEBUG(
     LOG_CLOSE();
-    COLOR_PRINT(GREEN, "ASSEMBLER END\n");
+    COLOR_PRINT(GREEN, "\nASSEMBLER END\n");
     )
 
     return EXIT_SUCCESS;

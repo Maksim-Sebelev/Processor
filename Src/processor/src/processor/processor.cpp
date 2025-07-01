@@ -199,7 +199,7 @@ static void         SetRamInPopTypeAligment           (SPU* spu, int pop_element
 static RGBA         GetRGBA                           (int pixel);
 static ProcessorErr VertexArrayCtor                   (sf::VertexArray& pixels, size_t ram_addr_begin, size_t high, size_t width, SPU* spu);
 static int          PackRGBA                          (RGBA rgba);
-\
+
 // global functions for work with struct SPU
 static size_t       GetCodeSize                        (SPU* spu);
 static size_t       GetIp                              (SPU* spu);
@@ -348,6 +348,7 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return PROCESSOR_VERIFY(spu, err);
             default:
             {
+                COLOR_PRINT(RED, "ip = %lu\n", GetIp(spu));
                 err.err = ProcessorErrorType::INVALID_CMD;
                 return PROCESSOR_VERIFY(spu, err);
             }
@@ -437,7 +438,7 @@ static ProcessorErr RamCtor(SPU* spu)
 
     ProcessorErr err = {};
 
-    static const size_t default_ram_size = 1 << 10;
+    static const size_t default_ram_size = 1 << 30;
     
     int* ram = (int*) calloc(default_ram_size, sizeof(ram[0]));
 
@@ -605,7 +606,7 @@ static ProcessorErr HandlePop(SPU* spu)
     
     else if (IsPopTypeMemoryRegister(pop_type))
         SetRamInPopTypeMemoryRegister(spu, pop_element, pop_arg);    
-    
+
     else if (IsPopTypeAligment(pop_type))
         SetRamInPopTypeAligment(spu, pop_element, pop_arg, aligment);
 
@@ -669,7 +670,7 @@ static ProcessorErr HandleDiv(SPU* spu)
 static ProcessorErr HandlePp(SPU* spu)
 {
     WHERE_PROCESSOR_IS();
-    
+
     assert(spu);
 
     return PpMmPattern(spu, Cmd::pp);
@@ -774,8 +775,8 @@ static ProcessorErr HandleCall(SPU* spu)
     assert(spu);
 
     ProcessorErr err = {};
-    
-    StackElem_t return_pointer  = (StackElem_t) GetIp(spu) + 2; // skip 'call func:' is made in assembler
+
+    StackElem_t return_pointer  = (StackElem_t) GetIp(spu) + 1; // skip 'call func:' is made in assembler
 
     STACK_ASSERT(StackPush(&spu->stack, return_pointer));
 
@@ -1045,12 +1046,12 @@ static ProcessorErr PpMmPattern(SPU* spu, Cmd command)
     ProcessorErr err = {};
 
     int argument = GetNextCodeInstruction(spu);
-    size_t registerPointer = (size_t) spu->code_array.array[argument];
+    // size_t registerPointer = (size_t) spu->code_array.array[argument];
 
     switch (command)
     {
-        case Cmd::pp: spu->registers[registerPointer]++; break;
-        case Cmd::mm: spu->registers[registerPointer]--; break;
+        case Cmd::pp: spu->registers[argument]++; break;
+        case Cmd::mm: spu->registers[argument]--; break;
         default: __builtin_unreachable__("here must be 'pp' or 'mm' commands"); break;
     }
 
@@ -1068,6 +1069,8 @@ static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator comparison_opera
     StackElem_t first_operand  = 0;
     StackElem_t second_operand = 0;
 
+    size_t jmp_place = (size_t) GetNextCodeInstruction(spu);
+
     if (comparison_operator != always_true)
     {
         STACK_ASSERT(StackPop(&spu->stack, &second_operand));
@@ -1076,7 +1079,7 @@ static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator comparison_opera
 
     if (MakeComparisonOperation(first_operand, second_operand, comparison_operator))
     {
-        spu->code_array.ip = (size_t) GetNextCodeInstruction(spu);
+        spu->code_array.ip = jmp_place;
         return PROCESSOR_VERIFY(spu, err);
     }
 
@@ -1117,7 +1120,7 @@ static PushType GetPushType(int push_type_int)
 
     PushType type = 
     {
-        .number   = number_flag   ? 1 : 0  ,
+        .number   = number_flag   ? 1 : 0,
         .reg      = register_flag ? 1 : 0,
         .memory   = memory_flag   ? 1 : 0,
         .aligment = aligment_flag ? 1 : 0,
@@ -1242,7 +1245,7 @@ static PopType GetPopType(int pop_type_int)
     PopType type =
     {
         .reg      = register_flag ? 1 : 0,
-        .memory   = memory_flag   ? 1 : 0,
+        .memory   =   memory_flag ? 1 : 0,
         .aligment = aligment_flag ? 1 : 0,
     };
 
@@ -1355,14 +1358,21 @@ static void SetRamInPopTypeAligment(SPU* spu, int pop_element, int pop_argument,
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static int PackRGBA(RGBA rgba)
+{
+    return (rgba.a << 24) | (rgba.b << 16) | (rgba.g << 8) | (rgba.r << 0);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 static RGBA GetRGBA(int pixel)
 {
     RGBA rgba =
     {
-        .r = GetIBitOfInt(pixel, 0),
-        .g = GetIBitOfInt(pixel, 1),
-        .b = GetIBitOfInt(pixel, 2),
-        .a = GetIBitOfInt(pixel, 3),
+        .r = (pixel >> 0 ) & 0xFF,
+        .g = (pixel >> 8 ) & 0xFF,
+        .b = (pixel >> 16) & 0xFF,
+        .a = (pixel >> 24) & 0xFF,
     };
 
     return rgba;
@@ -1376,22 +1386,24 @@ static ProcessorErr VertexArrayCtor(sf::VertexArray& pixels, size_t ram_addr_beg
 
     ProcessorErr err = {};
 
-    size_t index = ram_addr_begin;
+    size_t ram_pointer  = ram_addr_begin;
+    size_t pixel_poiter = 0;
 
     for (size_t i = 0; i < width; i++)
     {
         for (size_t j = 0; j < high; j++)
         {
             // size_t index     = j * width + i;
-            assert(index == j * width + i + ram_addr_begin); // tmp assert
+            // assert(index == j * width + i + ram_addr_begin); // tmp assert
  
-            int    memory_element = GetMemoryElement(spu,           index);
-            RGBA   rgba           = GetRGBA         (memory_element      );
+            int    memory_element = GetMemoryElement(spu,           ram_pointer);
+            RGBA   rgba           = GetRGBA         (memory_element            );
 
-            pixels[index].position = sf::Vector2f((float) i, (float) j);
-            pixels[index].color    = sf::Color(rgba.r, rgba.g, rgba.b, rgba.a);
+            pixels[pixel_poiter].position = sf::Vector2f((float) i, (float) j);
+            pixels[pixel_poiter].color    = sf::Color(rgba.r, rgba.g, rgba.b, rgba.a);
     
-            index++;
+            ram_pointer++;
+            pixel_poiter++;
         }
     }
 
@@ -1453,13 +1465,6 @@ static void SetCodeElem(SPU* spu, size_t code_pointer, int setting_element)
 
     spu->code_array.array[code_pointer] = setting_element;
     return;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static int PackRGBA(RGBA rgba)
-{
-    return (rgba.a << 24) | (rgba.b << 16) | (rgba.g << 8) | (rgba.r << 0);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

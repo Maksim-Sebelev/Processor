@@ -3,8 +3,8 @@
         proc run_proc rerun_proc rebuild_proc clean_proc  \
 
 
-ASM_BUILD_TYPE  ?= release
-# ASM_BUILD_TYPE  ?= debug
+# ASM_BUILD_TYPE  ?= release
+ASM_BUILD_TYPE  ?= debug
 PROC_BUILD_TYPE ?= release
 # PROC_BUILD_TYPE ?= debug
 
@@ -53,7 +53,6 @@ rebuild_proc:
 
 clean_proc:
 	$(MAKE) BUILD_TYPE=$(PROC_BUILD_TYPE) -f $(PROCESSOR_MAKEFILE) clean
-
 
 
 # ===== examples =====

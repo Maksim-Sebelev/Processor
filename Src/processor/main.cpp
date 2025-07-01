@@ -9,7 +9,7 @@
 int main(int argc, const char* argv[])
 {
     ON_DEBUG(
-    COLOR_PRINT(GREEN, "\nPROCESSOR START\n");
+    COLOR_PRINT(GREEN, "\nPROCESSOR START\n\n");
     LOG_OPEN();
     )
 
@@ -18,7 +18,7 @@ int main(int argc, const char* argv[])
 
     ON_DEBUG(
     LOG_CLOSE();
-    COLOR_PRINT(GREEN, "PROCESSOR END\n");
+    COLOR_PRINT(GREEN, "\nPROCESSOR END\n");
     )
 
     return EXIT_SUCCESS;

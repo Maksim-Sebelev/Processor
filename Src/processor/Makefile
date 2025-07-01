@@ -57,7 +57,8 @@ CSRC =  processor/main.cpp                                  \
 		common/src/lib/lib.cpp                                 \
 		common/src/stack/hash.cpp                               \
 		common/src/stack/stack.cpp                               \
-		common/src/functions_for_files/files.cpp                  \
+		common/src/global/global.cpp                              \
+		common/src/functions_for_files/files.cpp                   \
 
 
 ifeq ($(BUILD_TYPE), debug)
