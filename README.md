@@ -298,6 +298,8 @@ arg = {int, reg},
 │       ├── run_example_4.bash
 │       └── run_example_5.bash
 ├── README.md
+├── Makefile
+│
 └── Src
     ├── assembler
     │   ├── include
@@ -328,6 +330,7 @@ arg = {int, reg},
     │       │       └── tokens_log.cpp
     │       └── flags
     │           └── flags.cpp
+    │
     ├── common
     │   ├── include
     │   │   ├── functions_for_files
@@ -358,7 +361,7 @@ arg = {int, reg},
     │       └── stack
     │           ├── hash.cpp
     │           └── stack.cpp
-    ├── Makefile
+    │
     └── processor
         ├── include
         │   └── processor
