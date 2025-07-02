@@ -27,6 +27,10 @@ void LogTextColor(LogColor color);
 void LogTextColorEnd();
 void LogTitle(LogColor color, const char* title);
 void LogPrint(LogColor color, const char* format, ...);
+void LogInOnePSectionBegin(LogColor color);
+void LogAdcInOnePSectionBegin();
+void LogInOnePSectionEnd();
+void LogInOnePSection(const char* format, ...);
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -45,6 +49,13 @@ void LogPrint(LogColor color, const char* format, ...);
 #define LOG_PLACE(color)                                LogPrint(color, "%s:%d\nin '%s'\n",       __FILE__,       __LINE__,      __func__ )
 #define LOG_PRINT_PLACE(color, file, line, func)        LogPrint(color, "%s:%d\nin '%s'\n",         file  ,         line  ,        func   )
 #define LOG_PRINT_STRUCT_PLACE(color, file, line, func) LogPrint(color, "%s:%d\nin '%s'\n", (place).file  , (place).line  , (place).func  )
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define LOG_ONE_P_SECTION_BEGIN(color) LogInOnePSectionBegin   (color      )
+#define LOG_ADC_ONE_P_SECTION_BEGIN()  LogAdcInOnePSectionBegin(           )
+#define LOG_ONE_P_SECTION_END()        LogInOnePSectionEnd     (           )
+#define LOG_ONE_P_SECTION(...)         LogInOnePSection        (__VA_ARGS__)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -101,10 +112,10 @@ void LogPrint(LogColor color, const char* format, ...);
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define LOG_NS() LogPrint(LogColor::White, "\n")
-#define LOG_TB() LogPrint(LogColor::White, "\t")
-#define LOG_SP() LogPrint(LogColor::White, " ")
-#define LOG_N_SP(n) do { for (size_t log_n_spaces_counter = 0; log_n_spaces_counter < n; log_n_spaces_counter++) LogPrint(LogColor::White, " "); } while (0)
+#define LOG_NS() LogAdcPrint("\n")
+#define LOG_TB() LogAdcPrint("\t")
+#define LOG_SP() LogAdcPrint(" ")
+#define LOG_N_SP(n) do { for (size_t log_n_spaces_counter = 0; log_n_spaces_counter < n; log_n_spaces_counter++) LogAdcPrint(" "); } while (0)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

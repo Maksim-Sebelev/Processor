@@ -101,24 +101,15 @@ make run
 Так же есть удобные команды для работы с кодом проекта:
 
 ```Makefile
-make rerun
 make rebuild
 make clean
 
-make run_asm
-make rerun_asm
 make rebuild_asm
 make clean_asm
 
 make run_proc
-make rerun_proc
 make rebuild_proc
 make clean_proc
-```
-Команды `rerun` выполняют 
-```Makefile
-make
-make rerun
 ```
 
 Команды `rebuild` выполняют
@@ -148,7 +139,7 @@ push 1       ; кладет на стек 1.
 
 push '\n'    ; кладет на стек ASCII код '\n' (= 10).
 
-push '\_'    ; кладет на стек ASCII код ' '. (!) В связи с особенностями токенизатора разработчики были вынуждены вместо ' ' использовать '\_'.
+push ' '    ; кладет на стек ASCII код ' '.
 
 push ax      ; кладет на стек значения регистра ax.
 
@@ -156,7 +147,7 @@ push [100]   ; кладет на стек значения в сотой яче�
 
 push [ax]    ; кладет на стек значения в ячейке памяти под номером, численно равным значению ax.
 
-push [ax+1]  ; кладет на стек значения в ячейке памяти под номером, численно равным значию (ax+1).
+push [ax + 1]  ; кладет на стек значения в ячейке памяти под номером, численно равным значию (ax+1).
 ```
 <br>
 
@@ -254,13 +245,13 @@ loop:
 # Графические команды
 ## rgba
 
-`rgba <arg1> <arg2> <arg3> <arg4>` - кладет на верхушку стека целое число, кодирующее RGBA расцветку, заданную аргументами. Аргументы берутся по модулю `256`.
+`rgba <arg1>, <arg2>, <arg3>, <arg4>` - кладет на верхушку стека целое число, кодирующее RGBA расцветку, заданную аргументами. Аргументы берутся по модулю `256`.
 
 arg = {int, reg}
 
 ## draw
 
-`draw <arg1> <arg2>` - создает окно рамером arg1 x arg2, в котором i-ый пиксель красится в цвет по RGBA, где RGBA-кодировка задана i-ым числом в виртуальной памяти процессора. Чтобы закрыть окно, нажмите `Space`.
+`draw <arg1>, <arg2>, <arg>?` - создает окно рамером `arg2` x `arg3`, в котором i-ый пиксель красится в цвет по RGBA, где RGBA-кодировка задана `<i + arg1>`-им числом в виртуальной памяти процессора (`arg1` - адрес в ОЗУ, начиная с которого команда берет кодировки чисел). Чтобы закрыть окно, нажмите `Space` или `Esc`.
 
 arg = {int, reg},
 
@@ -270,68 +261,17 @@ arg = {int, reg},
 # Структура проекта
 ```bash
 .
-├── assembler
-│   ├── include
-│   │   ├── assembler
-│   │   │   └── assembler.hpp
-│   │   ├── fileread
-│   │   │   └── fileread.hpp
-│   │   └── flags
-│   │       └── flags.hpp
-│   ├── main.cpp
-│   └── src
-│       ├── assembler
-│       │   └── assembler.cpp
-│       ├── fileread
-│       │   └── fileread.cpp
-│       └── flags
-│           └── flags.cpp
-│
-├── processor
-│   ├── include
-│   │   ├── flags
-│   │   │   └── flags.hpp
-│   │   └── processor
-│   │       └── processor.hpp
-│   ├── main.cpp
-│   └── src
-│       ├── flags
-│       │   └── flags.cpp
-│       └── processor
-│           └── processor.cpp
-│
-├── common
-│   ├── include
-│   │   ├── global
-│   │   │   └── global_include.hpp
-│   │   ├── lib
-│   │   │   └── lib.hpp
-│   │   ├── logger
-│   │   │   └── log.hpp
-│   │   └── stack
-│   │       ├── hash.hpp
-│   │       └── stack.hpp
-│   └── src
-│       ├── global
-│       │   └── global.cpp
-│       ├── lib
-│       │   └── lib.cpp
-│       ├── logger
-│       │   ├── backgrounds
-│       │   │   ├── anime_tyan_1.webp
-│       │   │   ├── anime_tyan_2.webp
-│       │   │   ├── anime_tyan_3.png
-│       │   │   └── anime_tyan_main.jpg
-│       │   └── log.cpp
-│       └── stack
-│           ├── hash.cpp
-│           └── stack.cpp
-│
-├── make
-│   ├── make-asm.mk
-│   └── make-proc.mk
-├── Makefile
-│
+├── assets
+│   ├── asm_code
+│   │   ├── code_example1.png
+│   │   └── code_example2.png
+│   └── examples
+│       ├── example1_result.png
+│       ├── example2_result.png
+│       ├── example3_result.png
+│       ├── example4_result.png
+│       ├── example5_result_1.png
+│       └── example5_result_2.png
 ├── examples
 │   ├── example1
 │   │   ├── HelloWorld.asm
@@ -348,24 +288,97 @@ arg = {int, reg},
 │   ├── example5
 │   │   ├── circle.asm
 │   │   └── circle.bin
-│   └── Readme.md
-│
-├── assets
-│   ├── example1_result.png
-│   ├── example2_result.png
-│   ├── example3_result.png
-│   ├── example4_result.png
-│   └── example5_result.png
-│
-└── README.md
+│   ├── log
+│   │   └── log.html
+│   ├── README.md
+│   └── run
+│       ├── run_example_1.bash
+│       ├── run_example_2.bash
+│       ├── run_example_3.bash
+│       ├── run_example_4.bash
+│       └── run_example_5.bash
+├── README.md
+└── Src
+    ├── assembler
+    │   ├── include
+    │   │   ├── assembler
+    │   │   │   ├── assembler.hpp
+    │   │   │   ├── code_array
+    │   │   │   │   └── code_array.hpp
+    │   │   │   ├── labels
+    │   │   │   │   ├── labels.hpp
+    │   │   │   │   └── labels_log.hpp
+    │   │   │   └── tokenizer
+    │   │   │       ├── tokenizer.hpp
+    │   │   │       └── tokens_log.hpp
+    │   │   └── flags
+    │   │       └── flags.hpp
+    │   ├── main.cpp
+    │   ├── Makefile
+    │   └── src
+    │       ├── assembler
+    │       │   ├── assembler.cpp
+    │       │   ├── code_array
+    │       │   │   └── code_array.cpp
+    │       │   ├── labels
+    │       │   │   ├── labels.cpp
+    │       │   │   └── labels_log.cpp
+    │       │   └── tokenizer
+    │       │       ├── tokenizer.cpp
+    │       │       └── tokens_log.cpp
+    │       └── flags
+    │           └── flags.cpp
+    ├── common
+    │   ├── include
+    │   │   ├── functions_for_files
+    │   │   │   └── files.hpp
+    │   │   ├── global
+    │   │   │   └── global_include.hpp
+    │   │   ├── lib
+    │   │   │   └── lib.hpp
+    │   │   ├── logger
+    │   │   │   └── log.hpp
+    │   │   └── stack
+    │   │       ├── hash.hpp
+    │   │       └── stack.hpp
+    │   └── src
+    │       ├── functions_for_files
+    │       │   └── files.cpp
+    │       ├── global
+    │       │   └── global.cpp
+    │       ├── lib
+    │       │   └── lib.cpp
+    │       ├── logger
+    │       │   ├── backgrounds
+    │       │   │   ├── anime_tyan_1.webp
+    │       │   │   ├── anime_tyan_2.webp
+    │       │   │   ├── anime_tyan_3.png
+    │       │   │   └── anime_tyan_main.jpg
+    │       │   └── log.cpp
+    │       └── stack
+    │           ├── hash.cpp
+    │           └── stack.cpp
+    ├── Makefile
+    └── processor
+        ├── include
+        │   └── processor
+        │       ├── math_operators
+        │       │   └── operators.hpp
+        │       └── processor.hpp
+        ├── main.cpp
+        ├── Makefile
+        └── src
+            └── processor
+                ├── math_operators
+                │   └── operators.cpp
+                └── processor.cpp
 
-37 directories, 46 files
-
+47 directories, 65 files
 ```
 
 <br>
 
 # Примеры простейших программ реализованных на данном ассемблере:
 
-В папке `/examples/` лежат 5 папок с примерами простейших программ. 
-Для их запуска прочитайте файл `/examples/Readme.md`. 
+В папке `~/examples/` лежат 5 папок с примерами простейших программ. 
+Для их запуска прочитайте файл `~/examples/Readme.md`. 

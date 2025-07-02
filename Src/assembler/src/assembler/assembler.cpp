@@ -13,7 +13,8 @@
 
 #ifdef _DEBUG
 #include "logger/log.hpp"
-#include "tokenizer/tokens_log.hpp"
+#include "assembler/tokenizer/tokens_log.hpp"
+#include "assembler/labels/labels_log.hpp"
 #endif // _DEBUG
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -376,16 +377,8 @@ static AssemblerErr InitLabels(AsmData* AsmDataInfo)
 
     AsmDataInfo->labels = labels_array;
 
-    ON_DEBUG(
-    LOG_TITLE(Red, "Labels Array!!!");
-    size_t size = AsmDataInfo->labels.size;
-    for (size_t i = 0; i < size; i++)
-    {
-        LOG_PRINT(Blue, "label[%2lu] =\n{\nname = '%.*s'\ncode place = '%3lu'\nis_def = '%d'\n}\n\n", i, 10, AsmDataInfo->labels.array[i].name, AsmDataInfo->labels.array[i].code_place, AsmDataInfo->labels.array[i].is_defined);
-    }
-    LOG_TITLE(Red, "Labels Array End");
-    LOG_NS();
-    )
+    ON_DEBUG(LabelsArrayLog(&labels_array);)
+
     return ASSEMBLER_VERIF(AsmDataInfo, err, {});
 }
 

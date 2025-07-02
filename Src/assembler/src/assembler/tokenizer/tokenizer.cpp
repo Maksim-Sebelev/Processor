@@ -300,7 +300,7 @@ static Number GetNumber(const char* word)
     if (word[0] == '-')
        number_len++;
 
-    for (number_len; isdigit(word[number_len]); number_len++);
+    for (; isdigit(word[number_len]); number_len++);
 
     
     if (number_len == 0) // for chars aka 'a', ' ', or '\n' 

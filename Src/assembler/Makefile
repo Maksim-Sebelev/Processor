@@ -62,8 +62,9 @@ CSRC =  assembler/main.cpp                           \
 
 
 ifeq ($(BUILD_TYPE), debug)
-	CSRC += common/src/logger/log.cpp             \
-			assembler/src/tokenizer/tokens_log.cpp \
+	CSRC += common/src/logger/log.cpp                       \
+			assembler/src/assembler/labels/labels_log.cpp    \
+			assembler/src/assembler/tokenizer/tokens_log.cpp  \
 
 endif
 

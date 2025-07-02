@@ -1,7 +1,7 @@
 # Примеры
 
-Перед тем, как запускать примеры необходимо скомпелировать проект и поместить исполняемые файлы в папку `~/examples/build/`.\
-Для этого перейдите в папку `~/Src` и выполните:
+Перед тем, как запускать примеры необходимо скомпилировать проект и поместить исполняемые файлы в папку `~/examples/build/`.\
+Для этого перейдите в папку `~/Src/` и выполните:
 ```bash
 make examples
 ```
@@ -25,17 +25,16 @@ bash run/run_example_5.bash
 -изменение исходных файлов (попробуйте переустановить программу).
 
 ## example1
-![Example1 result](../assets/example1_result.png)
+![Example1 result](../assets/examples/example1_result.png)
 
 **вывод в консоль**:
 ```bash
-Hello, World!
 Hello, World!
 ```
 <br>
 
 ## example2
-![Example1 result](../assets/example2_result.png)
+![Example1 result](../assets/examples/example2_result.png)
 
 **вывод в консоль:**
 ```bash
@@ -44,7 +43,7 @@ Hello, World!
 <br>
 
 ## example3
-![Example1 result](../assets/example3_result.png)
+![Example1 result](../assets/examples/example3_result.png)
 
 **вывод в консоль:**
 ```bash
@@ -55,11 +54,11 @@ Hello, World!
 
 
 ## example4
-![Example1 result](../assets/example4_result.png)
+![Example1 result](../assets/examples/example4_result.png)
 
 **вывод в консоль:**
 ```bash
-5040
+7! = 5040
 ```
 <br>
 
@@ -67,13 +66,14 @@ Hello, World!
 ## example5
 **Создастся окно размером 600x800 и будет выведена картинка:**
 
-![Example1 result](../assets/example5_result1.png)
+![Example5 result 1](../assets/examples/example5_result_1.png)
 <br>
 
-**После нажатия на `Space` окно закроется и в консоль будет выведен `0`, как знак успешного завершения программы.**
+**После нажатия на `Space` или `Esc` окно закроется и в консоль будет выведен `0`, как знак успешного завершения программы.**
 
 <br>
-![Example1 result](../assets/example5_result2.png)
+
+![Example1 result 1](../assets/examples/example5_result_2.png)
 
 **вывод в консоль:**
 ```bash
