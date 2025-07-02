@@ -10,8 +10,8 @@ SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 CFLAGS ?= 
 LDFLAGS = $(SFML_FLAGS)
 
-BUILD_TYPE ?= debug
-# BUILD_TYPE ?= release
+# BUILD_TYPE ?= debug
+BUILD_TYPE ?= release
 
 
 ifeq ($(BUILD_TYPE), release)
@@ -95,23 +95,19 @@ makeCodeDir:
 	@mkdir -p $(BIN_DIR)
 endif
 
-run:
-	@make -f $(MAKEFILE_NAME) makeCodeDir
-	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) $(BIN_DIR)/$(BIN_FILE)
+run: all
+	make -f $(MAKEFILE_NAME) makeCodeDir
+	./$(EXECUTABLE_DIR)/$(EXECUTABLE) $(BIN_DIR)/$(BIN_FILE)
 
 rebuild:
 	make -f $(MAKEFILE_NAME) clean
 	make -f $(MAKEFILE_NAME)
 
-rerun:
-	make -f $(MAKEFILE_NAME)
-	make -f $(MAKEFILE_NAME) run
-
 #======= clean ========================================
 
 .PHONY: clean
 clean:
-	rm -rf $(COBJ) $(DEPS) $(EXECUTABLE_DIR)/$(EXECUTABLE) $(OUT_O_DIR)/$(SRC)
+	rm -rf $(EXECUTABLE_DIR)/$(EXECUTABLE) $(COBJ)
 
 #============ git =========================================
 

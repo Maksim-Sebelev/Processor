@@ -53,8 +53,8 @@ override CFLAGS += $(COMMONINC)
 CSRC =  assembler/main.cpp                           \
 		assembler/src/flags/flags.cpp                 \
 		assembler/src/assembler/assembler.cpp          \
-		assembler/src/tokenizer/tokenizer.cpp           \
-		assembler/src/assembler/labels/labels.cpp        \
+		assembler/src/assembler/labels/labels.cpp       \
+		assembler/src/assembler/tokenizer/tokenizer.cpp  \
 		assembler/src/assembler/code_array/code_array.cpp \
 		common/src/lib/lib.cpp                             \
 		common/src/global/global.cpp                        \
@@ -72,7 +72,6 @@ DEPS = $(COBJ:.o=.d)
 
 .PHONY: all
 all: $(EXECUTABLE_DIR)/$(EXECUTABLE)
-	# cp -r $(EXECUTABLE_DIR)/ examples/build
 
 $(EXECUTABLE_DIR)/$(EXECUTABLE): $(COBJ)
 	@mkdir -p $(@D)
@@ -98,23 +97,19 @@ makeCodeDir:
 	@mkdir -p $(BIN_DIR)
 endif
 
-run:
-	@make -f $(MAKEFILE_NAME) makeCodeDir
-	@./$(EXECUTABLE_DIR)/$(EXECUTABLE) --src $(ASM_DIR)/$(ASM_FILE) --bin $(BIN_DIR)/$(BIN_FILE)
+run: all
+	make -f $(MAKEFILE_NAME) makeCodeDir
+	./$(EXECUTABLE_DIR)/$(EXECUTABLE) --src $(ASM_DIR)/$(ASM_FILE) --exe $(BIN_DIR)/$(BIN_FILE)
 
 rebuild:
 	make -f $(MAKEFILE_NAME) clean
 	make -f $(MAKEFILE_NAME)
 
-rerun:
-	make -f $(MAKEFILE_NAME)
-	make -f $(MAKEFILE_NAME) run
-
 #======= clean ========================================
 
 .PHONY: clean
 clean:
-	rm -rf $(COBJ) $(DEPS) $(EXECUTABLE_DIR)/$(EXECUTABLE) $(OUT_O_DIR)/$(SRC)
+	rm -rf $(EXECUTABLE_DIR)/$(EXECUTABLE) $(COBJ)
 
 #============ git =========================================
 

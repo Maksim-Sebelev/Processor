@@ -3,7 +3,7 @@
 #include <stddef.h> 
 #include <ctype.h>
 #include <stdlib.h>
-#include "tokenizer/tokenizer.hpp"
+#include "assembler/tokenizer/tokenizer.hpp"
 #include "global/global_include.hpp"
 #include "functions_for_files/files.hpp"
 #include "lib/lib.hpp"
@@ -65,10 +65,6 @@ static bool           IsPassSymbol                      (char c);
 
 static void           UpdatePointersAfterSpace          (Pointers* pointer);
 static void           UpdatePointersAfterSlashN         (Pointers* pointer);
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-struct Buffer;
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -301,7 +297,10 @@ static Number GetNumber(const char* word)
 
     size_t number_len = 0;
 
-    for (number_len = 0; isdigit(word[number_len]); number_len++);
+    if (word[0] == '-')
+       number_len++;
+
+    for (number_len; isdigit(word[number_len]); number_len++);
 
     
     if (number_len == 0) // for chars aka 'a', ' ', or '\n' 

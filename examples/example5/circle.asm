@@ -60,7 +60,7 @@ draw_circle:
     push ex
     jb cycle:
 
-    draw ax bx
+    draw 0, ax, bx
 
     ret
 
@@ -124,7 +124,7 @@ calc_dist_to_centre:
 inCircle:
     ; if point is in circle, we paint it in white
 
-    rgba 255 255 255 255
+    rgba 255, 255, 255, 255
     pop [dx]
 
     jmp back_in_cycle:
@@ -149,7 +149,6 @@ notInCircle:
 
     pop ax ; in ax - x coordinat
 
-
     push dx
     push bx
     div      ; y-coordinat of array elem (x = i / ax)
@@ -164,9 +163,8 @@ notInCircle:
     pop cx
 
     ; painting pixel
-    rgba cx ax bx 255
+    rgba cx, ax, bx, 255
     pop [dx]
-
 
     ; get saved ax, bx, cx
     pop cx

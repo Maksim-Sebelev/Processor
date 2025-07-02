@@ -6,7 +6,7 @@
 #include "assembler/assembler.hpp"
 #include "global/global_include.hpp"
 #include "lib/lib.hpp"
-#include "tokenizer/tokenizer.hpp"
+#include "assembler/tokenizer/tokenizer.hpp"
 #include "functions_for_files/files.hpp"
 #include "assembler/labels/labels.hpp"
 #include "assembler/code_array/code_array.hpp"

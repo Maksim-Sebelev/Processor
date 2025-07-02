@@ -40,13 +40,18 @@ draw_circle:
 
 ## Установка
 
-1. Клонируйте репозиторий:
+1. Клонируйте репозиторий:\
+Команда для https:
 ```bash
 git clone https://github.com/Maksim-Sebelev/Processor.git
 ```
-2. Перейдите в папку проекта:
+Команда для SSH:
 ```bash
-cd Processor
+git clone git@github.com:Maksim-Sebelev/Processor
+```
+2. Перейдите в рабочую папку проекта:
+```bash
+cd Processor/Src
 ```
 
 ## Компиляция проекта:

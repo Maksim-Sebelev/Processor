@@ -17,7 +17,7 @@ static void HandleUndefFlag(             );
 static struct option long_options[] =
 {
     {"src", required_argument, nullptr, 's'},
-    {"bin", required_argument, nullptr, 'b'},
+    {"exe", required_argument, nullptr, 'e'},
     {nullptr, 0, nullptr, 0}
 };
 
@@ -33,12 +33,12 @@ IOfile CallFlags(int argc, char* argv[])
     IOfile files = {};
     int    opt   = 0;
 
-    while ((opt = getopt_long(argc, argv, "s:b:", long_options, nullptr)) != -1)
+    while ((opt = getopt_long(argc, argv, "s:e:", long_options, nullptr)) != -1)
     {
         switch (opt)
         {
             case 's': HandleSrcFlag  (&files); break;
-            case 'b': HandleBinFlag  (&files); break;
+            case 'e': HandleBinFlag  (&files); break;
             default : HandleUndefFlag(      ); break;
         }
     }
@@ -75,7 +75,7 @@ static void HandleBinFlag(IOfile* files)
 __attribute__((__noreturn__)) static void HandleUndefFlag()
 {
     if (optarg)
-        EXIT(EXIT_FAILURE, "asm:fatal err:undef option - '%s'\n", optarg);
+        EXIT(EXIT_FAILURE, "asm:fatal_err:undef_option - '%s'\n", optarg);
 
     exit(EXIT_FAILURE);
 }

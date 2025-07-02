@@ -131,12 +131,14 @@ static ProcessorErr CodeCtor                           (SPU* spu, const char* fi
 static ProcessorErr RamCtor                            (SPU* spu);
 static ProcessorErr ProcessorStackCtor                 (SPU* spu);
 static ProcessorErr RegistersCtor                      (SPU* spu);
+static void         OutputColorCtor                    ();
 
 // dtor spu helper functions        
 static ProcessorErr CodeDtor                           (SPU* spu);
 static ProcessorErr RamDtor                            (SPU* spu);
 static ProcessorErr ProcessorStackDtor                 (SPU* spu);
 static ProcessorErr RegistersDtor                      (SPU* spu);
+static void         OutputColorDtor                    ();
 
 // processing functions commands        
 static ProcessorErr HandlePush                         (SPU* spu);
@@ -164,8 +166,8 @@ static ProcessorErr HandleDraw                         (SPU* spu); // functions 
 static ProcessorErr HandleRGBA                         (SPU* spu); // =================
 
 // pattern for similar functions        
-static ProcessorErr ArithmeticCmdPattern               (SPU* spu, ArithmeticOperator arithmetic_operator);
 static ProcessorErr PpMmPattern                        (SPU* spu, Cmd command);
+static ProcessorErr ArithmeticCmdPattern               (SPU* spu, ArithmeticOperator arithmetic_operator);
 static ProcessorErr JumpsCmdPatter                     (SPU* spu, ComparisonOperator comparison_operator);
 
 // HandlePush helper functioins        
@@ -185,37 +187,40 @@ static int          GetPushElementTypeAligment         (const SPU* spu, int push
 // HandlePop  helper functions
 static PopType      GetPopType                         (int PopArg);
 
-static bool         IsPopTypeRegister                 (PopType pop_type);
-static bool         IsPopTypeMemory                   (PopType pop_type);
-static bool         IsPopTypeMemoryRegister           (PopType pop_type);
-static bool         IsPopTypeAligment                 (PopType pop_type);
+static bool         IsPopTypeRegister                  (PopType pop_type);
+static bool         IsPopTypeMemory                    (PopType pop_type);
+static bool         IsPopTypeMemoryRegister            (PopType pop_type);
+static bool         IsPopTypeAligment                  (PopType pop_type);
 
-static void         SetRegisterInPopTypeRegister      (SPU* spu, int pop_element, int pop_argument);
-static void         SetRamInPopTypeMemory             (SPU* spu, int pop_element, int pop_argument);
-static void         SetRamInPopTypeMemoryRegister     (SPU* spu, int pop_element, int pop_argument);
-static void         SetRamInPopTypeAligment           (SPU* spu, int pop_element, int pop_argument, int aligment);
+static void         SetRegisterInPopTypeRegister       (SPU* spu, int pop_element, int pop_argument);
+static void         SetRamInPopTypeMemory              (SPU* spu, int pop_element, int pop_argument);
+static void         SetRamInPopTypeMemoryRegister      (SPU* spu, int pop_element, int pop_argument);
+static void         SetRamInPopTypeAligment            (SPU* spu, int pop_element, int pop_argument, int aligment);
 
 // rgba functions
-static RGBA         GetRGBA                           (int pixel);
-static ProcessorErr VertexArrayCtor                   (sf::VertexArray& pixels, size_t ram_addr_begin, size_t high, size_t width, SPU* spu);
-static int          PackRGBA                          (RGBA rgba);
+static int          PackRGBA                           (RGBA rgba);
+static RGBA         UnpackRGBA                         (int pixel);
+static ProcessorErr VertexArrayCtor                    (sf::VertexArray& pixels, size_t ram_addr_begin, size_t high, size_t width, SPU* spu);
 
-// global functions for work with struct SPU
-static size_t       GetCodeSize                        (SPU* spu);
-static size_t       GetIp                              (SPU* spu);
-static int          GetNextCodeInstruction                 (SPU* spu);
+// CodeCtor helpeer function
+static ProcessorErr ReadCodeFromFile                   (SPU* spu, FILE* code_file_ptr);
 static void         SetCodeElem                        (SPU* spu, size_t code_pointer, int setting_element);
+
+
+// functions for work with struct SPU
+static size_t       GetIp                              (SPU* spu);
+static size_t       GetCodeSize                        (SPU* spu);
+static int          GetNextCodeInstruction             (SPU* spu);
 static int          GetMemoryElement                   (SPU* spu, size_t index);
 static int          GetRegisterOrInt                   (const SPU* spu, bool is_arg_register, int argument);
 static one_bit_t    GetIBitOfInt                       (int n, size_t i);
-static ProcessorErr ReadCodeFromFile                   (SPU* spu, FILE* code_file_ptr);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // error processing functions
-static ProcessorErr Verify                            (SPU* spu, ProcessorErr* err, const char* file, int line, const char* func);
-static void         PrintError                        (          ProcessorErr* err                                              );
-static void         ProcessorAssertPrint              (          ProcessorErr* err, const char* file, int line, const char* func);
+static ProcessorErr ErrCtor                            (ProcessorErrorType err_type, const char* file, int line, const char* func);
+static void         PrintError                         (          ProcessorErr* err                                              );
+static void         ProcessorAssertPrint               (          ProcessorErr* err, const char* file, int line, const char* func);
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -238,11 +243,15 @@ static void WhereProcessorIs (const char* command);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define PROCESSSOR_DUMP(SpuPtr) ProcessorDump(SpuPtr, __FILE__, __LINE__, __func__)
+#define ERR_CTOR(err_type) ErrCtor(err_type, __FILE__, __LINE__, __func__)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define PROCESSOR_VERIFY(spu, err) Verify(spu, &err, __FILE__, __LINE__, __func__)
+#define PROCESSOR_RETURN(err_type) ERR_CTOR(err_type)
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define PROCESSSOR_DUMP(SpuPtr) ProcessorDump(SpuPtr, __FILE__, __LINE__, __func__)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -283,6 +292,7 @@ void RunProcessor(const ProcessorInput* input)
     PROCESSOR_ASSERT(ExecuteCommands(&spu       ));
     PROCESSOR_ASSERT(SpuDtor        (&spu       ));
 
+
     return;
 }
 
@@ -296,14 +306,13 @@ static ProcessorErr SpuCtor(SPU* spu, const ProcessorInput* input)
     assert(spu);
     assert(input);
 
-    ProcessorErr  err = {};
-
     PROCESSOR_ASSERT(CodeCtor               (spu, input->executable_file));
     PROCESSOR_ASSERT(ProcessorStackCtor     (spu                        ));
     PROCESSOR_ASSERT(RegistersCtor          (spu                        ));
     PROCESSOR_ASSERT(RamCtor                (spu                        ));
+    OutputColorCtor();
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -312,10 +321,7 @@ static ProcessorErr ExecuteCommands(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr err = {};
-
     size_t code_size = GetCodeSize(spu);
-
 
     while (GetIp(spu) < code_size)
     {
@@ -345,18 +351,12 @@ static ProcessorErr ExecuteCommands(SPU* spu)
             case Cmd::outrc: PROCESSOR_ASSERT(HandleOutrc(spu)); break;
             case Cmd::draw:  PROCESSOR_ASSERT(HandleDraw (spu)); break;
             case Cmd::rgba:  PROCESSOR_ASSERT(HandleRGBA (spu)); break;
-            case Cmd::hlt: /* PROCESSSOR_DUMP(spu); */ return PROCESSOR_VERIFY(spu, err);
-            default:
-            {
-                COLOR_PRINT(RED, "ip = %lu\n", GetIp(spu));
-                err.err = ProcessorErrorType::INVALID_CMD;
-                return PROCESSOR_VERIFY(spu, err);
-            }
+            case Cmd::hlt:   return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR     );
+            default:         return PROCESSOR_RETURN(ProcessorErrorType::INVALID_CMD);
         }
     }
 
-    err.err = ProcessorErrorType::NO_HALT;
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_HALT);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -365,8 +365,7 @@ static ProcessorErr SpuDtor(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr  err = {};
-
+    OutputColorDtor();
     PROCESSOR_ASSERT(CodeDtor           (spu));
     PROCESSOR_ASSERT(RamDtor            (spu));
     PROCESSOR_ASSERT(RegistersDtor      (spu));
@@ -374,7 +373,7 @@ static ProcessorErr SpuDtor(SPU* spu)
 
     *spu = {};
 
-    return err;
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -387,25 +386,18 @@ static ProcessorErr CodeCtor(SPU* spu, const char* file)
     assert(spu);
     assert(file);
 
-    ProcessorErr err = {};
-
     FILE* code_file_ptr = SafeFopen(file, "rb"); assert(code_file_ptr);
 
     size_t code_array_size = 0;
+
     if (fscanf(code_file_ptr, "%lu", &code_array_size) != 1)
-    {
-        err.err = ProcessorErrorType::FAILED_READ_FILE_LEN;
-        return PROCESSOR_VERIFY(spu, err);
-    }
+        return PROCESSOR_RETURN(ProcessorErrorType::FAILED_READ_FILE_LEN);
 
     spu->code_array.size = code_array_size;
     spu->code_array.array = (int*) calloc(code_array_size, sizeof(*spu->code_array.array));
 
     if (!spu->code_array.array)
-    {
-        err.err = ProcessorErrorType::SPU_CODE_CALLOC_NULL;
-        return PROCESSOR_VERIFY(spu, err);
-    }
+        return PROCESSOR_RETURN(ProcessorErrorType::SPU_CODE_CALLOC_NULL);
 
     PROCESSOR_ASSERT(ReadCodeFromFile(spu, code_file_ptr));
 
@@ -413,7 +405,7 @@ static ProcessorErr CodeCtor(SPU* spu, const char* file)
 
     spu->code_array.ip = 0;
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -422,12 +414,10 @@ static ProcessorErr ProcessorStackCtor(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr err = {};
-
     static const size_t DefaultStackSize = 128;
     STACK_ASSERT(StackCtor(&spu->stack, DefaultStackSize));
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -436,22 +426,17 @@ static ProcessorErr RamCtor(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr err = {};
-
     static const size_t default_ram_size = 1 << 30;
     
     int* ram = (int*) calloc(default_ram_size, sizeof(ram[0]));
 
     if (!ram)
-    {
-	err.err = ProcessorErrorType::RAM_BAD_CALLOC;
-	return PROCESSOR_VERIFY(spu, err);
-    }
+        return PROCESSOR_RETURN(ProcessorErrorType::RAM_BAD_CALLOC);
 
    spu->ram.array = ram             ;
    spu->ram.size  = default_ram_size;
    
-   return PROCESSOR_VERIFY(spu, err);
+   return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -460,15 +445,19 @@ static ProcessorErr RegistersCtor(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr err = {};
-
     for (size_t i = 0; i < (size_t) Registers::REGISTERS_QUANT; i++)
         spu->registers[i] = 0;
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void OutputColorCtor()
+{
+    printf(VIOLET);
+    return;
+}
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -479,14 +468,12 @@ static ProcessorErr CodeDtor(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr err = {};
-
     assert(spu->code_array.array);
     FREE(spu->code_array.array);
 
     spu->code_array = {};
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -495,11 +482,9 @@ static ProcessorErr ProcessorStackDtor(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr err = {};
-
     STACK_ASSERT(StackDtor(&spu->stack));
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -508,14 +493,12 @@ static ProcessorErr RamDtor(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr err = {};
-
     assert(spu->ram.array);
     FREE(spu->ram.array);
 
     spu->ram.size  = 0;
    
-   return PROCESSOR_VERIFY(spu, err);
+   return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -524,12 +507,19 @@ static ProcessorErr RegistersDtor(SPU* spu)
 {
     assert(spu);
 
-    ProcessorErr err = {};
-
     for (size_t i = 0; i < (size_t) Registers::REGISTERS_QUANT; i++)
         spu->registers[i] = 0;
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void OutputColorDtor()
+{
+    printf(RESET);
+
+    return;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -542,8 +532,6 @@ static ProcessorErr HandlePush(SPU* spu)
     WHERE_PROCESSOR_IS();
 
     assert(spu);
-
-    ProcessorErr err = {};
 
     int      push_type_int = GetNextCodeInstruction(spu);
     PushType push_type     = GetPushType           (push_type_int);
@@ -569,15 +557,11 @@ static ProcessorErr HandlePush(SPU* spu)
         pushing_element = GetPushElementTypeAligment(spu, push_arg, aligment);
 
     else
-    {
-        err.err = ProcessorErrorType::INVALID_CMD;
-        return PROCESSOR_VERIFY(spu, err);
-    }
+        return PROCESSOR_RETURN(ProcessorErrorType::INVALID_CMD);
 
     STACK_ASSERT(StackPush(&spu->stack, pushing_element));
 
-
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -587,7 +571,6 @@ static ProcessorErr HandlePop(SPU* spu)
     WHERE_PROCESSOR_IS();
 
     assert(spu);
-    ProcessorErr err = {};
 
     int     pop_type_int = GetNextCodeInstruction(spu);
     PopType pop_type     = GetPopType        (pop_type_int);
@@ -611,12 +594,9 @@ static ProcessorErr HandlePop(SPU* spu)
         SetRamInPopTypeAligment(spu, pop_element, pop_arg, aligment);
 
     else
-    {
-        err.err = ProcessorErrorType::INVALID_CMD;
-        return PROCESSOR_VERIFY(spu, err);
-    }
+        return PROCESSOR_RETURN(ProcessorErrorType::INVALID_CMD);
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -774,15 +754,13 @@ static ProcessorErr HandleCall(SPU* spu)
 
     assert(spu);
 
-    ProcessorErr err = {};
-
     StackElem_t return_pointer  = (StackElem_t) GetIp(spu) + 1; // skip 'call func:' is made in assembler
 
     STACK_ASSERT(StackPush(&spu->stack, return_pointer));
 
     spu->code_array.ip = (size_t) GetNextCodeInstruction(spu);
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -793,15 +771,13 @@ static ProcessorErr HandleRet(SPU* spu)
 
     assert(spu);
 
-    ProcessorErr err = {};
-
     StackElem_t return_pointer = 0;
     STACK_ASSERT(StackPop(&spu->stack, &return_pointer));
 
     spu->code_array.ip = (size_t) return_pointer;
 
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -813,13 +789,11 @@ static ProcessorErr HandleOut(SPU* spu)
 
     assert(spu);
 
-    ProcessorErr err = {};
-
     StackElem_t elem = GetLastStackElem(&spu->stack);
 
-    COLOR_PRINT(VIOLET, "%d", elem);
+    printf("%d", elem);
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -830,19 +804,14 @@ static ProcessorErr HandleOutc(SPU* spu)
 
     assert(spu);
 
-    ProcessorErr err = {};
-
     StackElem_t elem = GetLastStackElem(&spu->stack);
 
     if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
-    {
-        err.err = ProcessorErrorType::OUT_CHAR_NOT_CHAR;
-        return PROCESSOR_VERIFY(spu, err);
-    }
+        return PROCESSOR_RETURN(ProcessorErrorType::OUT_CHAR_NOT_CHAR);
 
-    COLOR_PRINT(VIOLET, "%c", elem);
+    printf("%c", elem);
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -853,20 +822,15 @@ static ProcessorErr HandleOutrc(SPU* spu)
 
     assert(spu);
 
-    ProcessorErr err = {};
-
     StackElem_t elem = 0;
     STACK_ASSERT(StackPop(&spu->stack, &elem));
 
     if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
-    {
-        err.err = ProcessorErrorType::OUT_CHAR_NOT_CHAR;
-        return PROCESSOR_VERIFY(spu, err);
-    }
+        return PROCESSOR_RETURN(ProcessorErrorType::OUT_CHAR_NOT_CHAR);
 
-    COLOR_PRINT(VIOLET, "%c", elem);
+    printf("%c", elem);
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -877,15 +841,13 @@ static ProcessorErr HandleOutr(SPU* spu)
 
     assert(spu);
 
-    ProcessorErr err = {};
-
     StackElem_t elem = 0;
 
     STACK_ASSERT(StackPop(&spu->stack, &elem));
 
-    COLOR_PRINT(VIOLET, "%d", elem);
+    printf("%d", elem);
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -894,9 +856,8 @@ static ProcessorErr HandleOutr(SPU* spu)
 static ProcessorErr HandleDraw(SPU* spu)
 {
     WHERE_PROCESSOR_IS();
-    assert(spu);
 
-    ProcessorErr err = {};    
+    assert(spu);
 
     const int draw_type_int = GetNextCodeInstruction(spu);
 
@@ -959,7 +920,7 @@ static ProcessorErr HandleDraw(SPU* spu)
     pixels.clear();
     window.clear();
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -969,8 +930,6 @@ static ProcessorErr HandleRGBA(SPU* spu)
     WHERE_PROCESSOR_IS();
 
     assert(spu);
-
-    ProcessorErr err = {};
 
     const int rgba_type_int = GetNextCodeInstruction(spu);    
 
@@ -1011,7 +970,7 @@ static ProcessorErr HandleRGBA(SPU* spu)
 
     STACK_ASSERT(StackPush(&spu->stack, rgba_int_result));
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1019,11 +978,27 @@ static ProcessorErr HandleRGBA(SPU* spu)
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /// pattern for similar functions
 
+static ProcessorErr PpMmPattern(SPU* spu, Cmd command)
+{
+    assert(spu);
+
+    int argument = GetNextCodeInstruction(spu);
+
+    switch (command)
+    {
+        case Cmd::pp: spu->registers[argument]++; break;
+        case Cmd::mm: spu->registers[argument]--; break;
+        default: __builtin_unreachable__("here must be 'pp' or 'mm' commands"); break;
+    }
+
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator arithmetic_operator)
 {
     assert(spu);
-    ProcessorErr err = {};
 
     StackElem_t first_operand  = 0;
     StackElem_t second_operand = 0;
@@ -1034,28 +1009,7 @@ static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator arithmetic
     StackElem_t push_elem = MakeArithmeticOperation(first_operand, second_operand, arithmetic_operator);
     STACK_ASSERT(StackPush(&spu->stack, push_elem));
 
-    return PROCESSOR_VERIFY(spu, err);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr PpMmPattern(SPU* spu, Cmd command)
-{
-    assert(spu);
-
-    ProcessorErr err = {};
-
-    int argument = GetNextCodeInstruction(spu);
-    // size_t registerPointer = (size_t) spu->code_array.array[argument];
-
-    switch (command)
-    {
-        case Cmd::pp: spu->registers[argument]++; break;
-        case Cmd::mm: spu->registers[argument]--; break;
-        default: __builtin_unreachable__("here must be 'pp' or 'mm' commands"); break;
-    }
-
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1063,8 +1017,6 @@ static ProcessorErr PpMmPattern(SPU* spu, Cmd command)
 static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator comparison_operator)
 {
     assert(spu);
-
-    ProcessorErr err = {};
 
     StackElem_t first_operand  = 0;
     StackElem_t second_operand = 0;
@@ -1078,12 +1030,9 @@ static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator comparison_opera
     }
 
     if (MakeComparisonOperation(first_operand, second_operand, comparison_operator))
-    {
         spu->code_array.ip = jmp_place;
-        return PROCESSOR_VERIFY(spu, err);
-    }
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1098,15 +1047,14 @@ assert(spu->registers)                     \
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define ram_assert(spu, arg)                  \
-assert(spu->ram.array);                        \
-assert(arg >= 0);                               \
-if ((size_t) arg >= spu->ram.size)               \
-{                                                 \
-    ProcessorErr error = {};                       \
-    error.err = ProcessorErrorType::RAM_OVERFLOW;   \
-    PROCESSOR_ASSERT(error);                         \
-}                                                     \
+#define ram_assert(spu, arg)                                    \
+assert(spu->ram.array);                                          \
+assert(arg >= 0);                                                 \
+if ((size_t) arg >= spu->ram.size)                                 \
+{                                                                   \
+    ProcessorErr error = ERR_CTOR(ProcessorErrorType::RAM_OVERFLOW); \
+    PROCESSOR_ASSERT(error);                                          \
+}                                                                      \
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // HandlePush helper functions
@@ -1120,10 +1068,10 @@ static PushType GetPushType(int push_type_int)
 
     PushType type = 
     {
-        .number   = number_flag   ? 1 : 0,
-        .reg      = register_flag ? 1 : 0,
-        .memory   = memory_flag   ? 1 : 0,
-        .aligment = aligment_flag ? 1 : 0,
+        .number   = (one_bit_t) (number_flag   ? 1 : 0),
+        .reg      = (one_bit_t) (register_flag ? 1 : 0),
+        .memory   = (one_bit_t) (memory_flag   ? 1 : 0),
+        .aligment = (one_bit_t) (aligment_flag ? 1 : 0),
     };
 
     return type;
@@ -1241,12 +1189,12 @@ static PopType GetPopType(int pop_type_int)
     one_bit_t register_flag = GetIBitOfInt(pop_type_int, 2);
     one_bit_t memory_flag   = GetIBitOfInt(pop_type_int, 1);
     one_bit_t aligment_flag = GetIBitOfInt(pop_type_int, 0);
-    
+
     PopType type =
     {
-        .reg      = register_flag ? 1 : 0,
-        .memory   =   memory_flag ? 1 : 0,
-        .aligment = aligment_flag ? 1 : 0,
+        .reg      = (one_bit_t) (register_flag ? 1 : 0),
+        .memory   = (one_bit_t) (  memory_flag ? 1 : 0),
+        .aligment = (one_bit_t) (aligment_flag ? 1 : 0),
     };
 
     return type;
@@ -1365,14 +1313,14 @@ static int PackRGBA(RGBA rgba)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static RGBA GetRGBA(int pixel)
+static RGBA UnpackRGBA(int pixel)
 {
     RGBA rgba =
     {
-        .r = (pixel >> 0 ) & 0xFF,
-        .g = (pixel >> 8 ) & 0xFF,
-        .b = (pixel >> 16) & 0xFF,
-        .a = (pixel >> 24) & 0xFF,
+        .r = (unsigned char) ((pixel >> 0 ) & 0xFF),
+        .g = (unsigned char) ((pixel >> 8 ) & 0xFF),
+        .b = (unsigned char) ((pixel >> 16) & 0xFF),
+        .a = (unsigned char) ((pixel >> 24) & 0xFF),
     };
 
     return rgba;
@@ -1384,20 +1332,15 @@ static ProcessorErr VertexArrayCtor(sf::VertexArray& pixels, size_t ram_addr_beg
 {
     assert(spu);
 
-    ProcessorErr err = {};
+    size_t   ram_pointer = ram_addr_begin;
+    size_t pixel_poiter  = 0;
 
-    size_t ram_pointer  = ram_addr_begin;
-    size_t pixel_poiter = 0;
-
-    for (size_t i = 0; i < width; i++)
+    for (size_t j = 0; j < high; j++)
     {
-        for (size_t j = 0; j < high; j++)
+        for (size_t i = 0; i < width; i++)
         {
-            // size_t index     = j * width + i;
-            // assert(index == j * width + i + ram_addr_begin); // tmp assert
- 
-            int    memory_element = GetMemoryElement(spu,           ram_pointer);
-            RGBA   rgba           = GetRGBA         (memory_element            );
+            int    memory_element = GetMemoryElement(spu, ram_pointer);
+            RGBA   rgba           = UnpackRGBA      (memory_element  );
 
             pixels[pixel_poiter].position = sf::Vector2f((float) i, (float) j);
             pixels[pixel_poiter].color    = sf::Color(rgba.r, rgba.g, rgba.b, rgba.a);
@@ -1407,17 +1350,53 @@ static ProcessorErr VertexArrayCtor(sf::VertexArray& pixels, size_t ram_addr_beg
         }
     }
 
-    return PROCESSOR_VERIFY(spu, err);
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// CodeCtor helper function
 
-static int GetRegisterOrInt(const SPU* spu, bool is_arg_register, int argument)
+static ProcessorErr ReadCodeFromFile(SPU* spu, FILE* code_file_ptr)
 {
-    return (is_arg_register) ? spu->registers[argument] : argument;
+    assert(spu);
+    assert(code_file_ptr);
+
+    size_t CmdQuant = spu->code_array.size;
+
+    for (size_t cmd_i = 0; cmd_i < CmdQuant; cmd_i++)
+    {
+        int command = 0;
+        int fscanf_return = fscanf(code_file_ptr, "%d", &command);
+    
+        if (fscanf_return != 1)
+            return PROCESSOR_RETURN(ProcessorErrorType::INVALID_CMD);
+
+        SetCodeElem(spu, cmd_i, command);
+    }
+
+    ON_DEBUG(
+    LOG_ALL_INT_ARRAY(Yellow, spu->code_array.array, spu->code_array.size);
+    )
+    return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void SetCodeElem(SPU* spu, size_t code_pointer, int setting_element)
+{
+    assert(spu);
+    assert(spu->code_array.array);
+
+    spu->code_array.array[code_pointer] = setting_element;
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// functions for work with struct SPU
 
 static int GetNextCodeInstruction(SPU* spu)
 {
@@ -1452,58 +1431,33 @@ static size_t GetIp(SPU* spu)
 
 static int GetMemoryElement(SPU* spu, size_t index)
 {
-    assert(index < spu->ram.size);
-    return spu->ram.array[index];
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static void SetCodeElem(SPU* spu, size_t code_pointer, int setting_element)
-{
     assert(spu);
-    assert(spu->code_array.array);
 
-    spu->code_array.array[code_pointer] = setting_element;
-    return;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static ProcessorErr ReadCodeFromFile(SPU* spu, FILE* code_file_ptr)
-{
-    assert(spu);
-    assert(code_file_ptr);
-
-    ProcessorErr err = {};
-
-    size_t CmdQuant = spu->code_array.size;
-
-    for (size_t cmd_i = 0; cmd_i < CmdQuant; cmd_i++)
+    if (index >= spu->ram.size)
     {
-        int command = 0;
-        int fscanf_return = fscanf(code_file_ptr, "%d", &command);
-    
-        if (fscanf_return != 1)
-        {
-            err.err = ProcessorErrorType::INVALID_CMD;
-            return PROCESSOR_VERIFY(spu, err);
-        }
-
-        SetCodeElem(spu, cmd_i, command);
+        ProcessorErr err = ERR_CTOR(ProcessorErrorType::RAM_OVERFLOW);
+        PROCESSOR_ASSERT(err);
     }
 
-    ON_DEBUG(
-    LOG_ALL_INT_ARRAY(Yellow, spu->code_array.array, spu->code_array.size);
-    )
-    return PROCESSOR_VERIFY(spu, err);
+    return spu->ram.array[index];
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static one_bit_t GetIBitOfInt(int n, size_t i)
 {
-    return (n >> i) & 1;
+    return (n >> i) & 0x1;
 }
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static int GetRegisterOrInt(const SPU* spu, bool is_arg_register, int argument)
+{
+    assert(spu);
+    assert(spu->registers);
+
+    return (is_arg_register) ? spu->registers[argument] : argument;
+}
+
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static void CheckFileExtension(const char* file_name)
@@ -1521,22 +1475,19 @@ static void CheckFileExtension(const char* file_name)
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static ProcessorErr Verify(SPU* spu, ProcessorErr* err,  const char* file, int line, const char* func)
+static ProcessorErr ErrCtor(ProcessorErrorType err_type, const char* file, int line, const char* func)
 {
-    assert(spu);
-    assert(err);
     assert(file);
     assert(func);
 
-    CodePlaceCtor(&err->place, file, line, func);
+    ProcessorErr err = {};
 
-    // if (spu->code_array.size > 0 && spu->code_array.array[spu->code_array.size - 1] != hlt)
-    // {
-    //     err->NoHalt = 1;
-    //     err->IsFatalError = 1;
-    // }
+    err.err = err_type;
 
-    return *err;
+    if (err_type != ProcessorErrorType::NO_ERR)
+        CodePlaceCtor(&err.place, file, line, func);
+
+    return err;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
