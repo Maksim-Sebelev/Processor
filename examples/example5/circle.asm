@@ -48,8 +48,10 @@ draw_circle:
     cycle:
 
     call calc_dist_to_centre:
+
     push fx
     push cx
+
     ja notInCircle:
     jmp inCircle:
 

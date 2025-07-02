@@ -1,42 +1,20 @@
 # Примеры
 
-Если вы хотите посмотреть как работают примеры, просто пропишите в консоли следующие команды для каждого примера соответственно:
+Перед тем, как запускать примеры необходимо скомпелировать проект и поместить исполняемые файлы в папку `~/examples/build/`.\
+Для этого перейдите в папку `~/Src` и выполните:
 ```bash
-make example1
+make examples
 ```
-```bash
-make example2
-```
-```bash
-make example3
-```
-```bash
-make example4
-```
-```bash
-make example5
-```
+После перейдите в папку `~/examples/`.
 
-Можете так же проделать это без использования `Makefile`:
+Если вы хотите посмотреть как работают примеры, просто пропишите в консоли следующие команды для каждого примера соответственно:
+
 ```bash
-./build/asm -s examples/example1/HelloWorld.asm -b examples/example1/HelloWorld.bin
-./build/.exe -e examples/example1/HelloWorld.bin
-```
-```bash
-./build/asm -s examples/example2/Math.asm -b examples/example2/Math.bin
-./build/.exe -e examples/example2/Math.bin
-```
-```bash
-./build/asm -s examples/example3/Cycle.asm -b examples/example3/Cycle.bin
-./build/.exe -e examples/example3/Cycle.bin
-```
-```bash
-./build/asm -s examples/example4/Factorial.asm -b examples/example4/Factorial.bin
-./build/.exe -e examples/example4/Factorial.bin
-```
-```bash
-./build/asm -s examples/example5/circle.asm -b examples/example5/circle.bin
-./build/.exe -e examples/example5/circle.bin
+bash run/run_example_1.bash
+bash run/run_example_2.bash
+bash run/run_example_3.bash
+bash run/run_example_4.bash
+bash run/run_example_5.bash
 ```
 
 # Ожидаемый результат

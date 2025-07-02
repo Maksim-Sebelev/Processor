@@ -1,4 +1,4 @@
-MAKEFILE_NAME := assembler/Makefile
+MAKEFILE_NAME ?= assembler/Makefile
 
 ifeq ($(origin CC),default)
   CC = g++
