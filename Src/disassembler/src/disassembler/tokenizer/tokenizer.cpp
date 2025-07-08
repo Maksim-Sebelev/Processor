@@ -136,7 +136,8 @@ static void HandlePush(TokensList* tokens_list, CodeArray* code_array)
 
     else if (IsPushTypeRegister(type))
     {
-        Registers reg = 
+        Registers reg = GetRegisterInPushPop(code_array);
+        PUSH_REGISTER_TOKEN(tokens_list, reg, code_array->ip);
     }
 }
 
@@ -153,6 +154,11 @@ static Number GetNumberInPushPop(CodeArray* code_array)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static Registers GetRegisterInPushPop(CodeArray* code_array)
+{
+    assert(code_array);
+
+    return (Registers) GetNextInstruction(code_array);
+}
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
