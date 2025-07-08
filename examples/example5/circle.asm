@@ -1,13 +1,13 @@
 ; init args for draw_circle 
 
-push 600
+push 1200
 pop ax
 
-push 800
+push 1600
 pop bx
 
 
-push 100
+push 200
 pop cx
 
 ; call function to draw a circle with args high (ax)  600, width (bx)  800, radius (cx)  100 

@@ -1,0 +1,6 @@
+#ifndef DISASM_FLAGS_HPP
+#define DISASM_FLAGS_HPP
+
+
+
+#endif // DISASM_FLAGS_HPP

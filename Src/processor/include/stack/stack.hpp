@@ -67,7 +67,7 @@
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-typedef int StackElem_t;
+using stack_element_t = int;
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -80,7 +80,7 @@ struct Stack_t
     ON_STACK_CANARY(StackCanary_t leftStackCanary;)
     size_t size;
     size_t capacity;
-    StackElem_t* data;
+    stack_element_t* data;
     ON_STACK_HASH(uint64_t stackHash;)
     ON_STACK_DATA_HASH(uint64_t dataHash;)
     ON_STACK_CANARY(StackCanary_t rightStackCanary;)
@@ -156,9 +156,9 @@ StackErrorType StackCtor               (Stack_t* stack, size_t StackDataSize);
 StackErrorType StackDtor               (Stack_t* stack);
 StackErrorType PrintStack              (Stack_t* stack);
 StackErrorType PrintLastStackElem      (Stack_t* stack);
-StackErrorType StackPush               (Stack_t* stack, StackElem_t PushElem);
-StackErrorType StackPop                (Stack_t* stack, StackElem_t* PopElem);
-StackElem_t    GetLastStackElem        (const Stack_t* stack);
+StackErrorType StackPush               (Stack_t* stack, stack_element_t PushElem);
+StackErrorType StackPop                (Stack_t* stack, stack_element_t* PopElem);
+stack_element_t    GetLastStackElem        (const Stack_t* stack);
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

@@ -536,7 +536,7 @@ static ProcessorErr HandlePush(SPU* spu)
     int      push_type_int = GetNextCodeInstruction(spu);
     PushType push_type     = GetPushType           (push_type_int);
 
-    StackElem_t pushing_element = 0;
+    stack_element_t pushing_element = 0;
 
     int push_arg = GetNextCodeInstruction(spu);
     int aligment = GetNextCodeInstruction(spu);
@@ -578,7 +578,7 @@ static ProcessorErr HandlePop(SPU* spu)
     int     pop_arg      = GetNextCodeInstruction(spu);
     int     aligment     = GetNextCodeInstruction(spu);
 
-    StackElem_t pop_element = 0;
+    stack_element_t pop_element = 0;
     STACK_ASSERT(StackPop(&spu->stack, &pop_element));
 
     if (IsPopTypeRegister(pop_type))
@@ -754,7 +754,7 @@ static ProcessorErr HandleCall(SPU* spu)
 
     assert(spu);
 
-    StackElem_t return_pointer  = (StackElem_t) GetIp(spu) + 1; // skip 'call func:' is made in assembler
+    stack_element_t return_pointer  = (stack_element_t) GetIp(spu) + 1; // skip 'call func:' is made in assembler
 
     STACK_ASSERT(StackPush(&spu->stack, return_pointer));
 
@@ -771,7 +771,7 @@ static ProcessorErr HandleRet(SPU* spu)
 
     assert(spu);
 
-    StackElem_t return_pointer = 0;
+    stack_element_t return_pointer = 0;
     STACK_ASSERT(StackPop(&spu->stack, &return_pointer));
 
     spu->code_array.ip = (size_t) return_pointer;
@@ -789,7 +789,7 @@ static ProcessorErr HandleOut(SPU* spu)
 
     assert(spu);
 
-    StackElem_t elem = GetLastStackElem(&spu->stack);
+    stack_element_t elem = GetLastStackElem(&spu->stack);
 
     printf("%d", elem);
 
@@ -804,7 +804,7 @@ static ProcessorErr HandleOutc(SPU* spu)
 
     assert(spu);
 
-    StackElem_t elem = GetLastStackElem(&spu->stack);
+    stack_element_t elem = GetLastStackElem(&spu->stack);
 
     if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
         return PROCESSOR_RETURN(ProcessorErrorType::OUT_CHAR_NOT_CHAR);
@@ -822,7 +822,7 @@ static ProcessorErr HandleOutrc(SPU* spu)
 
     assert(spu);
 
-    StackElem_t elem = 0;
+    stack_element_t elem = 0;
     STACK_ASSERT(StackPop(&spu->stack, &elem));
 
     if ((elem < CHAR_MIN) || (CHAR_MAX < elem))
@@ -841,7 +841,7 @@ static ProcessorErr HandleOutr(SPU* spu)
 
     assert(spu);
 
-    StackElem_t elem = 0;
+    stack_element_t elem = 0;
 
     STACK_ASSERT(StackPop(&spu->stack, &elem));
 
@@ -1000,13 +1000,13 @@ static ProcessorErr ArithmeticCmdPattern(SPU* spu, ArithmeticOperator arithmetic
 {
     assert(spu);
 
-    StackElem_t first_operand  = 0;
-    StackElem_t second_operand = 0;
+    stack_element_t first_operand  = 0;
+    stack_element_t second_operand = 0;
 
     STACK_ASSERT(StackPop(&spu->stack, &second_operand));
     STACK_ASSERT(StackPop(&spu->stack, &first_operand));
 
-    StackElem_t push_elem = MakeArithmeticOperation(first_operand, second_operand, arithmetic_operator);
+    stack_element_t push_elem = MakeArithmeticOperation(first_operand, second_operand, arithmetic_operator);
     STACK_ASSERT(StackPush(&spu->stack, push_elem));
 
     return PROCESSOR_RETURN(ProcessorErrorType::NO_ERR);
@@ -1018,8 +1018,8 @@ static ProcessorErr JumpsCmdPatter(SPU* spu, ComparisonOperator comparison_opera
 {
     assert(spu);
 
-    StackElem_t first_operand  = 0;
-    StackElem_t second_operand = 0;
+    stack_element_t first_operand  = 0;
+    stack_element_t second_operand = 0;
 
     size_t jmp_place = (size_t) GetNextCodeInstruction(spu);
 

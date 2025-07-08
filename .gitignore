@@ -16,7 +16,7 @@ build/
 # my bin files
 code/
 
-# my bash files for work with project
+# my .zsh files for work with project
 bash/
 
 # struct of project. needs for readme

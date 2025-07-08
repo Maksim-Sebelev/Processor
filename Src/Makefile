@@ -1,23 +1,26 @@
-.PHONY: all  run       rebuild      clean     \
-        asm  run_asm   rebuild_asm  clean_asm  \
-        proc run_proc  rebuild_proc clean_proc  \
-		examples                                 \
+# BUILD TYPES
 
+# ASM_BUILD_TYPE  ?= release
+ASM_BUILD_TYPE  ?= debug
 
-ASM_BUILD_TYPE  ?= release
-# ASM_BUILD_TYPE  ?= debug
+# PROC_BUILD_TYPE ?= release
+PROC_BUILD_TYPE ?= debug
 
-PROC_BUILD_TYPE ?= release
-# PROC_BUILD_TYPE ?= debug
+# DASM_BUILD_TYPE ?= release
+DASM_BUILD_TYPE ?= debug
 
-ASM_MAKEFILE       := assembler/Makefile
-PROCESSOR_MAKEFILE := processor/Makefile
+# ==========================
 
-BUILD_DIR          := ../build
-OBJ_DIR            := ../bin
+ASM_MAKEFILE    := assembler/Makefile
+PROC_MAKEFILE   := processor/Makefile
+DASM_MAKEFILE   := disassembler/Makefile
 
-ASM_EXECUTABLE     := asm
-PROC_EXECUTABLE    := exe
+BUILD_DIR       := ../build
+OBJ_DIR         := ../bin
+
+ASM_EXECUTABLE  := asm
+PROC_EXECUTABLE := exe
+DASM_EXECUTABLE := dasm
 
 EXAMPLES_DIR = ../examples
 
@@ -33,13 +36,13 @@ examples: all
 
 # ===== asm ======
 
-ASM_MAKE_PATTERN := $(MAKE)                              \
-							MAKEFILE_NAME=$(ASM_MAKEFILE) \
-					        EXECUTABLE_DIR=$(BUILD_DIR)    \
-							EXECUTABLE=$(ASM_EXECUTABLE)    \
-							OUT_O_DIR=$(OBJ_DIR)             \
-							BUILD_TYPE=$(ASM_BUILD_TYPE)      \
-					-f $(ASM_MAKEFILE)                         \
+ASM_MAKE_PATTERN := $(MAKE)                                 \
+							MAKEFILE_NAME=$(ASM_MAKEFILE)    \
+					        EXECUTABLE_DIR=$(BUILD_DIR)       \
+							EXECUTABLE=$(ASM_EXECUTABLE)       \
+							OUT_O_DIR=$(OBJ_DIR)                \
+							BUILD_TYPE=$(ASM_BUILD_TYPE)         \
+					-f $(ASM_MAKEFILE)                            \
 
 asm:
 	$(ASM_MAKE_PATTERN)
@@ -56,12 +59,12 @@ clean_asm:
 # ===== proc =====
 
 PROC_MAKE_PATTERN := $(MAKE)                                   \
-							MAKEFILE_NAME=$(PROCESSOR_MAKEFILE) \
+							MAKEFILE_NAME=$(PROC_MAKEFILE)      \
 							EXECUTABLE_DIR=$(BUILD_DIR)          \
 						    EXECUTABLE=$(PROC_EXECUTABLE)         \
 						    OUT_O_DIR=$(OBJ_DIR)                   \
 							BUILD_TYPE=$(PROC_BUILD_TYPE)           \
-					 -f $(PROCESSOR_MAKEFILE)                        \
+					 -f $(PROC_MAKEFILE)                             \
 
 proc:
 	$(PROC_MAKE_PATTERN)
@@ -76,3 +79,32 @@ clean_proc:
 	$(PROC_MAKE_PATTERN) clean
 
 
+# ==== dasm =====
+
+DASM_MAKE_PATTERN := $(MAKE)                                   \
+							MAKEFILE_NAME=$(DASM_MAKEFILE)      \
+							EXECUTABLE_DIR=$(BUILD_DIR)          \
+						    EXECUTABLE=$(DASM_EXECUTABLE)         \
+						    OUT_O_DIR=$(OBJ_DIR)                   \
+							BUILD_TYPE=$(DASM_BUILD_TYPE)           \
+					 -f $(DASM_MAKEFILE)                             \
+
+dasm:
+	$(DASM_MAKE_PATTERN)
+
+run_dasm:
+	$(DASM_MAKE_PATTERN) run
+
+rebuild_dasm:
+	$(DASM_MAKE_PATTERN) rebuild
+
+clean_dasm:
+	$(DASM_MAKE_PATTERN) clean
+
+# ===================
+
+.PHONY: all  run       rebuild      clean     \
+        asm  run_asm   rebuild_asm  clean_asm  \
+        proc run_proc  rebuild_proc clean_proc  \
+		dasm run_dasm  rebuild_dasm clean_dasm   \
+		examples                                  \

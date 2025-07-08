@@ -33,7 +33,7 @@ static const uint64_t DefaultStackHash = 538176576;
 )
 ON_STACK_DATA_POISON
 (
-static const StackElem_t Poison = 0xDEEEEAD;
+static const stack_element_t Poison = 0xDEEEEAD;
 )
 
 static size_t GetNewCapacity      (size_t capacity); 
@@ -136,7 +136,7 @@ StackErrorType StackDtor(Stack_t* stack)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-StackErrorType StackPush(Stack_t*  stack, StackElem_t PushElem)
+StackErrorType StackPush(Stack_t*  stack, stack_element_t PushElem)
 {
     StackErrorType err = {};
     RETURN_IF_ERR_OR_WARN(stack, err);
@@ -193,7 +193,7 @@ StackErrorType StackPush(Stack_t*  stack, StackElem_t PushElem)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-StackErrorType StackPop(Stack_t* stack, StackElem_t* PopElem)
+StackErrorType StackPop(Stack_t* stack, stack_element_t* PopElem)
 {
     StackErrorType err = {};
     RETURN_IF_ERR_OR_WARN(stack, err);
@@ -235,7 +235,7 @@ StackErrorType StackPop(Stack_t* stack, StackElem_t* PopElem)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-StackElem_t GetLastStackElem(const Stack_t* stack)
+stack_element_t GetLastStackElem(const Stack_t* stack)
 {
     assert(stack);
 
@@ -306,7 +306,7 @@ static uint64_t CalcDataHash(const Stack_t* stack)
 {
     assert(stack);
 
-    return Hash(stack->data, stack->capacity, sizeof(StackElem_t));
+    return Hash(stack->data, stack->capacity, sizeof(stack_element_t));
 }
 )
 
@@ -327,7 +327,7 @@ static DataCanary_t GetRightDataCanary(const Stack_t* stack)
 {
     assert(stack);
 
-    return *(DataCanary_t*)((char*)stack->data + stack->capacity * sizeof(StackElem_t));
+    return *(DataCanary_t*)((char*)stack->data + stack->capacity * sizeof(stack_element_t));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -346,7 +346,7 @@ static void SetRightDataCanary(Stack_t* stack)
 {
     assert(stack);
 
-    *(DataCanary_t*)((char*)stack->data + stack->capacity * sizeof(StackElem_t)) = RightDataCanary;
+    *(DataCanary_t*)((char*)stack->data + stack->capacity * sizeof(stack_element_t)) = RightDataCanary;
     return;
 }
 
@@ -358,7 +358,7 @@ static StackErrorType MoveDataToLeftCanary(Stack_t* stack)
 
     StackErrorType err = {};
 
-    stack->data = (StackElem_t*)((char*)stack->data - sizeof(LeftDataCanary) * sizeof(char));
+    stack->data = (stack_element_t*)((char*)stack->data - sizeof(LeftDataCanary) * sizeof(char));
 
     if (stack->data == nullptr)
     {
@@ -378,7 +378,7 @@ static StackErrorType MoveDataToFirstElem(Stack_t* stack)
 
     StackErrorType err = {};
 
-    stack->data = (StackElem_t*)((char*)stack->data + sizeof(RightDataCanary) * sizeof(char));
+    stack->data = (stack_element_t*)((char*)stack->data + sizeof(RightDataCanary) * sizeof(char));
 
     if (stack->data == nullptr)
     {
@@ -444,7 +444,7 @@ static StackErrorType PushRealloc(Stack_t* stack)
     (
     STACK_ASSERT(MoveDataToLeftCanary(stack));
     )
-    stack->data = (StackElem_t*) realloc(stack->data, stack->capacity * sizeof(StackElem_t) ON_STACK_DATA_CANARY(+ 2 * sizeof(DataCanary_t)));
+    stack->data = (stack_element_t*) realloc(stack->data, stack->capacity * sizeof(stack_element_t) ON_STACK_DATA_CANARY(+ 2 * sizeof(DataCanary_t)));
     if (stack->data == nullptr)
     {
         err.FatalError.ReallocPushNull = 1;
@@ -470,7 +470,7 @@ static StackErrorType PopRealloc(Stack_t* stack)
     (
     STACK_ASSERT(MoveDataToLeftCanary(stack));
     )
-    stack->data = (StackElem_t*) realloc(stack->data, stack->capacity * sizeof(StackElem_t) ON_STACK_DATA_CANARY(+ 2 * sizeof(DataCanary_t)));
+    stack->data = (stack_element_t*) realloc(stack->data, stack->capacity * sizeof(stack_element_t) ON_STACK_DATA_CANARY(+ 2 * sizeof(DataCanary_t)));
     if (stack->data == nullptr)
     {
         err.FatalError.ReallocPopNull = 1;
@@ -491,7 +491,7 @@ static StackErrorType CtorCalloc(Stack_t* stack)
     StackErrorType err = {};
     assert(stack);
 
-    stack->data = (StackElem_t*) calloc (stack->capacity * sizeof(StackElem_t) ON_STACK_DATA_CANARY(+ 2 * sizeof(DataCanary_t)), sizeof(char));
+    stack->data = (stack_element_t*) calloc (stack->capacity * sizeof(stack_element_t) ON_STACK_DATA_CANARY(+ 2 * sizeof(DataCanary_t)), sizeof(char));
 
     if (stack->data == nullptr)
     {
