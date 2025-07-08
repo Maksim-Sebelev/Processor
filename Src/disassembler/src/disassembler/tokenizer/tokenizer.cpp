@@ -13,10 +13,58 @@ __attribute__((__noreturn__))
 static void      ParseUndefCmd           (int command, size_t ip, const char* bin_file);
 static CodeArray ReadFileInCodeArray     (const char* file);
 static int       GetNextInstruction      (CodeArray* code_array);
-static Token     TokenCtor               (TokenType type, const void* value, size_t ip);
-static void      CtorAndPushToken        (TokensList* tokens_list, TokenType type, const void* value, size_t ip);
+static void      CtorAndPushBackToken    (TokensList* tokens_list, TokenType type, TokenValue value, size_t ip);
+static Token     CtorToken               (TokenType type, TokenValue value, size_t ip);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define PUSH_COMMAND_TOKEN(tokens_list, command_value, ip) do              \
+{                                                                           \
+    TokenValue value = {.command = command_value};                           \
+    CtorAndPushBackToken(tokens_list, TokenType::token_command_t, value, ip); \
+} while(0)                                                                     \
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define PUSH_REGISTER_TOKEN(tokens_list, reg_value, ip) do                 \
+{                                                                           \
+    TokenValue value = {.reg = reg_value};                                   \
+    CtorAndPushBackToken(tokens_list, TokenType::token_command_t, value, ip); \
+} while(0)                                                                     \
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define PUSH_NUMBER_TOKEN(tokens_list, number_value, ip) do                \
+{                                                                           \
+    TokenValue value = {.number = number_value};                             \
+    CtorAndPushBackToken(tokens_list, TokenType::token_command_t, value, ip); \
+} while(0)                                                                     \
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define PUSH_LABEL_TOKEN(tokens_list, label_value, ip) do                  \
+{                                                                           \
+    TokenValue value = {.label = label_value};                               \
+    CtorAndPushBackToken(tokens_list, TokenType::token_command_t, value, ip); \
+} while(0)                                                                     \
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define PUSH_SEPARATOR_TOKEN(tokens_list, separator_value, ip) do          \
+{                                                                           \
+    TokenValue value = {.separator = separator_value};                       \
+    CtorAndPushBackToken(tokens_list, TokenType::token_command_t, value, ip); \
+} while(0)                                                                     \
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define PUSH_BRACKET_TOKEN(tokens_list, bracket_value, ip) do              \
+{                                                                           \
+    TokenValue value = {.bracket = bracket_value};                           \
+    CtorAndPushBackToken(tokens_list, TokenType::token_command_t, value, ip); \
+} while(0)                                                                     \
+
+
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -71,7 +119,7 @@ static void HandlePush(TokensList* tokens_list, CodeArray* code_array)
 {
     assert(code_array);
 
-    CtorAndPushToken(tokens_list, TokenType::token_command_t, )
+    PUSH_COMMAND_TOKEN(tokens_list, Cmd::push, code_array->ip);
 
     int push_type_int = GetNextInstruction(code_array);
     int push_arg_int  = GetNextInstruction(code_array);
@@ -82,18 +130,49 @@ static void HandlePush(TokensList* tokens_list, CodeArray* code_array)
 
     if (IsPushTypeNumber(type))
     {
+        Number number = GetNextInstruction(code_array);
+        PUSH_NUMBER_TOKEN(tokens_list, number, code_array->ip);
+    }
 
+    else if (IsPushTypeRegister(type))
+    {
+        Registers reg = 
     }
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// HandlePush helper functions
 
-static void CtorAndPushToken(TokensList* tokens_list, TokenType type, const void* value, size_t ip)
+static Number GetNumberInPushPop(CodeArray* code_array)
+{
+    assert(code_array);
+
+    return GetNextInstruction(code_array);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static Registers GetRegisterInPushPop(CodeArray* code_array)
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static Token CtorToken(TokenType type, TokenValue value, size_t ip)
+{
+    return (Token)
+    {
+        .type         = type ,
+        .value        = value,
+        .code_pointer = ip   ,
+    };
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void CtorAndPushBackToken(TokensList* tokens_list, TokenType type, TokenValue value, size_t ip)
 {
     assert(tokens_list);
-    assert(value);
 
-    Token token = TokenCtor(type, value, ip);
+    Token token = CtorToken(type, value, ip);
 
     LIST_PUSH_BACK(tokens_list, token, nullptr);
 
@@ -187,36 +266,3 @@ static CodeArray ReadFileInCodeArray(const char* file)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define get_token_value(type, value) *(type*) value
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-static Token TokenCtor(TokenType type, const void* value, size_t ip)
-{
-    assert(value);
-
-    Token token = {};
-
-    token.type         = type;
-    token.code_pointer = ip;
-
-    switch (type)
-    {
-        case TokenType::token_command_t  : token.value.command   = get_token_value(Cmd       , value);
-        case TokenType::token_register_t : token.value.reg       = get_token_value(Registers , value);
-        case TokenType::token_number_t   : token.value.number    = get_token_value(Number    , value);
-        case TokenType::token_label_t    : token.value.label     = get_token_value(TokenLabel, value);
-        case TokenType::token_separator_t: token.value.separator = get_token_value(Separator , value);
-        default: __builtin_unreachable__("undef token type");
-    }
-
-    return token;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-#undef get_token_value
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-// static void HandlePush()

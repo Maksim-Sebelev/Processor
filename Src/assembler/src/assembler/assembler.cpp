@@ -1514,13 +1514,11 @@ static AssemblerErr Verify(const AsmData* AsmDataInfo, AssemblerErr* err, Token 
     assert(func);
     assert(err);
 
-    CodePlaceCtor(&err->place, file, line, func);
-
+    err->place = CodePlaceCtor(file, line, func);
     err->token = token;
 
     if (AsmDataInfo)
         err->file = AsmDataInfo->file;
-
 
     if (!AsmDataInfo)
     {
