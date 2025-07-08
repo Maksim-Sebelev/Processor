@@ -50,8 +50,8 @@ BIN_FILE       ?= programm.bin
 
 override CFLAGS += $(COMMONINC)
 
-CSRC =  disassembler/main.cpp                           \
-		disassembler/src/flags/flags.cpp                 \
+CSRC =  disassembler/main.cpp                        \
+		disassembler/src/flags/flags.cpp              \
 		assembler/src/assembler/assembler.cpp          \
 		assembler/src/assembler/labels/labels.cpp       \
 		assembler/src/assembler/tokenizer/tokenizer.cpp  \
@@ -59,7 +59,7 @@ CSRC =  disassembler/main.cpp                           \
 		common/src/lib/lib.cpp                             \
 		common/src/global/global.cpp                        \
 		common/src/functions_for_files/files.cpp             \
-
+		common/proc_disasm_common/proc_disasm_common.cpp      \
 
 ifeq ($(BUILD_TYPE), debug)
 	CSRC += common/src/logger/log.cpp                       \

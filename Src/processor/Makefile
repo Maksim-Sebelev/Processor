@@ -59,6 +59,7 @@ CSRC =  processor/main.cpp                                \
 		common/src/lib/lib.cpp                                 \
 		common/src/global/global.cpp                            \
 		common/src/functions_for_files/files.cpp                 \
+		common/src/proc_disasm_common/proc_disasm_common.cpp      \
 
 
 ifeq ($(BUILD_TYPE), debug)

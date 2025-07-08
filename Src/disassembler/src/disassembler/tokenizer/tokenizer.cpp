@@ -2,32 +2,29 @@
 #include "disassembler/tokenizer/tokenizer.hpp"
 #include "functions_for_files/files.hpp"
 #include "lib/lib.hpp"
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-struct CodeArray
-{
-    int*   array;
-    size_t size ;
-    size_t ip   ; // instruction pointer
-};
+#include "proc_disasm_common/proc_disasm_common.hpp"
+#include "list/list.hpp"
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static CodeArray ReadFileInCodeArray(const char* file);
-static int GetNextInstruction(CodeArray* code_array);
+__attribute__((__noreturn__))
+static void      ParseUndefCmd           (int command, size_t ip, const char* bin_file);
+static CodeArray ReadFileInCodeArray     (const char* file);
+static int       GetNextInstruction      (CodeArray* code_array);
+static Token     TokenCtor               (TokenType type, const void* value, size_t ip);
+static void      CtorAndPushToken        (TokensList* tokens_list, TokenType type, const void* value, size_t ip);
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-TokensArray GetTokensArray(const char* bin_file)
+TokensList GetTokensList(const char* bin_file)
 {
     assert(bin_file);
 
-    CodeArray code_array   = ReadFileInCodeArray(bin_file);,      assert(code_array.array);
+    CodeArray code_array   = ReadFileInCodeArray(bin_file);       assert(code_array.array);
     Token*    tokens_array = ArrayForTokensCtor(code_array.size); assert(tokens_array);
 
     const size_t code_array_size = code_array.size;
@@ -35,40 +32,89 @@ TokensArray GetTokensArray(const char* bin_file)
     while (code_array.ip < code_array_size)
     {
         int instruction = GetNextInstruction(&code_array);
+
         switch (instruction)
         {
-            case Cmd::push:
-            case Cmd::pop:
-            case Cmd::add:
-            case Cmd::sub:
-            case Cmd::mul:
-            case Cmd::dive:
-            case Cmd::pp:
-            case Cmd::mm:
-            case Cmd::jmp:
-            case Cmd::ja:
-            case Cmd::jae:
-            case Cmd::jb:
-            case Cmd::jbe:
-            case Cmd::je:
-            case Cmd::jne:
-            case Cmd::draw:
-            case Cmd::rgba:
-            case Cmd::hlt:
-            case Cmd::out:
-            case Cmd::outc:
-            case Cmd::outr:
-            case Cmd::outrc:
+            case Cmd::push :  break;
+            case Cmd::pop  :  break;
+            case Cmd::add  :  break;
+            case Cmd::sub  :  break;
+            case Cmd::mul  :  break;
+            case Cmd::dive :  break;
+            case Cmd::pp   :  break;
+            case Cmd::mm   :  break;
+            case Cmd::jmp  :  break;
+            case Cmd::ja   :  break;
+            case Cmd::jae  :  break;
+            case Cmd::jb   :  break;
+            case Cmd::jbe  :  break;
+            case Cmd::je   :  break;
+            case Cmd::jne  :  break;
+            case Cmd::draw :  break;
+            case Cmd::rgba :  break;
+            case Cmd::hlt  :  break;
+            case Cmd::out  :  break;
+            case Cmd::outc :  break;
+            case Cmd::outr :  break;
+            case Cmd::outrc:  break;
             default:
+                ParseUndefCmd(instruction, code_array.ip, bin_file);
         }
+    }
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void HandlePush(TokensList* tokens_list, CodeArray* code_array)
+{
+    assert(code_array);
+
+    CtorAndPushToken(tokens_list, TokenType::token_command_t, )
+
+    int push_type_int = GetNextInstruction(code_array);
+    int push_arg_int  = GetNextInstruction(code_array);
+    int aligment      = GetNextInstruction(code_array);
+
+    PushType type = GetPushType(push_type_int);
+
+
+    if (IsPushTypeNumber(type))
+    {
 
     }
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static void ParseUndefCmd()
+static void CtorAndPushToken(TokensList* tokens_list, TokenType type, const void* value, size_t ip)
+{
+    assert(tokens_list);
+    assert(value);
 
+    Token token = TokenCtor(type, value, ip);
+
+    LIST_PUSH_BACK(tokens_list, token, nullptr);
+
+    return;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+__attribute__((__noreturn__))
+static void ParseUndefCmd(int command, size_t ip, const char* bin_file)
+{
+    assert(bin_file);
+
+    EXIT(EXIT_FAILURE, "%d - is not assembler instruction.\nip = %lu\n%s\n", command, ip, bin_file);
+
+    __builtin_unreachable__("exit");
+}
+
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 static int GetNextInstruction(CodeArray* code_array)
@@ -138,3 +184,39 @@ static CodeArray ReadFileInCodeArray(const char* file)
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define get_token_value(type, value) *(type*) value
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static Token TokenCtor(TokenType type, const void* value, size_t ip)
+{
+    assert(value);
+
+    Token token = {};
+
+    token.type         = type;
+    token.code_pointer = ip;
+
+    switch (type)
+    {
+        case TokenType::token_command_t  : token.value.command   = get_token_value(Cmd       , value);
+        case TokenType::token_register_t : token.value.reg       = get_token_value(Registers , value);
+        case TokenType::token_number_t   : token.value.number    = get_token_value(Number    , value);
+        case TokenType::token_label_t    : token.value.label     = get_token_value(TokenLabel, value);
+        case TokenType::token_separator_t: token.value.separator = get_token_value(Separator , value);
+        default: __builtin_unreachable__("undef token type");
+    }
+
+    return token;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#undef get_token_value
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// static void HandlePush()

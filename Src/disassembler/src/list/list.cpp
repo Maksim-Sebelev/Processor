@@ -95,7 +95,6 @@ ListError_t ListInsertAfter(List_t* list, const size_t ref_elem, const list_elem
     LOG_FUNC_ENTRY();
 
     assert(list);
-    assert(insert_place);
 
     if (IsListFull(list))
         RETURN_IF_ERR_OR_WARN(ListIncreaseRealloc(list));
@@ -107,7 +106,8 @@ ListError_t ListInsertAfter(List_t* list, const size_t ref_elem, const list_elem
     size_t free_next   = GetNextIndex(list, free    );
     size_t ref_next    = GetNextIndex(list, ref_elem);
 
-    *insert_place               = free       ;
+    if (insert_place)
+        *insert_place = free;
 
     list->data[free     ].value = insert_elem;
     list->data[ref_elem ].next  = free       ;
@@ -128,7 +128,6 @@ ListError_t ListInsertBefore(List_t* list, const size_t ref_elem, const list_ele
 {
     LOG_FUNC_ENTRY();
     assert(list);
-    assert(insert_place);
 
     if (IsListFull(list))
         RETURN_IF_ERR_OR_WARN(ListIncreaseRealloc(list));
@@ -140,7 +139,9 @@ ListError_t ListInsertBefore(List_t* list, const size_t ref_elem, const list_ele
     size_t free_next   = GetNextIndex(list, free);
     size_t PrevRef    = GetPrevIndex(list, ref_elem);
 
-    *insert_place              = free;
+    if (insert_place)
+        *insert_place = free;
+
     list->data[free]    .value = insert_elem;
     list->data[free]    .next = ref_elem;
     list->data[free]    .prev = PrevRef;
@@ -160,7 +161,6 @@ ListError_t ListErase(List_t* list, size_t erase_place, list_elem_t* erase_elem)
 {
     LOG_FUNC_ENTRY();
     assert(list);
-    assert(erase_elem);
 
     if (IsListEmpty(list))
         RETURN_WHEN_FUNC_CALLS_LOG(GET_STATUS_WARN(ListWarningType::ERASE_IN_EMPTY_LIST));
@@ -174,7 +174,9 @@ ListError_t ListErase(List_t* list, size_t erase_place, list_elem_t* erase_elem)
     size_t erase_prev = GetPrevIndex(list, erase_place);
     size_t erase_next = GetNextIndex(list, erase_place);
 
-    *erase_elem                   = GetDataElemValue(list, erase_place);
+    if (erase_elem)
+        *erase_elem = GetDataElemValue(list, erase_place);
+
     list->data[erase_place].value = 0;
 
     list->data[erase_place].next = free;
@@ -198,7 +200,6 @@ ListError_t ListPushBack(List_t* list, const list_elem_t push_elem, size_t* push
     LOG_FUNC_ENTRY();
 
     assert(list);
-    assert(push_place);
     
     ListError_t err = ListInsertAfter(list, GetTail(list), push_elem, push_place);
 
@@ -212,7 +213,6 @@ ListError_t ListPushFront(List_t* list, const list_elem_t push_elem, size_t* pus
     LOG_FUNC_ENTRY();
 
     assert(list);
-    assert(push_place);
 
     ListError_t err = ListInsertBefore(list, GetHead(list), push_elem, push_place);
 
@@ -226,7 +226,6 @@ ListError_t ListPopBack(List_t* list, list_elem_t* pop_elem)
     LOG_FUNC_ENTRY();
 
     assert(list);
-    assert(pop_elem);
 
     ListError_t err = ListErase(list, GetTail(list), pop_elem);
 
